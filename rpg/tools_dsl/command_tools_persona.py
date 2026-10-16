@@ -137,8 +137,8 @@ def _t_clone_npc_to_user_card(user_id: int, args: dict) -> str:
             return f"Failed: NPC character card #{int(card_id)} not found in script #{int(sid)}"
         name = (npc.get("name") or npc.get("full_name") or "").strip() or "Unnamed character"
         tags = list(npc.get("tags") or [])
-        if "源自 NPC" not in tags:
-            tags.append("源自 NPC")
+        if "源自 NPC" not in tags and "From NPC" not in tags:
+            tags.append("From NPC")
         payload = {
             "name": name,
             "full_name": npc.get("full_name") or "",

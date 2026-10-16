@@ -255,13 +255,13 @@ def save_to_chat_jsonl(save_id: int, user_id: int | None = None) -> str:
     ))
 
     # compact digest 注入的「前情提要 ack」占位不导出,避免污染往返。
-    _SKIP_ACK = "[已收到前情提要,继续在此基础上叙事]"
+    from state.phase_digest_policy import DIGEST_ACKS as _SKIP_ACKS
     for m in history:
         if not isinstance(m, dict):
             continue
         role = m.get("role")
         content = str(m.get("content") or "").strip()
-        if not content or content == _SKIP_ACK:
+        if not content or content in _SKIP_ACKS:
             continue
         is_user = (role == "user")
         lines.append(json.dumps(

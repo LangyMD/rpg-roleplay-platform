@@ -933,7 +933,8 @@ def _normalize_timeline_target(value: str) -> str:
     if not value:
         return ""
     if re.fullmatch(r"\d{1,5}", value):
-        return f"第{value}章"
+        # 英文写法;消费方(timeline_state._TIME_TOKEN / script_timeline._extract_chapter_number)中英都认
+        return f"Chapter {value}"
     return value
 
 

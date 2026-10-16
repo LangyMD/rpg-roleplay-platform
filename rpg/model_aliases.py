@@ -61,11 +61,11 @@ def normalize_api_id(api_id: str | None) -> str:
     if canonical not in _API_ID_ALIASES.values():
         if len(canonical) > _API_ID_MAX_LEN:
             raise ValueError(
-                f"api_id 过长(最多 {_API_ID_MAX_LEN} 字符): {canonical!r}"
+                f"api_id is too long (at most {_API_ID_MAX_LEN} characters): {canonical!r}"
             )
         if not _API_ID_RE.match(canonical):
             raise ValueError(
-                f"api_id 含非法字符(仅允许 a-z0-9 _ . -,不能以 . 或 - 开头): {canonical!r}"
+                f"api_id contains invalid characters (only a-z0-9 _ . - are allowed, and it cannot start with . or -): {canonical!r}"
             )
     return canonical
 

@@ -120,7 +120,17 @@ _TIME_TOKEN = re.compile(
     r"|(?:数|多)(?:日|天|月|年)(?:之|以)?后"
     r"|片刻(?:之|以)?后|不久(?:之|以)?后|须臾"
     r"|柏林|图卢兹|基地"  # 本书(MuMu)时间线标签是地名制,保留既有行为
+    # English time-shaped tokens (same "shape, not single word" rule): Chapter 3 / Day 2 /
+    # three days later / 3 hours ago / the next morning / 1453 AD / at dawn.
+    r"|(?i:\b(?:chapter|ch\.)\s*\d{1,5}\b|\b(?:day|night|week|month|year)\s+\d{1,5}\b"
+    r"|\b(?:\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|a few|several)\s+"
+    r"(?:seconds?|minutes?|hours?|days?|nights?|weeks?|months?|years?)\s+(?:later|after|ago|before|on)\b"
+    r"|\b(?:the\s+)?(?:next|following)\s+(?:day|morning|evening|night|week|month|year)\b"
+    r"|\b(?:tomorrow|tonight|yesterday|dawn|daybreak|sunrise|sunset|dusk|noon|midday|midnight|nightfall)\b"
+    r"|\b\d{3,4}\s*(?:AD|BC|CE|BCE)\b|\bin\s+\d{3,4}\b)"
 )
+# 英文值里的人称从句(与上面中文人称否决同口径)
+_EN_PERSON_RE = re.compile(r"\b(?:I|me|my|mine|you|your|he|him|his|she|her|we|us|our|they|them|their)\b", re.I)
 
 
 def looks_like_time_value(value: str) -> bool:
@@ -128,7 +138,7 @@ def looks_like_time_value(value: str) -> bool:
         return False
     # 时间锚点描述「何时」,不含人称主语。含「我/你/他/她/它/我的…」基本是被贪婪捕获的叙事从句
     # (如「主神空间前我的母亲独自拉扯我长大」——『前』命中但其实是回忆从句),否决,避免误判跳跃。
-    if re.search(r"[我你他她它咱您俺]", value):
+    if re.search(r"[我你他她它咱您俺]", value) or _EN_PERSON_RE.search(value):
         return False
     return bool(_TIME_TOKEN.search(value))
 

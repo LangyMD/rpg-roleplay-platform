@@ -43,7 +43,7 @@ def load_module(module_id: str) -> dict:
     """加载一个模组的所有 JSON/markdown 数据。"""
     sub = MODULES_DIR / module_id
     if not sub.exists():
-        raise FileNotFoundError(f"未知模组：{module_id}")
+        raise FileNotFoundError(f"Unknown module: {module_id}")
 
     def _read_json(name: str) -> dict | list | None:
         p = sub / name

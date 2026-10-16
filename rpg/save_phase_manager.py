@@ -427,8 +427,8 @@ def _audit_anchors_on_phase_close(save_id: int, closed_phase_index: int) -> None
                         returning id
                         """,
                         (
-                            f"phase '{phase_label}' 已结束 (turn {turn_end}),玩家已推进过第 {reached} 章,"
-                            f"本 phase 中更早未触发的锚点自动绕过",
+                            f"phase '{phase_label}' closed (turn {turn_end}); the player has already reached "
+                            f"chapter {reached}, so earlier untriggered anchors in this phase were bypassed automatically",
                             save_id, phase_label, reached,
                         ),
                     ).fetchall()
@@ -449,7 +449,7 @@ def _audit_anchors_on_phase_close(save_id: int, closed_phase_index: int) -> None
                       and is_fatal = false
                     """,
                     (
-                        f"phase '{phase_label}' 已结束 (turn {turn_end}) 未触发, 自动绕过",
+                        f"phase '{phase_label}' closed (turn {turn_end}) without being triggered; bypassed automatically",
                         save_id, phase_label,
                     ),
                 )

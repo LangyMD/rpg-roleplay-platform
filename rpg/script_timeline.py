@@ -357,8 +357,9 @@ def _extract_keywords(text: str) -> list[str]:
 
 
 def _extract_chapter_number(label: str) -> int | None:
-    """从 label 抽章节号:'第 50 章' / '第50章' / '50 章' → 50。"""
-    m = re.search(r"第?\s*(\d{1,4})\s*章", label)
+    """从 label 抽章节号:'第 50 章' / '第50章' / '50 章' / 'Chapter 50' / 'Ch. 50' → 50。"""
+    m = (re.search(r"第?\s*(\d{1,4})\s*章", label)
+         or re.search(r"\b(?:chapter|ch\.?)\s*(\d{1,4})\b", label, re.I))
     if m:
         try:
             return int(m.group(1))

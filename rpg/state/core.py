@@ -637,6 +637,7 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
             from platform_app.db import connect as _connect
 
             from state.phase_digest_policy import (
+                DIGEST_ACK,
                 DIGEST_PREFIX_MAX_CHARS,
                 DIGEST_SUMMARY_MAX_CHARS,
                 drop_empty_ranges,
@@ -695,7 +696,7 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
                                + digest_text[-(DIGEST_PREFIX_MAX_CHARS):])
             digest_msg = {"role": "user", "content": digest_text}
             # 给一个 assistant ack 让结构合法 (避免连续两个 user role)
-            ack_msg = {"role": "assistant", "content": "[已收到前情提要,继续在此基础上叙事]"}
+            ack_msg = {"role": "assistant", "content": DIGEST_ACK}
             return [digest_msg, ack_msg, *recent]
         except Exception:
             # 任何失败回退到原行为,保证 chat 主路径不挂

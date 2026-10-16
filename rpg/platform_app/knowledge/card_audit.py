@@ -269,8 +269,8 @@ def schedule_card_audit(user_id: int, script_id: int, api_id: str = "", model: s
             (
                 job_id, user_id, script_id, "cards_audit",
                 "cards_audit", "cards_audit",
-                Jsonb({"action": "AI 复核角色卡", "api_id": rapi, "model": rmodel}),
-                Jsonb([{"id": "audit", "label": "AI 复核角色卡", "status": "pending"}]),
+                Jsonb({"action": "AI character card audit", "api_id": rapi, "model": rmodel}),
+                Jsonb([{"id": "audit", "label": "AI character card audit", "status": "pending"}]),
             ),
         )
     th = threading.Thread(
@@ -285,7 +285,7 @@ def _run_card_audit(job_id: str, user_id: int, script_id: int, api_id: str, mode
     from platform_app.import_pipeline import JobController
     ctl = JobController(job_id)
     ctl.update(status="running", stage="audit", overall_progress=0, overall_total=100,
-               stages=[{"id": "audit", "label": "AI 复核角色卡", "status": "running"}])
+               stages=[{"id": "audit", "label": "AI character card audit", "status": "running"}])
     with connect() as db:
         db.execute("update import_jobs set started_at=now() where job_id=%s", (job_id,))
     try:
@@ -304,12 +304,12 @@ def _run_card_audit(job_id: str, user_id: int, script_id: int, api_id: str, mode
                 (Jsonb({"result": result}), job_id),
             )
         ctl.update(status="done", stage="audit", overall_progress=1, overall_total=1,
-                   stages=[{"id": "audit", "label": "AI 复核角色卡", "status": "done"}])
+                   stages=[{"id": "audit", "label": "AI character card audit", "status": "done"}])
         with connect() as db:
             db.execute("update import_jobs set finished_at=now() where job_id=%s", (job_id,))
     except Exception as exc:  # noqa: BLE001
         ctl.update(status="failed", stage="audit", error=str(exc),
-                   stages=[{"id": "audit", "label": "AI 复核角色卡", "status": "failed"}])
+                   stages=[{"id": "audit", "label": "AI character card audit", "status": "failed"}])
         with connect() as db:
             db.execute("update import_jobs set finished_at=now() where job_id=%s", (job_id,))
 

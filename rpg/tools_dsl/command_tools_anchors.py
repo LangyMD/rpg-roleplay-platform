@@ -554,12 +554,16 @@ def _t_claim_protagonist_pov(user_id: int, args: dict) -> str:
             if not name:
                 return "Failed: original protagonist not found (the script may not have run canon_extract yet)"
             # 3. 找该主角的"首次登场"类 pending anchors
-            #    匹配:summary 含 "X(character)首次登场" OR must_preserve::text 含 "X 参与"
+            #    匹配:summary 含 "X (character) first appears" OR must_preserve::text 含 "X takes part"
+            #    (kb.section_markers 的英文格式;老存档行是 "X(character)首次登场" / "X 参与",两种都认)
+            from kb.section_markers import format_intro_event, format_participant
             rows = db.execute(
                 """select id, anchor_key, summary, status from save_anchor_states
                    where save_id=%s and status='pending'
-                     and (summary like %s or must_preserve::text like %s)""",
-                (save_id, f"%{name}(character)首次登场%", f"%{name} 参与%"),
+                     and (summary like %s or summary like %s
+                          or must_preserve::text like %s or must_preserve::text like %s)""",
+                (save_id, f"%{format_intro_event(name, 'character')}%", f"%{name}(character)首次登场%",
+                 f"%{format_participant(name)}%", f"%{name} 参与%"),
             ).fetchall() or []
             # 4. mark satisfied
             satisfied = []
