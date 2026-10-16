@@ -82,6 +82,12 @@ class ExtractLLM:
 
     def complete_text(self, system: str, user: str, max_tokens: int = 2000) -> str:
         gm = self._get_gm()
+        # 输出语言:确定性追加(core/language.py),提取出的标签/摘要/身份字段跟随配置语言
+        try:
+            from core.language import agent_language_directive
+            system = (system or "") + agent_language_directive(self.user_id)
+        except Exception:
+            pass
         text = gm._backend.call_structured(system, [{"role": "user", "content": user}], max_tokens)
         self._record(gm)
         return text
@@ -110,6 +116,6 @@ def parse_json(raw: str) -> Any:
     result = parse_llm_json(raw)
     if result is None:
         if not raw:
-            raise ExtractOutputUnparseable("空响应")
-        raise ExtractOutputUnparseable(f"无法从响应解析 JSON: {raw.strip()[:200]!r}")
+            raise ExtractOutputUnparseable("empty response")
+        raise ExtractOutputUnparseable(f"could not parse JSON from the response: {raw.strip()[:200]!r}")
     return result
