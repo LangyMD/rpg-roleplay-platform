@@ -123,7 +123,7 @@ class PendingMixin:
             "field": display,
             "from": "",
             "to": display,
-            "reason": f"{_permission_label(mode)}未授权 GM 自动写入叙事记忆",
+            "reason": f"{_permission_label(mode)} does not allow the GM to write narrative memory automatically",
         }
         permissions.setdefault("pending_writes", []).append(pending)
         permissions["pending_writes"] = permissions["pending_writes"][-20:]

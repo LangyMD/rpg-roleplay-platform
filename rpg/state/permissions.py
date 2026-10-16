@@ -27,8 +27,8 @@ def _normalize_permission_mode(mode: str) -> str:
 
 def _permission_label(mode: str) -> str:
     return {
-        "read_only": "只读模式（仅叙事）",
-        "default": "默认权限",
-        "auto_review": "自动审查",
-        "full_access": "完全访问权限",
-    }.get(_normalize_permission_mode(mode), "完全访问权限")
+        "read_only": "Read-only mode (narration only)",
+        "default": "Default permissions",
+        "auto_review": "Auto review",
+        "full_access": "Full access",
+    }.get(_normalize_permission_mode(mode), "Full access")

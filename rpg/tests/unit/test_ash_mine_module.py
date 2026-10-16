@@ -155,7 +155,7 @@ class RoomMovementTests(unittest.TestCase):
         # 从 mine_entrance 直接跳到非邻接的 mine_heart_altar 应失败
         res = enter_room(self.g, "mine_heart_altar")
         self.assertFalse(res["ok"])
-        self.assertIn("不能直接", res["error"])
+        self.assertIn("cannot go to", res["error"])
 
     def test_visited_rooms_tracked(self):
         enter_room(self.g, "minecart_track")

@@ -29,9 +29,9 @@ def skill_check(
     actor = actor_name or (character or {}).get("name") or "player"
     fact_skill = skill.replace("_", " ")
     if success:
-        gm_fact = f"{actor} 的 {fact_skill} 检定成功（{rr.total} ≥ DC {dc}）。"
+        gm_fact = f"{actor}'s {fact_skill} check succeeds ({rr.total} >= DC {dc})."
     else:
-        gm_fact = f"{actor} 的 {fact_skill} 检定失败（{rr.total} < DC {dc}）。"
+        gm_fact = f"{actor}'s {fact_skill} check fails ({rr.total} < DC {dc})."
 
     return RuleResult(
         kind="skill_check",
@@ -58,7 +58,7 @@ def saving_throw(
     """属性豁免。"""
     ability = (ability or "").lower()
     if ability not in ABILITIES:
-        raise ValueError(f"未知属性：{ability}")
+        raise ValueError(f"unknown ability: {ability}")
     mod = saving_throw_modifier(character, ability)
     expr = f"1d20{'+' if mod >= 0 else '-'}{abs(mod)}"
     rr = roll(expr, seed=seed, advantage=advantage, disadvantage=disadvantage)
@@ -66,9 +66,9 @@ def saving_throw(
 
     actor = actor_name or (character or {}).get("name") or "player"
     if success:
-        gm_fact = f"{actor} 通过了 {ability.upper()} 豁免（{rr.total} ≥ DC {dc}）。"
+        gm_fact = f"{actor} succeeds on a {ability.upper()} saving throw ({rr.total} >= DC {dc})."
     else:
-        gm_fact = f"{actor} 未能通过 {ability.upper()} 豁免（{rr.total} < DC {dc}）。"
+        gm_fact = f"{actor} fails a {ability.upper()} saving throw ({rr.total} < DC {dc})."
 
     return RuleResult(
         kind="saving_throw",

@@ -81,7 +81,7 @@ class TestPerTurnBudget(unittest.TestCase):
             self.assertTrue(ok, why)
         ok, why = s.add_memory_ex("abilities", "第 N+1 条", origin=GM)
         self.assertFalse(ok)
-        self.assertIn("上限", why)
+        self.assertIn("limit", why)
         self.assertEqual(len(s.data["memory"]["abilities"]), cap)
 
     def test_budget_resets_next_turn(self):

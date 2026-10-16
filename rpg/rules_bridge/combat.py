@@ -28,18 +28,18 @@ def start_encounter_by_id(state, encounter_id: str, seed: int | None = None) -> 
     scene = state.data.setdefault("scene", {})
     module_id = scene.get("module_id")
     if not module_id:
-        return {"ok": False, "error": "未加载模组"}
+        return {"ok": False, "error": "no module loaded"}
     # 守卫:已有进行中的战斗时不得重复 combat_start —— 原来无条件 set_encounter 覆盖,
     # 战斗打到一半再次触发同一 encounter_id(LLM 叙事"重新开打"/场景脚本二次触发)会用
     # 满血 stat_block 重建所有 combatants → 敌人血量重置、已 defeated 的复活、进度全丢
     # (玩家可借此无限重置 boss)。
     if (state.data.get("encounter") or {}).get("active"):
-        return {"ok": False, "error": "已有进行中的战斗,请先结束当前战斗再开新战斗"}
+        return {"ok": False, "error": "a combat is already in progress; end it before starting a new one"}
     bundle = module_registry.load_module(module_id)
     enc_defs = bundle.get("encounters") or []
     enc_def = next((e for e in enc_defs if e.get("id") == encounter_id), None)
     if not enc_def:
-        return {"ok": False, "error": f"未知遭遇：{encounter_id}"}
+        return {"ok": False, "error": f"unknown encounter: {encounter_id}"}
 
     pc = state.data.get("player_character") or {}
     party_member = dict(pc)
@@ -68,7 +68,7 @@ def start_encounter_by_id(state, encounter_id: str, seed: int | None = None) -> 
             "rolls": entry.get("roll", {}).get("rolls"),
             "modifier": entry.get("dex_mod"),
             "total": entry.get("init"),
-            "reason": f"先攻 - {enc_def.get('name')}",
+            "reason": f"initiative - {enc_def.get('name')}",
             "ts": now_iso(),
         })
     return {"ok": True, "encounter": encounter}
@@ -95,18 +95,18 @@ def player_attack(state, target_id: str, weapon_id: str = "shortsword",
     engine = get_engine()
     encounter = state.data.get("encounter") or {}
     if not encounter.get("active"):
-        return {"ok": False, "error": "当前没有进行中的战斗"}
+        return {"ok": False, "error": "no combat is currently in progress"}
     target = next((c for c in encounter.get("combatants", [])
                    if c.get("id") == target_id and c.get("side") == "enemy"), None)
     if not target:
-        return {"ok": False, "error": f"未找到敌方目标：{target_id}"}
+        return {"ok": False, "error": f"enemy target not found: {target_id}"}
     if target.get("defeated"):
-        return {"ok": False, "error": f"目标已倒下：{target_id}"}
+        return {"ok": False, "error": f"target is already down: {target_id}"}
 
     pc = state.data.get("player_character") or {}
     weapon = (pc.get("weapons") or {}).get(weapon_id)
     if not weapon:
-        return {"ok": False, "error": f"角色未持有武器：{weapon_id}"}
+        return {"ok": False, "error": f"the character does not have the weapon: {weapon_id}"}
 
     result = engine.attack_roll(
         attacker=pc, target=target,
@@ -125,12 +125,12 @@ def player_attack(state, target_id: str, weapon_id: str = "shortsword",
     # 检查 defeated；若是首领被击败，置 victory_flag
     newly = engine.mark_defeated_by_hp(encounter)
     if newly:
-        result.gm_facts.append(f"{', '.join(newly)} 倒下。")
+        result.gm_facts.append(f"{', '.join(newly)} falls.")
 
     resolved, outcome = engine.is_encounter_resolved(encounter)
     if resolved:
         _finalize_encounter(state, encounter, outcome)
-        result.gm_facts.append(f"战斗结束：{outcome}。")
+        result.gm_facts.append(f"Combat over: {outcome}.")
     return {"ok": True, "result": result.to_dict(), "encounter": encounter}
 
 
@@ -140,13 +140,13 @@ def enemy_attack(state, attacker_id: str, target_id: str = "player",
     engine = get_engine()
     encounter = state.data.get("encounter") or {}
     if not encounter.get("active"):
-        return {"ok": False, "error": "当前没有进行中的战斗"}
+        return {"ok": False, "error": "no combat is currently in progress"}
     attacker = next((c for c in encounter.get("combatants", []) if c.get("id") == attacker_id), None)
     if not attacker or attacker.get("defeated"):
-        return {"ok": False, "error": f"无效的攻击者：{attacker_id}"}
+        return {"ok": False, "error": f"invalid attacker: {attacker_id}"}
     attacks = attacker.get("attacks") or []
     if not attacks:
-        return {"ok": False, "error": "攻击者没有攻击动作"}
+        return {"ok": False, "error": "the attacker has no attack action"}
     atk_def = attacks[max(0, min(int(attack_index), len(attacks) - 1))]
     # 目标
     if target_id == "player":
@@ -155,11 +155,11 @@ def enemy_attack(state, attacker_id: str, target_id: str = "player",
     else:
         target = next((c for c in encounter.get("combatants", []) if c.get("id") == target_id), None)  # type: ignore[arg-type]
         if not target:
-            return {"ok": False, "error": f"未知目标：{target_id}"}
+            return {"ok": False, "error": f"unknown target: {target_id}"}
         # 与 player_attack 一致:不能攻击已倒下的目标(原来 enemy_attack 缺此守卫,
         # 可对已 defeated 目标反复结算,刷无意义 dice_log)。
         if target.get("defeated"):
-            return {"ok": False, "error": f"目标已倒下：{target_id}"}
+            return {"ok": False, "error": f"target is already down: {target_id}"}
 
     result = engine.attack_roll(
         attacker=attacker, target=target,
@@ -178,8 +178,8 @@ def enemy_attack(state, attacker_id: str, target_id: str = "player",
         # 补一条同构 audit_log(source=rules_engine),dice_log 仍由下方 append_dice_log 单独写,不双写。
         state.append_rules_audit(reason=f"enemy_attack {attacker_id}", ops=1)
         result.gm_facts.append(
-            f"玩家受到 {actual} 点伤害（HP {state.data['player_character'].get('hp')}/"
-            f"{state.data['player_character'].get('max_hp')}）。"
+            f"The player takes {actual} damage (HP {state.data['player_character'].get('hp')}/"
+            f"{state.data['player_character'].get('max_hp')})."
         )
     elif result.success and target_id != "player":
         state.apply_rules_state_ops([op.to_dict() for op in result.state_ops], reason="enemy_attack")
@@ -190,7 +190,7 @@ def enemy_attack(state, attacker_id: str, target_id: str = "player",
     if resolved:
         # 用共用 finalize:原来这里漏写 victory_flag → 最后一敌死于敌方回合时门控 flag 永不置。
         _finalize_encounter(state, encounter, outcome)
-        result.gm_facts.append(f"战斗结束：{outcome}。")
+        result.gm_facts.append(f"Combat over: {outcome}.")
     return {"ok": True, "result": result.to_dict(), "encounter": encounter}
 
 
@@ -198,7 +198,7 @@ def advance_turn(state) -> dict:
     engine = get_engine()
     encounter = state.data.get("encounter") or {}
     if not encounter.get("active"):
-        return {"ok": False, "error": "没有进行中的战斗"}
+        return {"ok": False, "error": "no combat in progress"}
     _sync_player_combatant(state)
     engine.next_turn(encounter)
     # next_turn 可能因 >50 回合僵局(或退化空 initiative)兜底强制结束战斗(active=False)。
@@ -209,6 +209,6 @@ def advance_turn(state) -> dict:
         _finalize_encounter(state, encounter, outcome)
         return {
             "ok": True, "encounter": encounter, "resolved": True, "outcome": outcome,
-            "message": "战斗超过 50 回合未分胜负,判定为僵局(stalemate)结束。",
+            "message": "The combat went past 50 rounds without a winner and ends in a stalemate.",
         }
     return {"ok": True, "encounter": encounter}

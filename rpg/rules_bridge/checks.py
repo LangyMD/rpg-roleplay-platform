@@ -31,7 +31,7 @@ def perform_skill_check(
             if trigger:
                 state.set_scene_flag(str(trigger), True)
                 result.gm_facts.append(
-                    f"检定失败触发场景风险：{hazard.get('description') or trigger}"
+                    f"The failed check triggers a scene hazard: {hazard.get('description') or trigger}"
                 )
     return result.to_dict()
 
@@ -64,14 +64,14 @@ def perform_saving_throw(
             out["damage"] = damage
             out["damage_applied"] = actual
             out["gm_facts"].append(
-                f"{pc.get('name','玩家')} 受到 {actual} 点伤害（HP {state.data['player_character'].get('hp')}/"
-                f"{state.data['player_character'].get('max_hp')}）。"
+                f"{pc.get('name','Player')} takes {actual} damage (HP {state.data['player_character'].get('hp')}/"
+                f"{state.data['player_character'].get('max_hp')})."
             )
         if fail_condition:
             conds = state.data.setdefault("player_character", {}).setdefault("conditions", [])
             if fail_condition not in conds:
                 conds.append(fail_condition)
-                out["gm_facts"].append(f"{pc.get('name','玩家')} 获得状态：{fail_condition}。")
+                out["gm_facts"].append(f"{pc.get('name','Player')} gains the condition: {fail_condition}.")
     return out
 
 
@@ -81,14 +81,14 @@ def trap_check(state, room_id: str, trap_id: str, seed: int | None = None) -> di
     scene = state.data.get("scene") or {}
     module_id = scene.get("module_id")
     if not module_id:
-        return {"ok": False, "error": "未加载模组"}
+        return {"ok": False, "error": "no module loaded"}
     bundle = module_registry.load_module(module_id)
     room = next((r for r in (bundle.get("rooms") or []) if r.get("id") == room_id), None)
     if not room:
-        return {"ok": False, "error": f"未知房间：{room_id}"}
+        return {"ok": False, "error": f"unknown room: {room_id}"}
     hazard = next((h for h in (room.get("hazards") or []) if h.get("id") == trap_id), None)
     if not hazard:
-        return {"ok": False, "error": f"房间无此陷阱：{trap_id}"}
+        return {"ok": False, "error": f"the room has no such trap: {trap_id}"}
     save = hazard.get("save") or {}
     ability = save.get("ability", "dex")
     dc = int(save.get("dc", 10))

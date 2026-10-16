@@ -200,7 +200,7 @@ class TestRevealCommand(unittest.TestCase):
         # 本轮 short_summary 能看到
         summary = gs.short_summary()
         self.assertIn("我其实是穿越者", summary)
-        self.assertIn("玩家本轮揭示", summary)
+        self.assertIn("Revealed by the player this turn", summary)
 
     def test_record_turn_clears_revealed(self):
         from state.core import GameState

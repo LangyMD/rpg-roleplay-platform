@@ -284,9 +284,9 @@ DEFAULT_STATE = {
         # 默认 None = 没偏离,原书全部可查。可通过 /set worldline.divergence_chapter=N 设置。
         "divergence_chapter": None,
         "constraints": [
-            "用户变量优先级高于世界线推演。",
-            "世界线推演必须先满足玩家设定，再外推局势。",
-            "若推演与用户变量冲突，必须报告冲突，不得写回为事实。"
+            "User variables take priority over worldline projections.",
+            "A worldline projection must satisfy the player's settings first, and only then extrapolate the situation.",
+            "If a projection conflicts with a user variable, report the conflict; never write it back as fact."
         ],
         "last_projection": None,
         "pending_projection": None,
@@ -668,30 +668,30 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
             if not relevant_digests:
                 return recent
             # 组装前情提要 message
-            digest_lines = ["【前情提要 · 已压缩历史阶段】"]
+            digest_lines = ["[Story so far · compressed earlier phases]"]
             for d in relevant_digests:
                 events = d["key_events"] or []
                 npcs = d["key_npcs"] or []
                 locs = d["key_locations"] or []
                 decisions = d["key_decisions"] or []
-                ev_str = "; ".join(str(x) for x in events[:3]) if events else "(无)"
-                npc_str = ", ".join(str(x) for x in npcs[:5]) if npcs else "(无)"
+                ev_str = "; ".join(str(x) for x in events[:3]) if events else "(none)"
+                npc_str = ", ".join(str(x) for x in npcs[:5]) if npcs else "(none)"
                 digest_lines.append(
                     f"\n## Phase {d['phase_index']}: {d['phase_label']} "
                     f"(turn {d['turn_start']}-{d['turn_end']})\n"
                     f"{(d['summary'] or '')[:DIGEST_SUMMARY_MAX_CHARS]}\n"
-                    f"关键事件: {ev_str}\n"
-                    f"出场人物: {npc_str}\n"
-                    f"主要地点: {', '.join(str(x) for x in locs[:3]) if locs else '(无)'}\n"
-                    f"关键决策: {'; '.join(str(x) for x in decisions[:3]) if decisions else '(无)'}"
+                    f"Key events: {ev_str}\n"
+                    f"Characters present: {npc_str}\n"
+                    f"Main locations: {', '.join(str(x) for x in locs[:3]) if locs else '(none)'}\n"
+                    f"Key decisions: {'; '.join(str(x) for x in decisions[:3]) if decisions else '(none)'}"
                 )
             digest_text = "\n".join(digest_lines)
             # 总字符上限:比逐条上限更硬的那道闸(phase 条数已封顶,但 key_events/npcs
             # 是变长的)。超了从**最早**的 phase 砍起 —— 前情提要是时间正序,越靠后越接近
             # 当前场景,砍头保尾。
             if len(digest_text) > DIGEST_PREFIX_MAX_CHARS:
-                digest_text = ("【前情提要 · 已压缩历史阶段(更早的部分已省略,"
-                               "可经「相关往事」层按需召回)】\n"
+                digest_text = ("[Story so far · compressed earlier phases (the earliest part is omitted; "
+                               "it can be recalled on demand through the \"Relevant Past Events\" layer)]\n"
                                + digest_text[-(DIGEST_PREFIX_MAX_CHARS):])
             digest_msg = {"role": "user", "content": digest_text}
             # 给一个 assistant ack 让结构合法 (避免连续两个 user role)
@@ -716,8 +716,8 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
         # 关系后会全量注入吃 token(同 known_events、memory 各 bucket 都已截断,唯独这里漏了)。
         # 取最近登记的 20 条(dict 按插入序,末尾=较新引入的角色);<20 关系是常态极少触发。
         for char, status in list(self.data["relationships"].items())[-20:]:
-            rel_lines.append(f"  · {char}：{status}")
-        rel_text = "\n".join(rel_lines) if rel_lines else "  （尚未与任何人建立明确关系）"
+            rel_lines.append(f"  · {char}: {status}")
+        rel_text = "\n".join(rel_lines) if rel_lines else "  (no clear relationships with anyone yet)"
 
         # 只注入最近 N 条已知事件:与下方 memory 各 bucket(abilities[:6]/facts[:10]/notes[:8])
         # 的注入截断一致。原来全量注入,而 known_events 写入无上限 + GM prompt 鼓励记流水账,
@@ -725,23 +725,23 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
         known = "\n".join(f"  · {e}" for e in w["known_events"][-15:])
         memory_lines = []
         if m["main_quest"]:
-            memory_lines.append(f"主线：{m['main_quest']}")
+            memory_lines.append(f"Main quest: {m['main_quest']}")
         if m["current_objective"]:
-            memory_lines.append(f"当前目标：{m['current_objective']}")
-        memory_lines.extend(f"能力：{x}" for x in m["abilities"][:6])
+            memory_lines.append(f"Current objective: {m['current_objective']}")
+        memory_lines.extend(f"Ability: {x}" for x in m["abilities"][:6])
         # 各桶写入端是尾部 append(add_memory / apply_ops list 分支),窗口必须取**尾**
         # (最近 N 条),与上方 relationships[-20:]/下方 known_events[-15:] 同向。
         # 旧实现取头([:N])→ 桶一旦超过窗口,新增能力/资源/固定记忆/笔记永久不可见
         # (群反馈同族:「面板一直是很早以前的」)。
-        memory_lines.extend(f"资源：{x}" for x in m["resources"][-6:])
-        memory_lines.extend(f"固定记忆：{x}" for x in m["pinned"][-6:])
+        memory_lines.extend(f"Resource: {x}" for x in m["resources"][-6:])
+        memory_lines.extend(f"Pinned memory: {x}" for x in m["pinned"][-6:])
         if m["mode"] == "deep":
-            memory_lines.extend(f"事实：{x}" for x in m["facts"][-10:])
-            memory_lines.extend(f"笔记：{x}" for x in m["notes"][-8:])
+            memory_lines.extend(f"Fact: {x}" for x in m["facts"][-10:])
+            memory_lines.extend(f"Note: {x}" for x in m["notes"][-8:])
         elif m["mode"] == "normal":
-            memory_lines.extend(f"事实：{x}" for x in m["facts"][-5:])
-            memory_lines.extend(f"笔记：{x}" for x in m["notes"][-3:])
-        memory_text = "\n".join(f"  · {line}" for line in memory_lines) or "  （暂无长期记忆）"
+            memory_lines.extend(f"Fact: {x}" for x in m["facts"][-5:])
+            memory_lines.extend(f"Note: {x}" for x in m["notes"][-3:])
+        memory_text = "\n".join(f"  · {line}" for line in memory_lines) or "  (no long-term memory yet)"
         # task 138: user_variables 里的 story_intent 是 player_private 范畴,不再注入 GM prompt。
         # 旧存档迁移函数已把 story_intent 复制到 player_private.story_intent,这里只是把字面
         # 从 system prompt 里抹掉(player_private namespace 整个不进 prompt)。
@@ -768,7 +768,7 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
                 for name, info in _public_vars[-12:]
             )
         else:
-            variable_text = "  （暂无用户变量）"
+            variable_text = "  (no user variables yet)"
         # task 138: 玩家段只注入 NPC 可观察字段。规则:
         #   1. 不注入 player_private.* 整个 namespace(secrets / hidden_traits / flags / story_intent)
         #   2. 不注入 player.secrets(老 task 137 残留;迁移函数会清空但保险起见这里再过一遍)
@@ -780,17 +780,17 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
         _appearance = _strip_secret_sections(p.get("appearance") or "")
         _personality = _strip_secret_sections(p.get("personality") or "")
         if _appearance:
-            _card_detail_lines.append(f"外貌：{_appearance}")
+            _card_detail_lines.append(f"Appearance: {_appearance}")
         if _personality:
-            _card_detail_lines.append(f"性格/详细设定：{_personality}")
+            _card_detail_lines.append(f"Personality / details: {_personality}")
         if p.get("speech_style"):
-            _card_detail_lines.append(f"语气/说话方式：{p['speech_style']}")
+            _card_detail_lines.append(f"Tone / way of speaking: {p['speech_style']}")
         # 注意: p.get("secrets") 显式 *不* 注入 — 即使老存档仍有该字段,
         # GM 也物理上看不到。秘密属于 state.player_private.*(永不进 system prompt)。
         if p.get("aliases"):
-            _card_detail_lines.append(f"别名：{p['aliases']}")
+            _card_detail_lines.append(f"Aliases: {p['aliases']}")
         if p.get("identity_role_desc"):
-            _card_detail_lines.append(f"入场定位：{p['identity_role_desc']}")
+            _card_detail_lines.append(f"Entry role: {p['identity_role_desc']}")
         _card_detail = ("\n" + "\n".join(_card_detail_lines)) if _card_detail_lines else ""
         # task 138: story_intent 改从 player_private.story_intent 读取(dual-read 旧存档兼容)。
         # 但 story_intent 也不应注入到 system prompt — 这是玩家剧情期望,属于 player_private 范畴,
@@ -798,36 +798,36 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
         # 这里保留向后兼容: 旧存档没改完前,user_variables.story_intent 仍可能有值,但**不再注入**。
         # 阶段 5 /reveal 会用 player_private.flags["revealed_this_turn"] 做 ephemeral 注入。
         _revealed = self.data.get("player_private", {}).get("flags", {}).get("revealed_this_turn") or ""
-        _revealed_block = f"\n\n【玩家本轮揭示】\n{_revealed}" if _revealed else ""
+        _revealed_block = f"\n\n[Revealed by the player this turn]\n{_revealed}" if _revealed else ""
         # background 字段同样 strip 秘密段
         _background = _strip_secret_sections(p.get("background") or "")
-        return f"""【玩家档案】
-姓名：{p['name']}
-定位：{p['role']}
-背景：{_background}{_card_detail}
-当前位置：{p['current_location']}
+        return f"""[Player profile]
+Name: {p['name']}
+Role: {p['role']}
+Background: {_background}{_card_detail}
+Current location: {p['current_location']}
 
-【当前时间线】{w['time']}
-【时间线锚定】
-  · 状态：{w.get('timeline', {}).get('anchor_state', 'locked')}
-  · 阶段：{w.get('timeline', {}).get('current_phase', '未知')}
-  · 待确认跳跃：{_format_pending_timeline(w.get('timeline', {}).get('pending_jump'))}
+[Current timeline] {w['time']}
+[Timeline anchoring]
+  · State: {w.get('timeline', {}).get('anchor_state', 'locked')}
+  · Phase: {w.get('timeline', {}).get('current_phase', 'unknown')}
+  · Pending time jump: {_format_pending_timeline(w.get('timeline', {}).get('pending_jump'))}
 
-【已知事件】
+[Known events]
 {known}
 
-【关系状态】
+[Relationships]
 {rel_text}
 
-【长期记忆】
+[Long-term memory]
 {memory_text}
 
-【权限与世界线】
-  · LLM写入权限：{_permission_label(permissions.get('mode', 'full_access'))}
-  · 用户变量：
+[Permissions and worldline]
+  · LLM write permission: {_permission_label(permissions.get('mode', 'full_access'))}
+  · User variables:
 {variable_text}
 
-【当前回合】第 {self.data['turn']} 回合{_revealed_block}"""
+[Current turn] Turn {self.data['turn']}{_revealed_block}"""
 
     def status_payload(self) -> dict:
         p = self.data["player"]
@@ -939,15 +939,15 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
             add(rule["score"], rule["text"], *rule.get("needles", []))
 
         if latest and re.search(r"[？?]\s*$", latest):
-            add(125, "直接回应当前抉择，并要求列出风险与代价。")
+            add(125, "Answer the choice at hand directly, and ask for the risks and costs to be laid out.")
 
         # 通用 fallback 跨剧本都安全；剧本专属 fallback 从 overrides 加载
         fallback_generic = [
-            "观察当前场景的可见人物、出口和风险点。",
-            "整理当下已知情报，标出最危险变量。",
-            "确认下一步目标、可用资源和不可触碰底线。",
-            "先和关键人物单独谈话，判断真实立场。",
-            "回顾当前剧本开场设定，校准核心动机。",
+            "Look over the people, exits and danger points visible in the current scene.",
+            "Sort through what you know right now and mark the most dangerous unknown.",
+            "Settle the next goal, the resources at hand, and the lines you will not cross.",
+            "Talk to a key person alone first to gauge where they really stand.",
+            "Go back over the opening setup of the story and recalibrate your core motive.",
         ]
         fallback_novel = active_overrides.get("default_novel_fallbacks") or []
         fallback = fallback_generic + fallback_novel
@@ -984,19 +984,19 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
         """
         text = _clean_item(text)
         if not text:
-            return False, "文本为空"
+            return False, "text is empty"
         # acceptance 验收元信息不进任何玩家记忆桶。此处是**单点根闸**:dispatcher 的
         # add_memory_fact/pin_memory 等 5 工具、apply_ops 的关系标签回退分支、以及一切
         # 未来调用方都经这里;apply_ops 列表闸/known_event 工具闸是各自入口的前置纵深。
         from state.json_ops import is_acceptance_meta
         if is_acceptance_meta(text):
-            return False, "验收元信息不进玩家记忆桶"
+            return False, "acceptance meta-information never goes into the player's memory"
         bucket = bucket if bucket in {"resources", "abilities", "facts", "pinned", "notes"} else "notes"
         items = self.data["memory"].setdefault(bucket, [])
         # 精确去重排在洪泛闸**前面**:重复写入本来就什么都不改,拿「超额」当理由回它会
         # 误导 GM(它会以为自己在刷屏,其实只是重写了一条已有的)。
         if text in items:
-            return False, "已含此条(去重)"
+            return False, "already present (去重 / deduplicated)"
         # 洪泛闸(群反馈:一门功法逐窍拆写刷了二十多条能力)。放在这里是因为这里是所有
         # 写入路径的共同终点;拒绝会原样退回给 GM,绝不静默丢玩家可见资产。
         from state.memory_budget import check_append
@@ -1282,7 +1282,7 @@ class GameState(ApplyOpsMixin, RulesGameplayMixin, PendingMixin):
                 message = value
         if self.data.get("worldline", {}).get("user_variables") and any("世界线推演" in tag for tag in tags):
             if status == "none":
-                return {"status": "review", "message": "推演缺少【设定校验：通过】"}
+                return {"status": "review", "message": "the projection is missing the 【设定校验：通过】 tag"}
         return {"status": status, "message": message}
 
     def _set_worldline_validation(self, status: str, message: str):

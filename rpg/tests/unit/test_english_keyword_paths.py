@@ -181,3 +181,23 @@ def test_english_time_confirm_signals():
     assert _gm_is_asking_for_time_confirm("Do you want to skip ahead to the festival? Please confirm.", [])
     assert _gm_is_asking_for_time_confirm("", ["Time jump confirm: pending"])
     assert not _gm_is_asking_for_time_confirm("The sun sets over the harbour.", [])
+
+
+# ── /set English directives ──────────────────────────────────────────
+
+def test_english_set_location_and_time_extraction():
+    from state.extractors import _extract_location_override, _extract_set_time_targets
+    assert _extract_location_override("location = The Rusty Anchor tavern") == "The Rusty Anchor tavern"
+    assert _extract_location_override("current location: north gate") == "north gate"
+    assert _extract_location_override("当前位置改为北港") == "北港"
+    assert _extract_set_time_targets("set the time to the next morning") == ["the next morning"]
+    assert _extract_set_time_targets("it is time for bed") == []
+    assert _extract_set_time_targets("时间改为三日后的子夜") == ["三日后的子夜"]
+
+
+def test_english_path_aliases():
+    from state.path_ops import _clean_path
+    assert _clean_path("Location") == "player.current_location"
+    assert _clean_path("current objective") == "memory.current_objective"
+    assert _clean_path("位置") == "player.current_location"
+    assert _clean_path("player.name") == "player.name"
