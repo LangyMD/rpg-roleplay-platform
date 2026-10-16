@@ -220,8 +220,8 @@ def apply_projection_to_card(card: dict[str, Any], projected: dict[str, Any] | N
         out["identity"] = projected["identity"]
     if projected.get("background"):
         out["background"] = projected["background"]
-    rel_text = "；".join(
-        f"对{r['other']}：{r['kind']}" for r in (projected.get("relationships") or [])[:6]
+    rel_text = "; ".join(
+        f"toward {r['other']}: {r['kind']}" for r in (projected.get("relationships") or [])[:6]
         if r.get("other") and r.get("kind")
     )
     # 防剧透关键:一旦有投影,**不保留原卡的 current_status**(那是全书最终态,
@@ -231,7 +231,7 @@ def apply_projection_to_card(card: dict[str, Any], projected: dict[str, Any] | N
     if projected.get("current_status"):
         status_parts.append(projected["current_status"])
     if rel_text:
-        status_parts.append(f"关系：{rel_text}")
+        status_parts.append(f"Relationships: {rel_text}")
     out["current_status"] = " · ".join(status_parts)
     out["_projected_chapter"] = projected.get("_source_chapter", 0)
     return out

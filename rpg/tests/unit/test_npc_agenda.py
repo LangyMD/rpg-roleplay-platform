@@ -391,7 +391,7 @@ class NpcAgendaProviderTests(unittest.TestCase):
             self.assertTrue(contrib.applied)
             self.assertEqual(len(contrib.layers), 1)
             content = contrib.layers[0]["content"]
-            self.assertIn("当下活状态", content)
+            self.assertIn("current live state", content)
             self.assertIn("雷纳德", content)
             self.assertIn("查清东林兽伤真相", content)
         finally:

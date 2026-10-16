@@ -47,7 +47,7 @@ class ConsequenceEchoProvider(ContextProvider):
         text = _render(entries)
         layer = self.make_layer(
             "consequence_echo",
-            "后果回响",
+            "Consequence Echoes",
             text,
             sticky=False,
             priority=PRIORITY,
@@ -57,7 +57,7 @@ class ConsequenceEchoProvider(ContextProvider):
             kind="consequence_echo",
             priority=PRIORITY,
             layers=[layer],
-            facts=[f"后果回响（第{e.get('created_turn')}回合种下）：{e.get('text', '')}" for e in entries],
+            facts=[f"Consequence echo (planted on turn {e.get('created_turn')}): {e.get('text', '')}" for e in entries],
             tokens_estimate=len(text) // 2,
             debug={"fired_count": len(entries)},
         )
@@ -65,11 +65,11 @@ class ConsequenceEchoProvider(ContextProvider):
 
 def _render(entries: list[dict]) -> str:
     lines = [
-        "【后果回响】过去的因正在追上来,GM 应在本回合或接下来几回合让它们自然兑现"
-        "(以剧情事件呈现,不要生硬复述本清单):",
+        "[Consequence echoes] Past causes are catching up. Let them pay off naturally this turn or over the next few turns "
+        "(show them as story events; do not mechanically recite this list):",
     ]
     for e in entries:
-        lines.append(f"- (第{e.get('created_turn')}回合种下){e.get('text', '')}")
+        lines.append(f"- (planted on turn {e.get('created_turn')}) {e.get('text', '')}")
     return "\n".join(lines)
 
 

@@ -10,7 +10,7 @@ from context_engine.loaders import _load_worldbook_db
 
 def _player_card(state, chars: dict[str, Any]) -> dict[str, str]:
     player = state.data["player"]
-    name = player.get("name") or "玩家"
+    name = player.get("name") or "Player"
     # 任意 user 的 player card 都应按 player.name 命中;之前回落硬编码「杭雁菱」是
     # 老《我蕾穆丽娜不爱你》存档遗留 default,跨用户没意义,移除。
     card = chars.get(name) or {}
@@ -137,7 +137,7 @@ def _active_worldbook(
             if len(active) >= MIN_CONSTANT:
                 break
             e = dict(e)
-            e["matched"] = ["(常驻设定)"]
+            e["matched"] = ["(always-on setting)"]
             e["score"] = int(e.get("priority", 50))
             active.append(e)
             seen_ids.add(str(e.get("id", "")))
@@ -228,25 +228,25 @@ def _format_card(name: str, card: dict[str, Any]) -> str:
        - 名字行附 full_name(如有,欧美全名);
        - 在 secrets 前插一行 `背景` = card.background(角色出场前关键经历/动机)。
     """
-    sample = "；".join((card.get("sample_dialogue") or [])[:3])
+    sample = "; ".join((card.get("sample_dialogue") or [])[:3])
     full_name = (card.get("full_name") or "").strip()
-    header = f"【{name}】" if not full_name or full_name == name else f"【{name} / {full_name}】"
+    header = f"[{name}]" if not full_name or full_name == name else f"[{name} / {full_name}]"
     lines = [
         header,
-        f"身份：{card.get('identity') or '未知'}",
-        f"外貌：{card.get('appearance') or '未记录'}",
-        f"性格：{card.get('personality') or '未记录'}",
-        f"说话风格：{card.get('speech_style') or '未记录'}",
-        f"当前状态：{card.get('current_status') or '未记录'}",
+        f"Identity: {card.get('identity') or 'unknown'}",
+        f"Appearance: {card.get('appearance') or 'not recorded'}",
+        f"Personality: {card.get('personality') or 'not recorded'}",
+        f"Speech style: {card.get('speech_style') or 'not recorded'}",
+        f"Current status: {card.get('current_status') or 'not recorded'}",
     ]
     # v28: 背景(出场前关键经历 / 动机)非空才输出,避免空字段占行噪声
     bg = card.get("background") or ""
     if bg:
-        lines.append(f"背景：{bg}")
+        lines.append(f"Background: {bg}")
     if card.get("secrets"):
-        lines.append(f"隐藏信息：{card.get('secrets')}")
+        lines.append(f"Hidden information: {card.get('secrets')}")
     if sample:
-        lines.append(f"台词示例：{sample}")
+        lines.append(f"Sample lines: {sample}")
     return "\n".join(lines)
 
 

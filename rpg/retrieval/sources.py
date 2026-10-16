@@ -113,7 +113,7 @@ def bm25_search(query: str, top_k: int = 4, chapter_min: int | None = None, chap
         for chapter, content, _ in results[:top_k]:
             # 截取前300字防止 token 超限
             snippet = content[:300].strip()
-            snippets.append(f"[第{chapter}章片段]\n{snippet}")
+            snippets.append(f"[Chapter {chapter} excerpt]\n{snippet}")
         return snippets
     except Exception:
         return []
@@ -137,7 +137,7 @@ def load_recent_summaries(n: int = 3) -> str:
     keys = sorted(summaries.keys(), key=lambda x: int(x), reverse=True)[:n]
     lines = []
     for k in reversed(keys):
-        lines.append(f"第{k}章：{summaries[k]}")
+        lines.append(f"Chapter {k}: {summaries[k]}")
     return "\n".join(lines)
 
 
@@ -151,7 +151,7 @@ def load_summaries_window(chapter_min: int | None, chapter_max: int | None, fall
     for key in sorted(summaries.keys(), key=lambda x: int(x)):
         chapter = int(key)
         if chapter_min <= chapter <= chapter_max:
-            selected.append(f"第{key}章：{summaries[key]}")
+            selected.append(f"Chapter {key}: {summaries[key]}")
     return "\n".join(selected[:6])
 
 
@@ -184,13 +184,13 @@ def load_chapter_facts(chapter_min: int | None, chapter_max: int | None, limit: 
             # 只丢该章事件(仍出摘要),不让一个坏行丢掉整段章节摘要(与 worldbook 同隔离粒度)。
             try:
                 events = json.loads(events_json or "[]")
-                event_text = "；".join(event.get("event", "") for event in events[:2] if isinstance(event, dict) and event.get("event"))
+                event_text = "; ".join(event.get("event", "") for event in events[:2] if isinstance(event, dict) and event.get("event"))
             except (json.JSONDecodeError, TypeError, ValueError):
                 event_text = ""
             lines.append(
-                f"第{chapter}章《{title}》｜{time_label}\n"
-                f"摘要：{summary[:180]}\n"
-                f"事件：{event_text[:220]}"
+                f"Chapter {chapter} \"{title}\" | {time_label}\n"
+                f"Summary: {summary[:180]}\n"
+                f"Events: {event_text[:220]}"
             )
         return "\n\n".join(lines)
     except Exception:

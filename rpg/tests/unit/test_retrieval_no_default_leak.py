@@ -127,7 +127,7 @@ class RetrieveContextSkipsDefaultForImportedScript(unittest.TestCase):
             script_id=999_888_777,
         )
         # 不应含 SQLite/JSON 来源 section 标题
-        for header in ("ChapterFact时间线", "相关原文片段", "最近剧情摘要", "相关角色"):
+        for header in ("ChapterFact Timeline", "Relevant Source Excerpts", "Recent Plot Summary", "Relevant Characters"):
             self.assertNotIn(header, ctx,
                 f"task 42：导入剧本不应含默认来源 section『{header}』；ctx={ctx[:600]!r}")
         # 不应含任何柏林 token
@@ -135,11 +135,11 @@ class RetrieveContextSkipsDefaultForImportedScript(unittest.TestCase):
             self.assertNotIn(tok, ctx,
                 f"task 42：导入剧本不应含柏林 token『{tok}』；ctx={ctx[:600]!r}")
         # 应保留时间线锚点说明（但内容只有当前时间/标签，不引用原著章节）
-        self.assertIn("时间线检索锚点", ctx, f"应仍保留时间线锚点 section；ctx={ctx[:300]!r}")
-        self.assertIn("当前导入剧本", ctx,
+        self.assertIn("Timeline Retrieval Anchor", ctx, f"应仍保留时间线锚点 section；ctx={ctx[:300]!r}")
+        self.assertIn("currently imported script", ctx,
             f"应明示『来源：当前导入剧本（不读默认 MuMu 原著时间线）』；ctx={ctx[:300]!r}")
         # 不应含『原著锚点』字段（那是默认走的）
-        self.assertNotIn("原著锚点", ctx,
+        self.assertNotIn("Novel anchor", ctx,
             f"非默认剧本不应输出『原著锚点』；ctx={ctx[:300]!r}")
 
     def test_missing_script_id_does_not_fall_back_to_local_indexes(self):
@@ -151,10 +151,10 @@ class RetrieveContextSkipsDefaultForImportedScript(unittest.TestCase):
             user_id=None,
             script_id=None,
         )
-        for header in ("原著锚点", "ChapterFact时间线", "相关原文片段", "最近剧情摘要", "相关角色"):
+        for header in ("Novel anchor", "ChapterFact Timeline", "Relevant Source Excerpts", "Recent Plot Summary", "Relevant Characters"):
             self.assertNotIn(header, ctx,
                 f"缺 script_id 时不应读取本地默认来源『{header}』；ctx={ctx[:600]!r}")
-        self.assertIn("当前导入剧本", ctx,
+        self.assertIn("currently imported script", ctx,
             f"缺 script_id 时应按 DB-only/非默认路径降级；ctx={ctx[:300]!r}")
 
 

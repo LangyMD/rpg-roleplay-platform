@@ -41,7 +41,7 @@ def _load_anchor_chapter_text(script_id: int, chapter_min: int, chapter_max: int
             if not content:
                 continue
             if ch != last_ch:
-                out_lines.append(f"--- 第 {ch} 章原文片段 ---")
+                out_lines.append(f"--- Chapter {ch} source excerpt ---")
                 last_ch = ch
             piece = content[: max(0, max_chars - used)]
             out_lines.append(piece)

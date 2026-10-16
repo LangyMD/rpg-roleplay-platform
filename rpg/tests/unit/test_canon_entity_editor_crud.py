@@ -146,7 +146,7 @@ def test_create_validation_errors_are_readable(env):
     r = c.post(f"/api/scripts/{sid}/canon-entities", json={"name": "某物", "type": "weird"})
     assert r.status_code == 400
     err = r.json()["error"]
-    assert "weird" in err and "character" in err and "人物" in err
+    assert "weird" in err and "character" in err and "faction" in err
 
     r = c.post(f"/api/scripts/{sid}/canon-entities",
                json={"name": "某物", "type": "item", "importance": "很高"})

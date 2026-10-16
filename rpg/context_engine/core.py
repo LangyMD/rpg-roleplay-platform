@@ -48,8 +48,13 @@ def _split_anchor_pending(retrieved_context: str) -> tuple[str, str]:
     """
     if not retrieved_context:
         return "", retrieved_context or ""
-    marker = "=== 世界线收束·接下来的锚点 ==="
-    start = retrieved_context.find(marker)
+    from kb.section_markers import ANCHOR_PENDING_MARKERS
+    marker, start = "", -1
+    for _m in ANCHOR_PENDING_MARKERS:  # English marker + legacy Chinese marker
+        start = retrieved_context.find(_m)
+        if start >= 0:
+            marker = _m
+            break
     if start < 0:
         return "", retrieved_context
     # 找下一个 "=== " 段头
@@ -86,11 +91,11 @@ from timeline_index import timeline_filter_for_label
 
 def _format_history(history: list[dict]) -> str:
     if not history:
-        return "（暂无最近对话）"
+        return "(no recent conversation)"
     lines = []
     for msg in history:
-        role = "玩家" if msg.get("role") == "user" else "GM"
-        lines.append(f"{role}：{msg.get('content', '')}")
+        role = "Player" if msg.get("role") == "user" else "GM"
+        lines.append(f"{role}: {msg.get('content', '')}")
     return "\n\n".join(lines)
 
 
@@ -175,22 +180,22 @@ def build_context_bundle(
     # 通用 GM 层（不依赖具体 ContentPack；GM 运行契约）
     # 每层内容经 _safe 隔离:某 builder 抛异常只让该层为空,保住其余层(规则/状态等)与整轮
     universal_layers = [
-        _layer("rules", "剧情规则", _safe(lambda: _story_rules()), sticky=True, priority=100),
-        _layer("agent_runtime", "主GM代理运行契约", _safe(lambda: _agent_runtime_rules()), sticky=True, priority=99),
+        _layer("rules", "Story Rules", _safe(lambda: _story_rules()), sticky=True, priority=100),
+        _layer("agent_runtime", "Main GM Runtime Contract", _safe(lambda: _agent_runtime_rules()), sticky=True, priority=99),
         # pending_jump 警告是通用 GM 约束，任何 ContentPack 都得遵守
-        _layer("timeline_pending", "时间跳跃待确认", _safe(lambda: _pending_jump_warning_text(state)),
+        _layer("timeline_pending", "Pending Time Jump", _safe(lambda: _pending_jump_warning_text(state)),
                sticky=False, priority=86),
-        _layer("state", "当前状态", _safe(lambda: state.short_summary()), sticky=True, priority=55),
-        _layer("fact_groups", "事实分组（按 kind）", _safe(lambda: _fact_groups_layer(state)), sticky=False, priority=50),
-        _layer("state_schema", "状态字段 schema",
+        _layer("state", "Current State", _safe(lambda: state.short_summary()), sticky=True, priority=55),
+        _layer("fact_groups", "Facts by Kind", _safe(lambda: _fact_groups_layer(state)), sticky=False, priority=50),
+        _layer("state_schema", "State Field Schema",
                _safe(lambda: _state_schema_layer(state, _safe_load_chars(script_id, book_id, manifest))),
                sticky=True, priority=45),
-        _layer("write_results", "上轮标签处理结果", _safe(lambda: _write_results_layer(state)), sticky=False, priority=35),
-        _layer("hypotheses", "未确认推测", _safe(lambda: _active_hypotheses_layer(state)), sticky=False, priority=32),
-        _layer("context_agent", "子代理上下文决议",
+        _layer("write_results", "Results of Last Turn's Tags", _safe(lambda: _write_results_layer(state)), sticky=False, priority=35),
+        _layer("hypotheses", "Unconfirmed Hypotheses", _safe(lambda: _active_hypotheses_layer(state)), sticky=False, priority=32),
+        _layer("context_agent", "Sub-Agent Context Decision",
                _safe(lambda: _context_agent_decision(curator_plan)),
                priority=30, items=_safe_list(lambda: [_context_agent_debug(curator_plan)])),
-        _layer("candidate_actions", "本轮候选动作",
+        _layer("candidate_actions", "Candidate Actions This Turn",
                _safe(lambda: _candidate_actions_layer(curator_plan)), sticky=False, priority=28),
     ]
 
@@ -224,19 +229,19 @@ def build_context_bundle(
         anchor_section, rag_body = _split_anchor_pending(retrieved_context)
         if anchor_section:
             provider_layers.append(_layer(
-                "anchor_pending", "世界线收束·接下来的锚点",
+                "anchor_pending", "Worldline Convergence · Upcoming Anchors",
                 anchor_section,
                 sticky=False, priority=72,  # 高于 worldbook(70),低于玩家 directive(95)
             ))
         provider_layers.append(_layer(
-            "rag", "检索参考",
+            "rag", "Retrieval Reference",
             _neutralize_state_write_tags(rag_body),
             sticky=False, priority=40,
         ))
 
     # user_input 永远最后
     tail_layers = [
-        _layer("user_input", "玩家本轮输入", user_input or "（空）", priority=0),
+        _layer("user_input", "Player Input This Turn", user_input or "(empty)", priority=0),
     ]
 
     # 合并 + 按 priority 降序排序（高优先级在前 = 稳定前缀，利于 prompt cache）

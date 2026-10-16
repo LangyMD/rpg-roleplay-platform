@@ -324,6 +324,12 @@ _LEAKED_SCAFFOLD_KEYS: tuple[str, ...] = (
     "世界线收束", "世界设定", "剧本时间线锚点", "剧本章节事实", "剧本阶段摘要",
     "当前剧情阶段", "最近剧情摘要", "相关原文片段", "相关角色", "组织/势力/地点",
     "跳跃进度说明", "锚点章节原文",
+    # English headers (retrieval/assemble.py etc. after the English switch); matched case-insensitively
+    "timeline retrieval anchor", "save timeline", "author style sample", "chapterfact timeline",
+    "worldline convergence", "world setting", "script timeline anchor", "script chapter facts",
+    "script phase summar", "current story phase", "recent plot summary", "relevant source excerpts",
+    "relevant characters", "organizations / factions / locations", "jump progress note",
+    "anchor chapter source text", "forbidden names", "relevant past events",
 )
 _SCAFFOLD_HEADER_RE = re.compile(r"^\s*=+\s*(.+?)\s*=+\s*$")
 # 模型"内部推理→开始正文"的转场标记(中文 thinking 泄漏的收尾句)。
@@ -338,7 +344,8 @@ def _is_leaked_scaffold_header(stripped_line: str) -> bool:
     if not m:
         return False
     inner = m.group(1)
-    return any(k in inner for k in _LEAKED_SCAFFOLD_KEYS)
+    inner_low = inner.lower()
+    return any(k in inner or k in inner_low for k in _LEAKED_SCAFFOLD_KEYS)
 
 
 def strip_leaked_scaffold(text: str) -> str:

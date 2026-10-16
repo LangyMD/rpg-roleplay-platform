@@ -246,7 +246,7 @@ def score_history_messages(
     for score, e in scored[: max(1, int(k))]:
         out.append({
             "turn": int(e["_idx"]) // 2 + 1,
-            "role": "玩家" if e["_role"] == "user" else "GM",
+            "role": "Player" if e["_role"] == "user" else "GM",
             "excerpt": _excerpt_around_match(str(e["summary"]), query_text),
             "score": score,
         })
@@ -295,7 +295,7 @@ def merge_and_rank(
                         "meta": meta, "score": score})
         else:
             out.append({"kind": "history", "turn": int(e["_idx"]) // 2 + 1,
-                        "role": "玩家" if e["_role"] == "user" else "GM",
+                        "role": "Player" if e["_role"] == "user" else "GM",
                         "text": _excerpt_around_match(str(e["summary"]), query_text),
                         "score": score})
     return out

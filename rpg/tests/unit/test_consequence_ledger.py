@@ -428,9 +428,9 @@ class ConsequenceEchoProviderTests(unittest.TestCase):
             self.assertTrue(contrib.applied)
             self.assertEqual(len(contrib.layers), 1)
             content = contrib.layers[0]["content"]
-            self.assertIn("后果回响", content)
+            self.assertIn("Consequence echoes", content)
             self.assertIn("答应雷纳德查清林中兽伤", content)
-            self.assertIn("第12回合种下", content)
+            self.assertIn("planted on turn 12", content)
             self.assertEqual(s.data["consequence_ledger"][0]["status"], "fired")
         finally:
             os.environ.pop("RPG_CONSEQUENCE_LEDGER", None)

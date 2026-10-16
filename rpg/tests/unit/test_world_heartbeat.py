@@ -469,8 +469,8 @@ class WorldPulseProviderTests(unittest.TestCase):
         self.assertEqual(len(contrib.layers), 1)
         content = contrib.layers[0]["content"]
         self.assertIn("村东磨坊主的驴跑了", content)
-        self.assertIn("世界脉动", content)
-        self.assertIn("不强求", content)
+        self.assertIn("World pulse", content)
+        self.assertIn("no need to use them all", content)
         self.assertEqual(s.data["background_events"][0]["surfaced_turn"], 12)
 
     def test_at_most_two_per_collect(self):

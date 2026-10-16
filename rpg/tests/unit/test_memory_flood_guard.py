@@ -165,9 +165,9 @@ class TestRejectionIsVisible(unittest.TestCase):
         for i in range(memory_append_per_turn_max() + 1):
             s.add_memory_ex("abilities", f"能力{i}", origin=GM)
         text = _write_results_layer(s)
-        self.assertIn("洪泛闸", text)
+        self.assertIn("flood gate", text)
         self.assertIn("memory.abilities", text)
-        self.assertIn("合并", text)
+        self.assertIn("merge", text)
 
     def test_tool_returns_a_failure_string(self):
         """dispatcher 惯例:失败结果串以「失败:」开头,GM 才认得出这不是成功。"""
