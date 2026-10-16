@@ -1,4 +1,5 @@
 import React from 'react';
+import i18n from '../i18n/index.js';
 
 /* MediaUploadZone — 统一上传原语：拖拽 / 粘贴 / 点击。
    把选到的 File 交给 onFile(file)。本组件不负责后端上传，只负责"拿到图片文件"。
@@ -56,6 +57,7 @@ export default function MediaUploadZone({
   return (
     <div
       className={`${className}${drag ? ' is-drag' : ''}`}
+      data-drop-label={i18n.t('media.drop_overlay')}
       onClick={() => !disabled && inputRef.current && inputRef.current.click()}
       onDragOver={(e) => { e.preventDefault(); if (!disabled) setDrag(true); }}
       onDragLeave={(e) => { e.preventDefault(); setDrag(false); }}
@@ -67,7 +69,7 @@ export default function MediaUploadZone({
       {children || (
         <>
           <div className="mh-drop__icon">⬆</div>
-          <div className="mh-drop__title">拖入图片 · 粘贴 · 或点击选择</div>
+          <div className="mh-drop__title">{i18n.t('media.drop_title')}</div>
           <div className="mh-drop__hint">PNG / JPG / WebP</div>
         </>
       )}

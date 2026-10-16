@@ -211,10 +211,10 @@ export function AdminFeedbackPage() {
 
             <CSBox>
               <strong>{t('admin_page.feedback.detail_submit_time')}</strong>{fmtTime(detailModal.created_at)}
-              {'　'}
+              {t('common.space_sep')}
               <strong>{t('admin_page.feedback.detail_status_label')}</strong>{decisionBadge(detailModal.review_decision)}
               {detailModal.reviewed_at && (
-                <span>{'　'}<strong>{t('admin_page.feedback.detail_review_time')}</strong>{fmtTime(detailModal.reviewed_at)}</span>
+                <span>{t('common.space_sep')}<strong>{t('admin_page.feedback.detail_review_time')}</strong>{fmtTime(detailModal.reviewed_at)}</span>
               )}
             </CSBox>
 

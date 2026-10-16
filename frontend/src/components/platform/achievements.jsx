@@ -14,6 +14,7 @@ import CSModal from '@cloudscape-design/components/modal';
 import CSSpaceBetween from '@cloudscape-design/components/space-between';
 import { ACHV_CAT_ORDER, TIER_RANK } from '../../lib/achievements-const.js';
 import { copyText } from '../../lib/clipboard.js';
+import i18n from '../../i18n/index.js';
 
 const __achvToasted = new Set();
 async function flushAchievementToasts(items) {
@@ -21,7 +22,7 @@ async function flushAchievementToasts(items) {
   if (!fresh.length) return;
   fresh.forEach(a => {
     __achvToasted.add(a.id);
-    window.toast(`🏆 解锁成就:${a.name}`, { kind: "ok", detail: a.desc, duration: 4200 });
+    window.toast(i18n.t('achievements.unlocked_toast', { name: a.name }), { kind: "ok", detail: a.desc, duration: 4200 });
   });
   try { await window.api.account.achievementsSeen(); } catch (_) {}
 }

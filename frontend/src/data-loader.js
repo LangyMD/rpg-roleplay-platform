@@ -12,6 +12,7 @@
  *  HTML uses it to delay initial paint when the API is reachable.
  * ============================================================ */
 import i18n from './i18n/index.js';
+import { uiLocale } from './i18n/index.js';
 // Capture the designer baseline so we can fall back / extend it.
 // ⚠️ P0 根修(2026-07-18,平台页全员挂死):mock 全局(window.MOCK_*)由 mock-data.js 的
 // 模块副作用设置。此前这里在模块体顶层**立即**快照 = 隐式契约「mock-data 必须先于本模块求值」。
@@ -108,7 +109,7 @@ function fmtAgo(ts) {
 // zh-CN 24 小时制完整时间戳(各页 fmtTime 共用,坏值原样返回)
 function fmtTime(iso) {
   if (!iso) return "—";
-  try { return new Date(iso).toLocaleString("zh-CN", { hour12: false }); } catch (_) { return iso; }
+  try { return new Date(iso).toLocaleString(uiLocale(), { hour12: false }); } catch (_) { return iso; }
 }
 // fmtTimeFallback — window.__fmt 未就绪时的兜底体,权威单一实现(收口自 components/admin/shared.jsx、
 // mobile/admin/shared.jsx、pages/feedback.jsx、mobile/caps/FeedbackSection.jsx 4 处逐字复制的同款 try/catch)。
@@ -150,7 +151,7 @@ function anonymizeUser(u) {
   return {
     ...(u || {}),
     username: "guest",
-    display_name: "未登录",
+    display_name: i18n.t('data_loader.signed_out'),
     role: "anonymous",
     uid: "",
     bio: "",
@@ -233,7 +234,7 @@ async function hydratePlatform() {
     const entries = (lib && (lib.entries || lib.items)) || [];
     if (entries.length) {
       platform.recent_assets = entries.slice(0, 8).map((e) => ({
-        name: e.name || e.path || "未命名",
+        name: e.name || e.path || i18n.t('data_loader.untitled'),
         size: e.size || 0,
         kind: e.kind || guessKind(e.name),
         at: fmtAgo(e.updated_at || e.mtime),
@@ -295,7 +296,7 @@ function normalizeScript(s) {
     ...s,
     id: s.id,
     uid: s.uid || ("scr_" + (s.id || "")),
-    title: s.title || s.name || "未命名剧本",
+    title: s.title || s.name || i18n.t('data_loader.untitled_script'),
     description: s.description || s.subtitle || "",
     chapter_count: s.chapter_count || s.chapters || 0,
     word_count: s.word_count || s.words || 0,
@@ -311,7 +312,7 @@ function normalizeSave(s) {
   return {
     id: s.id,
     uid: s.uid || ("sv_" + (s.id || "")),
-    title: s.title || s.name || ("存档 #" + s.id),
+    title: s.title || s.name || i18n.t('data_loader.save_n', { id: s.id }),
     script_id: s.script_id || (s.script && s.script.id),
     branch_count: s.branch_count || s.branches || 0,
     updated_at: fmtAgo(s.updated_at) || s.updated_at_human || "—",
@@ -415,18 +416,18 @@ function injectDemoBanner() {
     ].join(";");
     const span = document.createElement("span");
     const strong = document.createElement("strong");
-    strong.textContent = "示例数据预览模式";
+    strong.textContent = i18n.t('data_loader.demo_title');
     span.appendChild(strong);
-    span.appendChild(document.createTextNode("：当前显示的存档 / 角色 / 剧本均为内置示例，不会落库。登录后可创建自己的真实数据。"));
+    span.appendChild(document.createTextNode(i18n.t('data_loader.demo_body')));
 
     const link = document.createElement("a");
     link.href = "Login.html";
-    link.textContent = "立即登录";
+    link.textContent = i18n.t('data_loader.demo_login');
     link.style.cssText = "color:#ffd591;text-decoration:underline;font-weight:600;";
 
     const closeBtn = document.createElement("button");
     closeBtn.id = "rpg-demo-banner-close";
-    closeBtn.textContent = "隐藏";
+    closeBtn.textContent = i18n.t('data_loader.demo_hide');
     closeBtn.style.cssText = "background:transparent;border:1px solid #ffd591;color:#fff8e1;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;";
 
     div.appendChild(span);
@@ -483,7 +484,7 @@ window.__refreshPlatform = async function () {
     if (authUnknown && window.RPG_AUTH && window.RPG_AUTH.authed) {
       // 已登录用户刷新时没问到登录态:保留当前数据和登录态,当作这次刷新失败,
       // 调用方(顶栏刷新按钮)会提示「刷新失败」,而不是把人显示成「未登录」。
-      throw new Error("暂时连不上后端,已保留当前页面数据,请稍后再刷新");
+      throw new Error(i18n.t('data_loader.refresh_unreachable'));
     }
     window.MOCK_PLATFORM = platform;
     window.MOCK_STATE = state;

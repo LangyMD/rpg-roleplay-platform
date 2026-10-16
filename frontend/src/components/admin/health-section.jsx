@@ -9,6 +9,7 @@ import CSBox from '@cloudscape-design/components/box';
 import CSAlert from '@cloudscape-design/components/alert';
 import CSColumnLayout from '@cloudscape-design/components/column-layout';
 import CSStatusIndicator from '@cloudscape-design/components/status-indicator';
+import { uiLocale } from '../../i18n/index.js';
 
 /* ─────────────────────────────────────────────────────────────────
    页面 4：AdminHealthPage — 系统健康
@@ -67,7 +68,7 @@ export function AdminHealthPage() {
               <CSSpaceBetween direction="horizontal" size="xs">
                 {lastUpdate && (
                   <CSBox color="text-body-secondary" variant="small">
-                    {t('admin_page.health.last_update', { time: lastUpdate.toLocaleTimeString('zh-CN', { hour12: false }) })}
+                    {t('admin_page.health.last_update', { time: lastUpdate.toLocaleTimeString(uiLocale(), { hour12: false }) })}
                   </CSBox>
                 )}
                 <CSButton iconName="refresh" loading={refreshing} onClick={() => fetchHealth(true)}>{t('admin_page.common.refresh')}</CSButton>

@@ -29,6 +29,7 @@ import CSModal from '@cloudscape-design/components/modal';
 import CSInput from '@cloudscape-design/components/input';
 import CSAlert from '@cloudscape-design/components/alert';
 import CSPagination from '@cloudscape-design/components/pagination';
+import { uiLocale } from '../../i18n/index.js';
 
 const _saveSortOpts = (t) => [
   { value: 'played', label: t('saves.list.sort_played') },
@@ -448,7 +449,7 @@ function SavesListView() {
     }
     const ts = (v) => (v ? new Date(v).getTime() || 0 : 0);
     const sorted = [...xs];
-    if (sortBy === 'name') sorted.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh'));
+    if (sortBy === 'name') sorted.sort((a, b) => (a.title || '').localeCompare(b.title || '', uiLocale()));
     else if (sortBy === 'created') sorted.sort((a, b) => ts(b.created_ts) - ts(a.created_ts));
     else sorted.sort((a, b) => ts(b.last_played_ts) - ts(a.last_played_ts));
     return sorted;
@@ -562,7 +563,7 @@ function SavesListView() {
                     { label: t('saves.detail.kv_branches'), value: t('saves.detail.kv_branches_val', { n: selected.branch_count }) },
                     { label: t('saves.detail.kv_world_time'), value: selected._raw?.world_time || '—' },
                     { label: t('saves.detail.kv_played'), value: selected.last_played_at },
-                    { label: t('saves.detail.kv_created'), value: selected.created_ts ? new Date(selected.created_ts).toLocaleString('zh-CN') : '—' },
+                    { label: t('saves.detail.kv_created'), value: selected.created_ts ? new Date(selected.created_ts).toLocaleString(uiLocale()) : '—' },
                   ]} />
                   <CSBox variant="p" color="text-body-secondary">
                     {selected._raw?.snippet || selected._raw?.last_message || t('saves.detail.snippet_empty')}

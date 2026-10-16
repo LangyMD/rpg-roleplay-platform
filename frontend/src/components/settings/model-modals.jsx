@@ -69,7 +69,7 @@ function AddModelModal({ open, api, onClose, onConfirm }) {
             <label>{t('settings.add_model.caps')} <span className="muted-2" style={{textTransform: "none", letterSpacing: 0, marginLeft: 6}}>{t('settings.add_model.caps_hint')}</span></label>
             <div className="pl-rules">
               {Object.keys(CAP_LABEL).map(c => (
-                <button key={c} className={`pl-rule-chip ${form.capabilities.includes(c) ? "active" : ""}`} onClick={() => toggleCap(c)}>{CAP_LABEL[c]}</button>
+                <button key={c} className={`pl-rule-chip ${form.capabilities.includes(c) ? "active" : ""}`} onClick={() => toggleCap(c)}>{t('settings.capabilities.' + c, { defaultValue: CAP_LABEL[c] || c })}</button>
               ))}
             </div>
           </div>

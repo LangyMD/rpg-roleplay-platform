@@ -140,12 +140,12 @@ function DeploySection() {
               value="custom"
               options={[
                 { value: "custom",   label: t('settings.deploy.smtp_custom') },
-                { value: "gmail",    label: "Gmail（smtp.gmail.com:587 · STARTTLS）" },
+                { value: "gmail",    label: "Gmail (smtp.gmail.com:587 · STARTTLS)" },
                 { value: "qq",       label: t('settings.more.deploy.smtp_qq') },
                 { value: "163",      label: t('settings.more.deploy.smtp_163') },
-                { value: "aws",      label: "AWS SES（email-smtp.us-east-1.amazonaws.com:587）" },
-                { value: "resend",   label: "Resend（smtp.resend.com:587）" },
-                { value: "sendgrid", label: "SendGrid（smtp.sendgrid.net:587）" },
+                { value: "aws",      label: "AWS SES (email-smtp.us-east-1.amazonaws.com:587)" },
+                { value: "resend",   label: "Resend (smtp.resend.com:587)" },
+                { value: "sendgrid", label: "SendGrid (smtp.sendgrid.net:587)" },
               ]}
               onChange={(val) => {
                 const PRESETS = {

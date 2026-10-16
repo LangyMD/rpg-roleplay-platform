@@ -3,6 +3,7 @@
 // 就地分组表单 / 抽屉 / 顶部横幅。页面只「拼装」这些原语,不再手搓页面级 CSS。
 // 类名前缀 aw- 以与历史 pl- 隔离。
 import React, { useEffect, useRef, useState } from 'react';
+import i18n from '../i18n/index.js';
 
 // ── 零件 ──────────────────────────────────────────────────────────────────
 export function Btn({ variant = 'default', size, icon, loading, disabled, onClick, children, title, type = 'button', full }) {
@@ -127,7 +128,7 @@ export function SplitLayout({ list, detail, detailOpen, onCloseDetail }) {
       <div className="aw-split-list">{list}</div>
       {detailOpen && (
         <aside className="aw-split-detail">
-          <button className="aw-split-close" onClick={onCloseDetail} title="收起详情" aria-label="收起详情">✕</button>
+          <button className="aw-split-close" onClick={onCloseDetail} title={i18n.t('common.collapse_details')} aria-label={i18n.t('common.collapse_details')}>✕</button>
           {detail}
         </aside>
       )}
@@ -137,7 +138,7 @@ export function SplitLayout({ list, detail, detailOpen, onCloseDetail }) {
 
 // 通用资源行列表(单选)
 export function ResourceList({ items = [], selectedId, onSelect, getKey = (x) => x.id, renderItem, empty }) {
-  if (!items.length) return <div className="aw-empty">{empty || '暂无数据'}</div>;
+  if (!items.length) return <div className="aw-empty">{empty || i18n.t('common.no_data')}</div>;
   return (
     <div className="aw-rlist" role="listbox">
       {items.map((it) => {
@@ -189,7 +190,7 @@ export function FormSection({ title, description, actions, footer, children, den
 }
 
 // ── 全页向导(左侧步骤条) ────────────────────────────────────────────────────
-export function Wizard({ steps = [], active = 0, onNav, onCancel, onSubmit, submitLabel = '完成', submitting, canNext = true }) {
+export function Wizard({ steps = [], active = 0, onNav, onCancel, onSubmit, submitLabel, submitting, canNext = true }) {
   const last = active >= steps.length - 1;
   return (
     <div className="aw-wizard">
@@ -209,12 +210,12 @@ export function Wizard({ steps = [], active = 0, onNav, onCancel, onSubmit, subm
           {steps[active]?.content}
         </div>
         <div className="aw-wizard-foot">
-          {onCancel && <Btn variant="link" onClick={onCancel}>取消</Btn>}
+          {onCancel && <Btn variant="link" onClick={onCancel}>{i18n.t('common.cancel')}</Btn>}
           <div className="aw-wizard-foot-right">
-            {active > 0 && <Btn onClick={() => onNav?.(active - 1)}>上一步</Btn>}
+            {active > 0 && <Btn onClick={() => onNav?.(active - 1)}>{i18n.t('common.prev')}</Btn>}
             {last
-              ? <Btn variant="primary" loading={submitting} disabled={!canNext} onClick={onSubmit}>{submitLabel}</Btn>
-              : <Btn variant="primary" disabled={!canNext} onClick={() => onNav?.(active + 1)}>下一步</Btn>}
+              ? <Btn variant="primary" loading={submitting} disabled={!canNext} onClick={onSubmit}>{submitLabel || i18n.t('common.done')}</Btn>
+              : <Btn variant="primary" disabled={!canNext} onClick={() => onNav?.(active + 1)}>{i18n.t('common.next')}</Btn>}
           </div>
         </div>
       </div>
@@ -237,7 +238,7 @@ export function Drawer({ open, onClose, title, children, footer, width = 480 }) 
       <aside className="aw-drawer" style={{ '--aw-drawer-w': width + 'px' }} role="dialog" aria-modal="true">
         <div className="aw-drawer-head">
           <h3 className="aw-drawer-title">{title}</h3>
-          <button className="aw-drawer-close" onClick={onClose} aria-label="关闭">✕</button>
+          <button className="aw-drawer-close" onClick={onClose} aria-label={i18n.t('common.close')}>✕</button>
         </div>
         <div className="aw-drawer-body">{children}</div>
         {footer && <div className="aw-drawer-foot">{footer}</div>}
@@ -247,7 +248,7 @@ export function Drawer({ open, onClose, title, children, footer, width = 480 }) 
 }
 
 // ── 确认弹窗(唯一保留的居中弹窗,仅破坏性操作) ────────────────────────────────
-export function ConfirmDialog({ open, title, body, confirmLabel = '确认', cancelLabel = '取消', danger, loading, onConfirm, onCancel }) {
+export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, danger, loading, onConfirm, onCancel }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === 'Escape' && onCancel?.();
@@ -262,8 +263,8 @@ export function ConfirmDialog({ open, title, body, confirmLabel = '确认', canc
         <h3 className="aw-confirm-title">{title}</h3>
         {body && <div className="aw-confirm-body">{body}</div>}
         <div className="aw-confirm-foot">
-          <Btn variant="link" onClick={onCancel}>{cancelLabel}</Btn>
-          <Btn variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>{confirmLabel}</Btn>
+          <Btn variant="link" onClick={onCancel}>{cancelLabel || i18n.t('common.cancel')}</Btn>
+          <Btn variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>{confirmLabel || i18n.t('common.confirm')}</Btn>
         </div>
       </div>
     </div>
@@ -279,7 +280,7 @@ export function Flashbar({ items = [] }) {
         <div key={it.id ?? i} className={`aw-flash aw-flash-${it.type || 'info'}`}>
           <span className="aw-flash-ic" aria-hidden>{_STATUS[it.type === 'success' ? 'ok' : it.type === 'error' ? 'error' : it.type] || 'ℹ'}</span>
           <div className="aw-flash-content">{it.content}</div>
-          {it.onDismiss && <button className="aw-flash-x" onClick={it.onDismiss} aria-label="关闭">✕</button>}
+          {it.onDismiss && <button className="aw-flash-x" onClick={it.onDismiss} aria-label={i18n.t('common.close')}>✕</button>}
         </div>
       ))}
     </div>

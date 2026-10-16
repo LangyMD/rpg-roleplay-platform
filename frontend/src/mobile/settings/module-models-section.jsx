@@ -16,24 +16,6 @@ const MODULES = AGENT_MODULES.map((m) => ({ ...m }));
 
 /* FeatureToggleM — 移动端引擎特性开关(每用户、默认开)。写 user_preferences["<key>.enabled"],
    与桌面端、后端 core.feature_flags 同键。initial 由父组件一次性 profile 下发。 */
-const _FEAT_LABEL_DEF = {
-  ctx_tiered: '分层上下文缓存', recorder_unified: '史官三合一', narrator_slim: '文宗精简(去工具循环)',
-  rag_gate: 'RAG 检索闸', anchor_pace: '世界线锚点节奏', kb_state: '存档知识库 DB 化',
-  consequence_ledger: '后果账本', world_heartbeat: '世界心跳', channel_fallback: '跨渠道自动备援',
-  npc_agenda: 'NPC 议程',
-};
-const _FEAT_DESC_DEF = {
-  ctx_tiered: '分层稳定前缀,命中前缀缓存,显著省 token。',
-  recorder_unified: '状态提取 + 锚点判定合并为一次 LLM 调用。',
-  narrator_slim: '主叙事单次成文、不带工具循环,状态交史官。',
-  rag_gate: '司命判定本回合是否需检索,不需则跳过省 token。',
-  anchor_pace: '按对话节奏推进锚点、逐个标记、死亡失效 —— 治跳章。',
-  kb_state: '存档状态以数据库行存储(单一来源),便于检索维护。',
-  consequence_ledger: '承诺/欠债到期或抵达指定地点时,提醒 GM 主动兑现。',
-  world_heartbeat: '每隔几回合生成不在场处的世界小事,之后以传闻方式浮现。',
-  channel_fallback: '主渠道持续故障时自动切换你配置的其他渠道(明确提示)。',
-  npc_agenda: 'NPC 带持续演化的议程(想要什么/对玩家什么态度),跨回合连续。',
-};
 function FeatureToggleM({ featureKey, i18nKey, initial }) {
   const { t } = useTranslation();
   const [on, setOn] = useState(initial !== false);
@@ -42,8 +24,8 @@ function FeatureToggleM({ featureKey, i18nKey, initial }) {
   return (
     <div className="pl-card" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <div style={{ minWidth: 0 }}>
-        <strong style={{ fontSize: 14 }}>{t(`settings.features.${i18nKey}.label`, { defaultValue: _FEAT_LABEL_DEF[featureKey] || featureKey })}</strong>
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>{t(`settings.features.${i18nKey}.desc`, { defaultValue: _FEAT_DESC_DEF[featureKey] || '' })}</div>
+        <strong style={{ fontSize: 14 }}>{t(`settings.features.${i18nKey}.label`, { defaultValue: featureKey })}</strong>
+        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.5 }}>{t(`settings.features.${i18nKey}.desc`, { defaultValue: '' })}</div>
       </div>
       <Toggle on={on} onChange={(v) => { setOn(v); save('enabled', v); }} />
     </div>

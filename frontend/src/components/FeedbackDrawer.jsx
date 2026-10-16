@@ -238,7 +238,7 @@ export function FeedbackDrawer({ open, onClose }) {
         {/* ── 红线警告 ── */}
         <CSAlert type="warning" header={t('components.feedback_drawer.aup_warning.header')}>
           {t('components.feedback_drawer.aup_warning.body')}{' '}
-          <a href={AUP_LINK} target="_blank" rel="noopener noreferrer">AUP §2.J</a>。
+          <a href={AUP_LINK} target="_blank" rel="noopener noreferrer">AUP §2.J</a>{t('components.feedback_drawer.aup_warning.end')}
         </CSAlert>
 
         {/* 反馈处理回执:管理员处理过(unacked)的反馈,关抽屉时清"已读" */}

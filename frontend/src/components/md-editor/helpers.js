@@ -35,7 +35,7 @@ const CAN_CREATE_KIND = () => true; // 5 类都支持新建
 
 export const nodeKey = (kind, id) => `${kind}:${id}`;
 
-const KIND_LABEL_KEY = { chapter: 'md_editor.tree.group_chapter', card: 'md_editor.tree.group_card', worldbook: 'md_editor.tree.group_worldbook', anchor: 'md_editor.tree.group_anchor', canon: 'md_editor.tree.group_canon' };
-function kindLabelZh(kind) { return i18n.t(KIND_LABEL_KEY[kind] || '', { defaultValue: ({ chapter: '章节', card: '角色卡', worldbook: '世界书', anchor: '时间线', canon: '设定' })[kind] || kind }); }
+const KIND_LABEL_KEY = { chapter: 'md_editor.tree.kind.chapter', card: 'md_editor.tree.kind.card', worldbook: 'md_editor.tree.kind.worldbook', anchor: 'md_editor.tree.kind.anchor', canon: 'md_editor.tree.kind.canon' };
+function kindLabelZh(kind) { return KIND_LABEL_KEY[kind] ? i18n.t(KIND_LABEL_KEY[kind]) : kind; }
 
 export { IS_MAC, MOD_LABEL, NODE_GROUPS, api, toast, stripChapterPrefix, canonTypeZh, KIND_ICON, CAN_DELETE, CAN_RENAME, CAN_DRAG, CAN_CREATE_KIND, kindLabelZh };

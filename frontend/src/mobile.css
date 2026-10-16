@@ -48,8 +48,8 @@
   --danger-soft: rgba(200, 103, 93, 0.12);
   --info: #7aa6c2;
   --info-soft: rgba(122, 166, 194, 0.12);
-  --font-sans: "Noto Sans SC", -apple-system, "PingFang SC", system-ui, sans-serif;
-  --font-serif: "Noto Serif SC", "Songti SC", serif;
+  --font-sans: "Noto Sans", "Noto Sans SC", -apple-system, "PingFang SC", system-ui, sans-serif;
+  --font-serif: "Noto Serif", "Noto Serif SC", "Songti SC", serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   --safe-top: 50px;     
   --safe-bottom: 26px;  

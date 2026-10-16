@@ -244,7 +244,7 @@ function FeedbackSection({ toast }) {
           {/* Consent */}
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--muted)', lineHeight: 1.55, cursor: 'pointer', padding: '11px 13px', borderRadius: 11, border: '1px solid var(--line-soft)', background: 'var(--panel)' }}>
             <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} disabled={submitBusy} style={{ marginTop: 2, accentColor: 'var(--accent)', width: 16, height: 16, flex: 'none' }} />
-            {CONSENT_TEXT}
+            {t('feedback_page.consent_text')}
           </label>
 
           <button

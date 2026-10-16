@@ -247,7 +247,7 @@ function CardSheet({ card, kind = 'user', dense = false }) {
           className="pl-card-avatar serif"
         />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 19, fontWeight: 600, color: 'var(--text, #ebe7df)' }}>
+          <div style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 19, fontWeight: 600, color: 'var(--text, #ebe7df)' }}>
             {raw.name || t('cards.detail.unnamed')}
             {fullName && <span style={{ fontSize: 13, color: 'var(--muted, #968f85)', marginLeft: 8, fontStyle: 'italic' }}>{fullName}</span>}
           </div>

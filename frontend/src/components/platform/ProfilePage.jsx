@@ -72,9 +72,9 @@ function ProfilePage() {
         border: "1px solid var(--line-soft,#2a2724)", borderRadius: 14, padding: "26px 28px",
       }}>
         <div style={{ fontSize: 13, color: "var(--accent,#c96442)", fontWeight: 600, letterSpacing: ".04em", marginBottom: 6 }}>
-          {greeting}，{user.display_name || t('platform.profile.traveler', '旅行者')}
+          {greeting}{t('common.comma_sep')}{user.display_name || t('platform.profile.traveler', '旅行者')}
         </div>
-        <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 23, fontWeight: 600, color: "var(--text,#ebe7df)", marginBottom: 6 }}>
+        <div style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 23, fontWeight: 600, color: "var(--text,#ebe7df)", marginBottom: 6 }}>
           {t('platform.profile.hero_tagline', '继续你的故事，或开启新的旅程')}
         </div>
         <div style={{ fontSize: 13.5, color: "var(--text-quiet,#a8a195)", marginBottom: 18, lineHeight: 1.6 }}>

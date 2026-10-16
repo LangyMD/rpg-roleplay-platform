@@ -10,7 +10,7 @@ function _renderVarValue(v) {
   if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
   if (Array.isArray(v)) {
     // 数组里也可能套对象：递归取摘要
-    return v.map(_renderVarValue).join("，") || "—";
+    return v.map(_renderVarValue).join(", ") || "—";
   }
   if (typeof v === "object") {
     // 富对象常见 schema：{value, locked, source, turn, updated_at}（变量）

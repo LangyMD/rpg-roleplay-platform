@@ -1,3 +1,4 @@
+import i18n from '../i18n/index.js';
 /* tavern-chat-run — 酒馆三宿主共用的 SSE 状态机(收口蓝图 #11/#38)。
  *
  * 此前 tavern-app.jsx(独立页)、pages/tavern.jsx(平台内嵌 #tavern)、
@@ -27,6 +28,10 @@ const CONTROLLED_ABORTS = ['manual_stop', 'superseded', 'unmount', 'switch', 'id
  * 后端在同一时刻清掉本回合的 _turn_reasoning(chat_pipeline/gm.py),前端据这两个 agent 阶段
  * 清空思考显示,两边口径一致。game-console 与 tavern-chat-run 共用这一个判据。
  */
+// 后端 directive 回执的失败项惯例:「X 失败:」「X 被拒绝:」「X 未生效:」;英文后端回执同义词一并识别。
+// 与 entries/game-console.jsx 的 on_updates 回执同款(孪生)。
+export const RECEIPT_FAIL_RE = /失败|被拒绝|未生效|\b(?:failed|rejected|not applied)\b/i;
+
 export function isAttemptResetPhase(phase) {
   return phase === 'gm_retry' || phase === 'gm_fallback';
 }
@@ -141,7 +146,7 @@ export function applyTavernState(data, setters) {
   if (data.save_id != null && setActiveChat) {
     setActiveChat((prev) => ({
       id: data.save_id,
-      title: data.save_title || prev?.title || `对话 #${data.save_id}`,
+      title: data.save_title || prev?.title || i18n.t('tavern_run.chat_title', { id: data.save_id }),
       character_name: (char && char.name) || prev?.character_name || '',
       updated_at: data.save_updated_at || prev?.updated_at || '',
     }));
@@ -201,7 +206,7 @@ export function startTavernRun(cfg) {
   const api = cfg.api || (typeof window !== 'undefined' && window.api);
 
   if (saveId == null) {
-    toast?.('请先选择或新建一个对话', { kind: 'warn', duration: 2400, code: 'pick_chat' });
+    toast?.(i18n.t('tavern_run.pick_chat'), { kind: 'warn', duration: 2400, code: 'pick_chat' });
     return null;
   }
 
@@ -283,8 +288,8 @@ export function startTavernRun(cfg) {
       if (onIdleExtra) { try { onIdleExtra(); } catch (_) {} }
       restoreFailedDraft();
       setRunning(false);
-      setHasError('超过 120 秒没有新输出,已断开。请重试。');
-      toast?.('生成停滞', { kind: 'warn', detail: '120 秒无响应,已中断', duration: 4000, code: 'idle' });
+      setHasError(i18n.t('tavern_run.idle_error'));
+      toast?.(i18n.t('tavern_run.idle_title'), { kind: 'warn', detail: i18n.t('tavern_run.idle_detail'), duration: 4000, code: 'idle' });
     }, STREAM_IDLE_TIMEOUT_MS);
   };
   resetIdle();
@@ -311,9 +316,9 @@ export function startTavernRun(cfg) {
       if (!isCurrentRun()) return;
       clearIdle();
       endStream();
-      const detail = (err && err.payload && err.payload.message) || (err && err.message) || '请求失败';
+      const detail = (err && err.payload && err.payload.message) || (err && err.message) || i18n.t('tavern_run.request_failed');
       setRunning(false); setHasError(detail);
-      toast?.('请求失败', { kind: 'danger', detail, code: 'request_failed' });
+      toast?.(i18n.t('tavern_run.request_failed'), { kind: 'danger', detail, code: 'request_failed' });
       restoreFailedDraft();
     },
     onAbort: (data) => {
@@ -323,7 +328,7 @@ export function startTavernRun(cfg) {
       endStream();
       if (rc.stopped || CONTROLLED_ABORTS.includes(reason)) { rc.sse = null; return; }
       restoreFailedDraft();
-      setRunning(false); setHasError('连接被取消,上一条输入已保留,请重试。');
+      setRunning(false); setHasError(i18n.t('tavern_run.aborted'));
       rc.sse = null;
     },
     on_status: (data) => {
@@ -341,8 +346,10 @@ export function startTavernRun(cfg) {
         if (items.length) {
           gotReceipt = true;
           // 失败项(后端惯例:「X 失败:」「X 被拒绝:」「X 未生效:」)不该被标成「已更新」
-          const fail = items.filter((s) => /失败|被拒绝|未生效/.test(String(s))).length;
-          const label = fail ? `设定已应用 ${items.length - fail} 项，${fail} 项未生效` : `设定已更新（${items.length}）`;
+          const fail = items.filter((s) => RECEIPT_FAIL_RE.test(String(s))).length;
+          const label = fail
+            ? i18n.t('tavern_run.receipt_partial', { ok: items.length - fail, fail })
+            : i18n.t('tavern_run.receipt_ok', { count: items.length });
           toast?.(label, { kind: fail ? 'warn' : 'ok', detail: items.join('\n'), duration: fail ? 6000 : 4000, code: 'set_receipt' });
         }
       }
@@ -354,7 +361,7 @@ export function startTavernRun(cfg) {
       gotReceipt = true;
       const text = (data && data.text) || '';
       if (!text) return;
-      const firstLine = text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim().split('\n')[0] || '已更新';
+      const firstLine = text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim().split('\n')[0] || i18n.t('tavern_run.updated');
       toast?.(firstLine, {
         kind: (data && data.changed) ? 'ok' : 'info',
         detail: text.trim().length > firstLine.length ? text.trim() : undefined,
@@ -445,9 +452,9 @@ export function startTavernRun(cfg) {
           // 文案宿主可覆盖(MobileTavern 的空回复文案不带「已恢复你的输入」)。
           const msg = cfg.doneEmptyMsg
             ? cfg.doneEmptyMsg(interrupted)
-            : (interrupted ? '本轮已中断,已恢复你的输入。' : '本轮没有收到回复,已恢复你的输入。请重试。');
+            : (interrupted ? i18n.t('tavern_run.interrupted_restored') : i18n.t('tavern_run.empty_restored'));
           setHasError(msg);
-          toast?.(interrupted ? '生成中断' : '空回复', { kind: 'warn', detail: msg, duration: 4500, code: interrupted ? 'interrupted' : 'empty' });
+          toast?.(interrupted ? i18n.t('tavern_run.interrupted') : i18n.t('tavern_run.empty'), { kind: 'warn', detail: msg, duration: 4500, code: interrupted ? 'interrupted' : 'empty' });
           rc.sse = null;
         };
         // 「要刷新才出响应」(线上反馈):本轮没收到增量 token(provider 非增量流式 / SSE 丢事件),
@@ -477,9 +484,9 @@ export function startTavernRun(cfg) {
       // reasoning 流中断:已有助手气泡但被中断(如服务端强制截断),需恢复草稿并提示用户。
       if (data && data.interrupted) {
         restoreFailedDraft();
-        const msg = cfg.doneEmptyMsg ? cfg.doneEmptyMsg(true) : '本轮已中断,已恢复你的输入。';
+        const msg = cfg.doneEmptyMsg ? cfg.doneEmptyMsg(true) : i18n.t('tavern_run.interrupted_restored');
         setHasError(msg);
-        toast?.('生成中断', { kind: 'warn', detail: msg, duration: 4500, code: 'interrupted' });
+        toast?.(i18n.t('tavern_run.interrupted'), { kind: 'warn', detail: msg, duration: 4500, code: 'interrupted' });
         rc.sse = null;
         return;
       }
@@ -505,7 +512,7 @@ export function startTavernRun(cfg) {
       if (onErrorEvent) { onErrorEvent(data, { setRunning, setHasError, toast, restoreFailedDraft }); return; }
       const realMsg = (data && (data.message || data.detail || data.error)) || '';
       setRunning(false); setHasError(realMsg || true);
-      toast?.('生成失败', { kind: 'danger', detail: realMsg || '请重试', code: 'gen_failed' });
+      toast?.(i18n.t('tavern_run.gen_failed'), { kind: 'danger', detail: realMsg || i18n.t('tavern_run.retry'), code: 'gen_failed' });
       restoreFailedDraft();
     },
     onClose: () => {
@@ -515,7 +522,7 @@ export function startTavernRun(cfg) {
       if (gotDone || rc.stopped) { rc.sse = null; return; }
       setRunning((r) => {
         if (!r) return r;
-        setHasError(cfg.closeMsg || '连接中断:流式连接关闭但没有收到完成事件。上一条输入已保留,可重试。');
+        setHasError(cfg.closeMsg || i18n.t('tavern_run.closed'));
         restoreFailedDraft();
         return false;
       });

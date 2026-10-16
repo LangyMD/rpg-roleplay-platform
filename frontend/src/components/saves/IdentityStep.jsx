@@ -192,7 +192,7 @@ function IdentityStep({ scriptId, birthpoint, pickedCard, allRoleOptions, identi
       <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <CSBadge color={identity._from === 'ai' ? 'blue' : (identity._from === 'npc_card' ? 'red' : 'grey')}>{identity._from === 'ai' ? t('saves.identity.badge_ai') : (identity._from === 'npc_card' ? t('saves.identity.badge_npc') : t('saves.identity.badge_manual'))}</CSBadge>
-          {identity.name && <strong style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 15, color: 'var(--text, #ebe7df)' }}>{identity.name}</strong>}
+          {identity.name && <strong style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 15, color: 'var(--text, #ebe7df)' }}>{identity.name}</strong>}
           {identity.role && <span style={{ fontSize: 13, color: 'var(--text-quiet, #c8c2b7)' }}>{identity.role}</span>}
         </div>
         {identity.background && <span style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--muted, #968f85)' }}>{identity.background}</span>}
@@ -299,7 +299,7 @@ function IdentityStep({ scriptId, birthpoint, pickedCard, allRoleOptions, identi
               return (
                 <button key={cid} type="button" onClick={() => pickNpcIdentity(card)} style={cardBtnStyle(isSel)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    {nm && <strong style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 14, color: 'var(--text, #ebe7df)' }}>{nm}</strong>}
+                    {nm && <strong style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 14, color: 'var(--text, #ebe7df)' }}>{nm}</strong>}
                     {role && <span style={{ whiteSpace: 'nowrap' }}><CSBadge>{role}</CSBadge></span>}
                     {isSel && (<span style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}><CSBadge color="green">✓ {t('saves.identity.badge_selected')}</CSBadge></span>)}
                   </div>
@@ -329,7 +329,7 @@ function IdentityStep({ scriptId, birthpoint, pickedCard, allRoleOptions, identi
                   return (
                     <button key={i} type="button" onClick={() => pickRec(rec)} style={cardBtnStyle(isSelected)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        {rec.name && <strong style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 14, color: 'var(--text, #ebe7df)' }}>{rec.name}</strong>}
+                        {rec.name && <strong style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 14, color: 'var(--text, #ebe7df)' }}>{rec.name}</strong>}
                         {rec.role && <span style={{ whiteSpace: 'nowrap' }}><CSBadge>{rec.role}</CSBadge></span>}
                         {isSelected && (<span style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}><CSBadge color="green">✓ {t('saves.identity.badge_selected')}</CSBadge></span>)}
                       </div>

@@ -6,6 +6,7 @@ import { StateField, StateEffect, Prec } from '@codemirror/state';
 import { EditorView, Decoration, keymap, showPanel } from '@codemirror/view';
 import { setPanelVisible } from './md-panel.js';
 import { consumeSSE } from './sse-consume.js';
+import i18n from '../i18n/index.js';
 
 // ── 待定区状态(高亮 + 范围 + 改写时的原文,用于放弃还原)──────────────────
 const setPending = StateEffect.define();   // {from,to,original,busy} | null
@@ -62,7 +63,7 @@ function pendingPanel(view) {
   const sync = (v) => {
     const p = v.state.field(pendingField, false);
     setPanelVisible(dom, !!p);
-    if (p) dom.textContent = p.busy ? 'AI 生成中…  Esc 取消' : 'AI 续写完成 —  Tab 接受   Esc 放弃';
+    if (p) dom.textContent = p.busy ? i18n.t('md_ai.busy') : i18n.t('md_ai.done');
   };
   sync(view);
   return { dom, update: (u) => sync(u.view) };
@@ -140,7 +141,7 @@ export async function runContinue(view, opts = {}) {
     let errMsg = '';
     await consumeSSE(res, (ev, data) => {
       if (ev === 'token') insertToken(data.text || '');
-      else if (ev === 'error') errMsg = data.message || '生成失败';
+      else if (ev === 'error') errMsg = data.message || i18n.t('md_ai.gen_failed');
     }, { signal: ctrl.signal });
 
     const p = pendingState(view);
@@ -152,9 +153,9 @@ export async function runContinue(view, opts = {}) {
       opts.onState?.('error', errMsg || 'empty');
       try {
         window.__apiToast?.(
-          errMsg ? 'AI 续写失败' : 'AI 没有返回续写内容',
+          errMsg ? i18n.t('md_ai.failed') : i18n.t('md_ai.empty'),
           { kind: errMsg ? 'danger' : 'warn',
-            detail: errMsg || '该模型对当前上下文没有给出补全。试试:把光标放进正文段落里、先选中一段再「改写」、或在右栏切换一个模型重试。' },
+            detail: errMsg || i18n.t('md_ai.empty_detail') },
         );
       } catch (_) {}
       return;
@@ -165,7 +166,7 @@ export async function runContinue(view, opts = {}) {
   } catch (e) {
     if (pendingState(view) && !got) rejectPending(view);
     opts.onState?.('error', e?.message);
-    try { window.__apiToast?.('AI 续写出错', { kind: 'danger', detail: e?.message }); } catch (_) {}
+    try { window.__apiToast?.(i18n.t('md_ai.error'), { kind: 'danger', detail: e?.message }); } catch (_) {}
   }
 }
 
@@ -177,11 +178,11 @@ export function cmdKKeymap(getScriptId, getOnAccept, getChapterIndex) {
     run: (view) => {
       (async () => {
         const sel = view.state.selection.main;
-        const title = sel.empty ? 'AI 续写(光标处)' : 'AI 改写选中段';
+        const title = sel.empty ? i18n.t('md_ai.cmdk_continue') : i18n.t('md_ai.cmdk_rewrite');
         let instr = '';
         try {
           instr = await (window.__prompt
-            ? window.__prompt({ title, label: '指令(可空;续写直接回车=顺势写)', default: '' })
+            ? window.__prompt({ title, label: i18n.t('md_ai.cmdk_label'), default: '' })
             : Promise.resolve(prompt(title)));
         } catch (_) { instr = null; }
         if (instr === null) return;   // 取消

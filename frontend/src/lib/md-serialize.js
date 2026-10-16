@@ -16,7 +16,7 @@ import YAML from 'yaml';
 
 export const SCHEMAS = {
   chapter: {
-    label: '章节正文', idField: 'chapter_index',
+    label: 'Chapter text', idField: 'chapter_index',
     bodyField: 'content',
     writeScalars: ['title', 'volume_title'],
     writeStrArrays: {}, writeObjLists: [], writeOpenObjs: [],
@@ -24,7 +24,7 @@ export const SCHEMAS = {
     order: ['chapter_index', 'title', 'volume_title', 'word_count', 'id'],
   },
   worldbook: {
-    label: '世界书', idField: 'id',
+    label: 'Worldbook', idField: 'id',
     bodyField: 'content',
     writeScalars: ['title', 'priority', 'enabled', 'token_budget', 'insertion_position',
       'sticky_turns', 'cooldown_turns', 'probability', 'first_revealed_chapter'],
@@ -36,7 +36,7 @@ export const SCHEMAS = {
       'keys', 'regex_keys', 'character_filter', 'scene_filter'],
   },
   anchor: {
-    label: '时间线锚点', idField: 'id',
+    label: 'Timeline anchor', idField: 'id',
     bodyField: 'sample_summary',
     writeScalars: ['story_phase', 'story_time_label', 'chapter_min', 'chapter_max', 'confidence', 'sample_title'],
     writeStrArrays: { keywords: 1 },   // 注意:后端是 PostgreSQL text[](非 jsonb)
@@ -46,7 +46,7 @@ export const SCHEMAS = {
       'chapter_count', 'confidence', 'sample_title', 'keywords'],
   },
   canon: {
-    label: 'Canon 实体', idField: 'logical_key',
+    label: 'Canon entity', idField: 'logical_key',
     bodyField: 'background',
     // logical_key 是实体的固定标识(其它实体的 parent_logical_key 指向它),只读回显:
     // 以前可写,改了保存会把 PUT 打到一个不存在的 key 上 → 「不存在」报错。
@@ -59,7 +59,7 @@ export const SCHEMAS = {
       'identity', 'summary', 'aliases', 'first_revealed_chapter', 'public_knowledge', 'importance', 'attrs'],
   },
   card: {
-    label: '角色卡', idField: 'id',
+    label: 'Character card', idField: 'id',
     bodyField: 'background',
     writeScalars: ['name', 'full_name', 'identity', 'appearance', 'personality', 'speech_style',
       'current_status', 'secrets', 'first_revealed_chapter', 'importance', 'token_budget', 'priority', 'enabled'],
@@ -85,7 +85,7 @@ export function splitFrontMatter(text) {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(text || '');
   if (!m) return { fm: {}, body: text || '' };
   let fm = {};
-  try { fm = YAML.parse(m[1]) || {}; } catch (e) { throw new Error('YAML front-matter 解析失败:' + (e?.message || e)); }
+  try { fm = YAML.parse(m[1]) || {}; } catch (e) { throw new Error('Failed to parse YAML front-matter: ' + (e?.message || e)); }
   if (!isPlainObj(fm)) fm = {};
   // toMd 写的是 `---\n<yaml>---\n\n<body>`(yaml 末尾自带 \n),分隔符是紧跟的一个 \n;剔除它即得无损正文。
   const body = (text.slice(m[0].length)).replace(/^\n/, '');
@@ -95,7 +95,7 @@ export function splitFrontMatter(text) {
 // row → markdown。
 export function toMd(kind, row) {
   const sc = SCHEMAS[kind];
-  if (!sc) throw new Error('未知实体类型:' + kind);
+  if (!sc) throw new Error('Unknown entity type: ' + kind);
   row = row || {};
   const fm = {};
   const seen = new Set();
@@ -125,7 +125,7 @@ export function toMd(kind, row) {
 // markdown → 可写 patch(只含 write* 字段 + body;readonly 一律剔除)。
 export function fromMd(kind, text) {
   const sc = SCHEMAS[kind];
-  if (!sc) throw new Error('未知实体类型:' + kind);
+  if (!sc) throw new Error('Unknown entity type: ' + kind);
   const { fm, body } = splitFrontMatter(text);
   const patch = {};
   for (const k of sc.writeScalars) if (k in fm) patch[k] = fm[k];

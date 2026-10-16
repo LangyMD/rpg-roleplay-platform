@@ -1,3 +1,4 @@
+import i18n from './i18n/index.js';
 /**
  * worldbook-status-toast.js — task 88
  *
@@ -94,7 +95,7 @@
     if (d.state === "consulting") {
       const q = (d.query || "").slice(0, 32);
       const phase = (d.phase || "").slice(0, 28);
-      const parts = ["GM 正在翻阅设定"];
+      const parts = [i18n.t('wb_toast.consulting')];
       if (phase) parts.push(" · " + phase);
       else if (q) parts.push(" · " + q);
       show(parts.join(""));
@@ -102,11 +103,11 @@
       const conf = typeof d.confidence === "number" ? d.confidence : null;
       let msg;
       if (conf !== null && conf < 0.4) {
-        msg = "翻阅未找到精确锚点 (GM 将谨慎处理)";
+        msg = i18n.t('wb_toast.no_anchor');
       } else if (d.phase) {
-        msg = "已翻阅 · " + d.phase;
+        msg = i18n.t('wb_toast.consulted', { phase: d.phase });
       } else {
-        msg = "翻阅完成";
+        msg = i18n.t('wb_toast.done');
       }
       hideSoon(msg, 1200);
     }

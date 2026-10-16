@@ -302,7 +302,7 @@ function MeUserSettings() {
         open={exportOpen}
         eyebrow={t('platform.me.settings.export_eyebrow', '导出数据')}
         title={t('platform.me.settings.export_title', '选择要导出的内容')}
-        hint="POST /api/account/export · 生成后通过邮件发送下载链接（链接 7 天有效）"
+        hint={t('platform.me.settings.export_hint')}
         fields={[
           { key: "scope", label: t('platform.me.settings.export_scope', '范围'), type: "select", default: "all",
             options: [
@@ -408,11 +408,11 @@ function MeUserSettings() {
           </>}
         >
             <div style={{fontSize: 13, lineHeight: 1.7, color: "var(--text-quiet)", maxHeight: 360, overflow: "auto"}}>
-              <p><strong>{t('platform.me.settings.policy_p1_title', '1. 我们收集什么')}</strong>：{t('platform.me.settings.policy_p1_body', '账号信息（用户名、邮箱、可选手机）、设备指纹（用于会话）、用量遥测（仅在你开启时）。')}</p>
-              <p><strong>{t('platform.me.settings.policy_p2_title', '2. 我们 不 收集什么')}</strong>：{t('platform.me.settings.policy_p2_body', '剧本正文、玩家变量、私聊、长期记忆、世界书条目——这些数据加密存储在你的工作区，团队 无 任何访问。')}</p>
-              <p><strong>{t('platform.me.settings.policy_p3_title', '3. 与第三方')}</strong>：{t('platform.me.settings.policy_p3_body', '不向第三方分享剧本内容。模型 API 调用按你配置直接发往对应厂商（OpenAI / Anthropic 等），团队 不 代理也 不 留存。')}</p>
-              <p><strong>{t('platform.me.settings.policy_p4_title', '4. 数据所有权')}</strong>：{t('platform.me.settings.policy_p4_body', '你可以随时通过『导出我的数据』申请完整归档；可随时『停用账号』（90 天保留）或『永久删除』（立刻执行）。')}</p>
-              <p><strong>{t('platform.me.settings.policy_p5_title', '5. 合规')}</strong>：{t('platform.me.settings.policy_p5_body', '本平台符合 GDPR · 中国《个人信息保护法》· 加州 CCPA。')}</p>
+              <p><strong>{t('platform.me.settings.policy_p1_title', '1. 我们收集什么')}</strong>{t('common.label_sep')}{t('platform.me.settings.policy_p1_body', '账号信息（用户名、邮箱、可选手机）、设备指纹（用于会话）、用量遥测（仅在你开启时）。')}</p>
+              <p><strong>{t('platform.me.settings.policy_p2_title', '2. 我们 不 收集什么')}</strong>{t('common.label_sep')}{t('platform.me.settings.policy_p2_body', '剧本正文、玩家变量、私聊、长期记忆、世界书条目——这些数据加密存储在你的工作区，团队 无 任何访问。')}</p>
+              <p><strong>{t('platform.me.settings.policy_p3_title', '3. 与第三方')}</strong>{t('common.label_sep')}{t('platform.me.settings.policy_p3_body', '不向第三方分享剧本内容。模型 API 调用按你配置直接发往对应厂商（OpenAI / Anthropic 等），团队 不 代理也 不 留存。')}</p>
+              <p><strong>{t('platform.me.settings.policy_p4_title', '4. 数据所有权')}</strong>{t('common.label_sep')}{t('platform.me.settings.policy_p4_body', '你可以随时通过『导出我的数据』申请完整归档；可随时『停用账号』（90 天保留）或『永久删除』（立刻执行）。')}</p>
+              <p><strong>{t('platform.me.settings.policy_p5_title', '5. 合规')}</strong>{t('common.label_sep')}{t('platform.me.settings.policy_p5_body', '本平台符合 GDPR · 中国《个人信息保护法》· 加州 CCPA。')}</p>
             </div>
         </Modal>
       )}

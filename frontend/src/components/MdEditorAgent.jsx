@@ -7,6 +7,7 @@ import { Composer } from '../game-composer.jsx';
 import { RpgMarkdown } from '../markdown-render.jsx';
 import { consumeSSE } from '../lib/sse-consume.js';
 import { lsGet, lsSet, lsRemove } from '../lib/storage.js';
+import i18n from '../i18n/index.js';
 
 // 编辑器 agent 模型选择落库目标:复用游戏/酒馆同一个 Composer 内置模型选择器,但写到 console_assistant
 // 专属偏好(不污染游戏 GM 模型)。后端 console_assistant 解析优先读此键(app.py)。
@@ -17,19 +18,9 @@ const EDITOR_MODEL_PERSIST = {
 const { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } = React;
 
 // 工具原始 API 名 → 人类可读标签(消息流里不再直接显示 update_script_chapter 这种裸标识符)。
-const TOOL_LABELS = {
-  get_chapter_text: '读章节正文', get_script_chapters: '列出章节', search_manuscript: '全书检索',
-  list_worldbook_entries: '列出世界书', list_canon_entities: '列出设定实体', list_anchors: '列出时间线',
-  list_script_npcs: '列出角色卡', get_script_character_card: '读角色卡', get_chapter_context: '读本章上下文',
-  update_script_chapter: '改写章节', create_script_chapter: '新建章节',
-  upsert_worldbook_entry: '写入世界书', upsert_worldbook_entries: '批量写世界书', delete_worldbook_entry: '删除世界书条目',
-  update_npc_card: '编辑角色卡', create_npc_card: '新建角色卡',
-  update_anchor: '编辑时间线', create_anchor: '新建时间线节点', delete_anchor: '删除时间线节点',
-  upsert_canon_entity: '写入设定实体', extract_from_selection: '抽取选区设定',
-  read_uploaded_document: '读取拖入文档', preview_document_split: '预览拆章', import_document_as_chapters: '导入为章节',
-  delegate_writing_task: '委派子模型写作',
-};
-function toolLabel(name) { return TOOL_LABELS[name] || name; }
+// 文案在 i18n components.md_editor_agent.tool_label.<tool>(缺键时回退原始工具名)。
+const TOOL_LABELS = new Set(['get_chapter_text', 'get_script_chapters', 'search_manuscript', 'list_worldbook_entries', 'list_canon_entities', 'list_anchors', 'list_script_npcs', 'get_script_character_card', 'get_chapter_context', 'update_script_chapter', 'create_script_chapter', 'upsert_worldbook_entry', 'upsert_worldbook_entries', 'delete_worldbook_entry', 'update_npc_card', 'create_npc_card', 'update_anchor', 'create_anchor', 'delete_anchor', 'upsert_canon_entity', 'extract_from_selection', 'read_uploaded_document', 'preview_document_split', 'import_document_as_chapters', 'delegate_writing_task']);
+function toolLabel(name) { return TOOL_LABELS.has(name) ? i18n.t('components.md_editor_agent.tool_label.' + name) : name; }
 
 // 某工具调用是否可撤销(done 且未撤过 + 是「编辑已有」类写入):章节 / 世界书条目 / NPC 卡。
 function _undoInfo(tc) {
@@ -82,7 +73,7 @@ function MdeWritePreview({ pv, t }) {
             <div className="mde-agent-preview-col">
               <div className="mde-agent-preview-col-label">
                 {t('components.md_editor_agent.preview.before', { defaultValue: '当前' })}
-                {typeof pv.before_chars === 'number' ? ` · ${pv.before_chars} 字` : ''}
+                {typeof pv.before_chars === 'number' ? ` · ${pv.before_chars}${t('components.md_editor_agent.doc.chars_suffix')}` : ''}
               </div>
               <pre className="mde-agent-preview-text before">{pv.before}</pre>
             </div>
@@ -92,7 +83,7 @@ function MdeWritePreview({ pv, t }) {
               {isChapter
                 ? t('components.md_editor_agent.preview.after', { defaultValue: '改为' })
                 : t('components.md_editor_agent.preview.will_write', { defaultValue: '将写入' })}
-              {typeof pv.after_chars === 'number' ? ` · ${pv.after_chars} 字` : ''}
+              {typeof pv.after_chars === 'number' ? ` · ${pv.after_chars}${t('components.md_editor_agent.doc.chars_suffix')}` : ''}
             </div>
             <pre className="mde-agent-preview-text after">{pv.after}</pre>
           </div>
@@ -220,23 +211,23 @@ function MdeToolBlock({ tc, t, busy, onUndo, canUndo }) {
 
 // 选区改写预设(写作引擎 rewrite 模式;onContinue 会对当前选区跑 runContinue)。
 const REWRITE_PRESETS = [
-  { key: 'tighten', labelKey: 'components.md_editor_agent.rewrite.tighten', instruction: '把选中这段改写得更紧凑有力:删去冗余与重复,保留全部信息、人称、时态与语气,不要扩写。' },
-  { key: 'expand', labelKey: 'components.md_editor_agent.rewrite.expand', instruction: '把选中这段适度扩写:补充与上下文一致的感官细节、动作或内心,保持原有节奏、视角与语气,不引入新设定。' },
-  { key: 'polish', labelKey: 'components.md_editor_agent.rewrite.polish', instruction: '润色选中这段:优化措辞与句子节奏、修正生硬或重复的表达,严格保持原意、人称、视角、语气与内容尺度不变。' },
-  { key: 'vivid', labelKey: 'components.md_editor_agent.rewrite.vivid', instruction: '把选中这段改写得更具画面感:多用具体可感的描写、少用空泛的概括与解释,show-don\'t-tell,保持原意与语气。' },
+  { key: 'tighten', labelKey: 'components.md_editor_agent.rewrite.tighten', instruction: 'Rewrite the selected passage to be tighter and punchier: cut redundancy and repetition, keep all information, person, tense and tone, and do not expand it.' },
+  { key: 'expand', labelKey: 'components.md_editor_agent.rewrite.expand', instruction: 'Expand the selected passage moderately: add sensory detail, action or inner thought consistent with the context, keep the original pacing, point of view and tone, and introduce no new setting facts.' },
+  { key: 'polish', labelKey: 'components.md_editor_agent.rewrite.polish', instruction: 'Polish the selected passage: improve word choice and sentence rhythm and fix stiff or repetitive phrasing, while strictly keeping the meaning, person, point of view, tone and content level unchanged.' },
+  { key: 'vivid', labelKey: 'components.md_editor_agent.rewrite.vivid', instruction: 'Rewrite the selected passage to be more vivid: favor concrete, tangible description over vague summary and explanation (show, don\'t tell), keeping the meaning and tone.' },
 ];
 
 // 写作技能(发给写作 agent 的精心 prompt;agent 会用读取工具读正文/设定再诊断,只给清单不擅自改库)。
 // 章节场景下最有用 —— 通读 + 对照设定 + 给可执行建议。
 const WRITING_SKILLS = [
-  { key: 'review', label: '审稿', tipKey: 'review',
-    prompt: '请审阅【当前打开的章节】。先用 get_chapter_text 读这章正文,再用 list_worldbook_entries / list_canon_entities / list_script_npcs / list_anchors 对照既有设定与时间线。找出:① 与世界书/正史/时间线/角色卡的设定矛盾;② 前后文连贯性断裂、人物行为不符设定;③ 明显重复的用词或句式;④ 视角(POV)或时态跳脱;⑤ 节奏拖沓或过快的段落。逐条列清单【位置(引一句原文)→ 问题 → 修改建议】。只诊断,先不要改库,等我决定。' },
-  { key: 'outline', label: '梳理大纲',
-    prompt: '请用 get_chapter_text 读【当前章节】,梳理它的分场/节拍大纲——每个节拍写清:发生了什么 + 推进了什么(信息/关系/张力),并指出结构上可加强或冗余的地方。只输出大纲与建议,不改库。' },
-  { key: 'voice', label: '角色嗓音',
-    prompt: '请用 get_chapter_text 读【当前章节】,挑出有台词的角色,逐个用 get_script_character_card 取其设定,评估台词是否贴合该角色的说话风格/性格/身份,指出跳脱之处并给修改方向。只诊断,不改库。' },
-  { key: 'foreshadow', label: '伏笔线索',
-    prompt: '请用 get_chapter_text 读【当前章节】(必要时 get_script_chapters 跨章回看),梳理本章埋下或呼应的伏笔/线索:哪些已回收、哪些悬而未决、哪些可能与既有设定冲突。只输出清单与建议,不改库。' },
+  { key: 'review', tipKey: 'review',
+    prompt: 'Please review the [currently open chapter]. First read the chapter text with get_chapter_text, then check it against the existing setting and timeline using list_worldbook_entries / list_canon_entities / list_script_npcs / list_anchors. Find: (1) contradictions with the worldbook / canon / timeline / character cards; (2) breaks in continuity or characters acting out of character; (3) obviously repeated words or sentence patterns; (4) slips in point of view (POV) or tense; (5) passages whose pacing drags or rushes. List each item as [location (quote one sentence) → problem → suggested fix]. Diagnose only; do not change anything in the library yet; wait for my decision.' },
+  { key: 'outline',
+    prompt: 'Please read the [current chapter] with get_chapter_text and lay out its scene/beat outline. For each beat state what happens and what it advances (information / relationships / tension), and point out where the structure could be strengthened or is redundant. Output only the outline and suggestions; do not change the library.' },
+  { key: 'voice',
+    prompt: 'Please read the [current chapter] with get_chapter_text, pick out the characters who have dialogue, fetch each one\'s profile with get_script_character_card, and assess whether their lines fit that character\'s speaking style / personality / identity. Point out lines that break character and suggest how to fix them. Diagnose only; do not change the library.' },
+  { key: 'foreshadow',
+    prompt: 'Please read the [current chapter] with get_chapter_text (use get_script_chapters to look back across chapters if needed) and map the foreshadowing / clues this chapter plants or pays off: which have been resolved, which are still open, and which may conflict with the existing setting. Output only the list and suggestions; do not change the library.' },
 ];
 
 const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, onWriteComplete, onContinue, onProposeChapterEdit, selLen = 0, getSelectionContext, onIssuesReported }, ref) {
@@ -275,9 +266,9 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
         A?.scripts?.worldbook?.(scriptId).catch(() => null),
       ]);
       const items = [];
-      for (const c of ((chs?.chapters || chs?.items) || [])) items.push({ kind: 'chapter', id: c.chapter_index, label: `第${c.chapter_index}章 ${(c.title || '').replace(/^\s*第\s*[0-9一二三四五六七八九十百千]+\s*章\s*/, '')}`.trim() });
-      for (const c of (Array.isArray(cards) ? cards : (cards?.items || []))) items.push({ kind: 'card', id: c.id, label: c.name || `卡#${c.id}` });
-      for (const w of ((wb?.entries || wb?.items) || (Array.isArray(wb) ? wb : []))) items.push({ kind: 'worldbook', id: w.id, label: w.title || `世界书#${w.id}` });
+      for (const c of ((chs?.chapters || chs?.items) || [])) items.push({ kind: 'chapter', id: c.chapter_index, label: `${i18n.t('components.md_editor_agent.ref.chapter_n', { n: c.chapter_index })} ${(c.title || '').replace(/^\s*第\s*[0-9一二三四五六七八九十百千]+\s*章\s*/, '')}`.trim() });
+      for (const c of (Array.isArray(cards) ? cards : (cards?.items || []))) items.push({ kind: 'card', id: c.id, label: c.name || i18n.t('components.md_editor_agent.ref.card_n', { id: c.id }) });
+      for (const w of ((wb?.entries || wb?.items) || (Array.isArray(wb) ? wb : []))) items.push({ kind: 'worldbook', id: w.id, label: w.title || i18n.t('components.md_editor_agent.ref.worldbook_n', { id: w.id }) });
       setRefPicker((p) => p ? { ...p, items } : p);
     } catch (_) { setRefPicker((p) => p ? { ...p, items: [] } : p); }
   }, [scriptId]);
@@ -440,13 +431,13 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
     // chapter_index 时可确定性补默认(否则 update_script_chapter 必失败,新剧本写作流完全失效)。
     const openChapterIndex = (activeTab && activeTab.kind === 'chapter') ? activeTab.id : undefined;
     const open_file = activeTab
-      ? `【${labelKind(activeTab.kind)}】「${activeTab.label}」(${activeTab.kind === 'chapter' ? `chapter_index=${activeTab.id}` : `${activeTab.kind} id=${activeTab.id}`})`
-      : '(未打开具体文件)';
+      ? `[${labelKind(activeTab.kind)}] "${activeTab.label}" (${activeTab.kind === 'chapter' ? `chapter_index=${activeTab.id}` : `${activeTab.kind} id=${activeTab.id}`})`
+      : '(no specific file open)';
     const note = activeTab
-      ? `用户正在剧本编辑器编辑剧本 #${scriptId} 的 ${open_file}。可用 update_*/upsert_* 工具直接改并落库`
-        + (openChapterIndex != null ? `(改本章正文用 update_script_chapter(chapter_index=${openChapterIndex}, content=...))` : '')
-        + `;改前先说清要改什么。`
-      : `用户在剧本编辑器,当前剧本 #${scriptId},未打开具体文件。`;
+      ? `The user is editing ${open_file} of script #${scriptId} in the script editor. You can change it directly and save with the update_*/upsert_* tools`
+        + (openChapterIndex != null ? ` (to edit this chapter's text use update_script_chapter(chapter_index=${openChapterIndex}, content=...))` : '')
+        + `; say what you are going to change before changing it.`
+      : `The user is in the script editor on script #${scriptId} with no specific file open.`;
     // tab:'md-editor' 是后端 build_system_prompt 注入编辑器上下文块的触发标记(光有 script_id 不够)。
     return { script_id: scriptId, tab: 'md-editor', open_file, note, open_chapter_index: openChapterIndex };
   }, [scriptId, activeTab]);
@@ -585,25 +576,25 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
     if (selLen > 0 && !selCtxOff) {
       const sc = getSelectionContext?.();
       if (sc && sc.selection && sc.selection.trim()) {
-        sentMsg = `[我在正文里选中的片段 —— 下文若说「这段 / 选中 / 这一段」即指它]\n"""\n${sc.selection.slice(0, 4000)}\n"""\n\n${raw}`;
+        sentMsg = `[The passage I selected in the text. Below, "this passage" / "the selection" refers to it]\n"""\n${sc.selection.slice(0, 4000)}\n"""\n\n${raw}`;
       }
     }
     // @引用:把 pin 的实体前置成指示,让 agent 用对应工具优先读取(无需客户端搬运正文)。
     if (pinnedRefs.length) {
       const lines = pinnedRefs.map((r) => {
-        if (r.kind === 'chapter') return `- ${r.label}(用 get_chapter_text(chapter_index=${r.id}) 读取)`;
-        if (r.kind === 'card') return `- 角色卡「${r.label}」(用 get_script_character_card(card_id=${r.id}) 读取)`;
-        return `- 世界书「${r.label}」(entry_id=${r.id};用 list_worldbook_entries 核对)`;
+        if (r.kind === 'chapter') return `- ${r.label} (read with get_chapter_text(chapter_index=${r.id}))`;
+        if (r.kind === 'card') return `- Character card "${r.label}" (read with get_script_character_card(card_id=${r.id}))`;
+        return `- Worldbook "${r.label}" (entry_id=${r.id}; check with list_worldbook_entries)`;
       });
-      sentMsg = `[用户特别指定要参考以下内容,请【先用对应工具读取】再回答,优先级高于自行检索]\n${lines.join('\n')}\n\n${sentMsg}`;
+      sentMsg = `[The user specifically asked you to consult the following. Read them with the matching tools FIRST, then answer; this takes priority over your own searching]\n${lines.join('\n')}\n\n${sentMsg}`;
       setPinnedRefs([]);
     }
     // 拖入文档:把 doc_id 前置到消息里,agent 用 preview_document_split/import_document_as_chapters/
     // read_uploaded_document 处理(原文不进上下文,只传引用)。发出后清除附件。
     if (attached && attached.doc_id) {
-      sentMsg = `[用户拖入了文档「${attached.filename}」(doc_id=${attached.doc_id},约${attached.chars}字)。`
-        + `如需拆章先 preview_document_split(doc_id) 预览再 import_document_as_chapters;其它指令可用 `
-        + `read_uploaded_document(doc_id) 读取内容]\n\n${sentMsg}`;
+      sentMsg = `[The user dropped in the document "${attached.filename}" (doc_id=${attached.doc_id}, about ${attached.chars} characters). `
+        + `To split it into chapters, preview with preview_document_split(doc_id) first, then import_document_as_chapters; for other requests `
+        + `read the content with read_uploaded_document(doc_id)]\n\n${sentMsg}`;
       setAttached(null);
     }
     setInput('');
@@ -669,12 +660,12 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
       const t = (text || '').trim();
       if (!t || busy) return;
       const msg =
-        `我刚在「${label || '正文'}」${rewrite ? '改写' : '续写'}了下面这段正文。` +
-        '如果其中**真实地**引入或改变了某个角色的设定/状态/关系、某项世界设定、' +
-        '或修正了某个既有时间线节点,请按【写作准则·知识同步】用对应工具同步到知识资产' +
-        '(角色卡/世界书/时间线/canon);如果没有需要同步的,直接回「无需同步」即可。' +
-        '不要编造正文里没有的内容。\n\n' +
-        `${rewrite ? '改写后的正文' : '续写的正文'}:\n"""\n${t}\n"""`;
+        `I just ${rewrite ? 'rewrote' : 'continued'} the passage below in "${label || 'the text'}". ` +
+        'If it **actually** introduces or changes a character\'s profile / state / relationships or a world setting fact, ' +
+        'or corrects an existing timeline node, sync it to the knowledge assets with the matching tools per [Writing rules: knowledge sync] ' +
+        '(character cards / worldbook / timeline / canon). If nothing needs syncing, just reply "No sync needed". ' +
+        'Do not invent anything that is not in the text.\n\n' +
+        `${rewrite ? 'Rewritten text' : 'Continued text'}:\n"""\n${t}\n"""`;
       send(msg);
     },
     // 复审本章(对标 Copilot /review):让 agent 读该章 + 对照设定逐项审,最后调 report_writing_issues
@@ -683,14 +674,14 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
       if (busy || chapterIndex == null) return false;
       const n = chapterIndex;
       const msg =
-        `请对「${label || `第${n}章`}」做一次责任编辑式通读审稿。步骤:` +
-        `① 先用工具读取第 ${n} 章正文与相关设定(世界书/角色卡/canon/时间线/前情);` +
-        '② 对照逐项检查:与设定或前文的事实矛盾、人物声音/性格漂移、埋下却未回收的伏笔、' +
-        '节奏问题、POV/人称越界、重复啰嗦;' +
-        `③ 【务必调用 report_writing_issues】把发现的问题结构化汇总,每条带 chapter=${n}、severity(高/中/低)、` +
-        'type(类别)、detail(具体描述+修改建议)。' +
-        '若通读后确无明显问题,也调用一次 report_writing_issues,传一条 severity=低、type=通读、' +
-        'detail 说明「本章未发现明显问题」。只审不改,不要动正文。';
+        `Do a full editor's read-through review of "${label || `Chapter ${n}`}". Steps: ` +
+        `(1) First use the tools to read the text of chapter ${n} and the related setting (worldbook / character cards / canon / timeline / earlier events); ` +
+        '(2) Check item by item: factual contradictions with the setting or earlier text, drift in character voice / personality, foreshadowing planted but never paid off, ' +
+        'pacing problems, POV / person slips, repetition and wordiness; ' +
+        `(3) [You MUST call report_writing_issues] to submit a structured summary of the problems found. Each item has chapter=${n}, severity (high/medium/low), ` +
+        'type (category), and detail (specific description + suggested fix). ' +
+        'If the read-through finds no clear problems, still call report_writing_issues once with a single item: severity=low, type=read-through, ' +
+        'detail "No clear problems found in this chapter". Review only; do not touch the text.';
       send(msg);
       return true;
     },
@@ -755,7 +746,7 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
             <div className="mde-agent-selcard-actions">
               {REWRITE_PRESETS.map((p) => (
                 <button key={p.key} type="button" disabled={busy} onClick={() => onContinue(p.instruction)}>
-                  {t(p.labelKey, { defaultValue: ({ tighten: '精简', expand: '扩写', polish: '润色', vivid: '画面感' })[p.key] })}
+                  {t(p.labelKey)}
                 </button>
               ))}
               <button
@@ -862,7 +853,7 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
               {WRITING_SKILLS.map((s) => (
                 <button key={s.key} type="button" className="mde-agent-tool skill" disabled={busy}
                   onClick={() => send(s.prompt)}
-                >{t('components.md_editor_agent.skills.' + s.key, { defaultValue: s.label })}</button>
+                >{t('components.md_editor_agent.skills.' + s.key)}</button>
               ))}
             </>
           )}
@@ -885,7 +876,7 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
           <div className="mde-agent-refbar">
             {pinnedRefs.map((r) => (
               <span key={r.kind + ':' + r.id} className="mde-agent-refchip">
-                <span className="mde-agent-refchip-k">{({ chapter: '章', card: '卡', worldbook: '书' })[r.kind] || ''}</span>
+                <span className="mde-agent-refchip-k">{r.kind === 'chapter' || r.kind === 'card' || r.kind === 'worldbook' ? t('components.md_editor_agent.ref.kind_' + r.kind) : ''}</span>
                 <span className="mde-agent-refchip-l" title={r.label}>{r.label}</span>
                 <button type="button" className="mde-agent-refchip-x" onClick={() => removeRef(r)} aria-label={t('common.remove', { defaultValue: '移除' })}>×</button>
               </span>
@@ -927,5 +918,5 @@ const MdEditorAgent = forwardRef(function MdEditorAgent({ scriptId, activeTab, o
 export default MdEditorAgent;
 
 function labelKind(kind) {
-  return ({ chapter: '章节正文', card: '角色卡', worldbook: '世界书', anchor: '时间线锚点', canon: 'Canon 实体' })[kind] || kind;
+  return ({ chapter: 'Chapter text', card: 'Character card', worldbook: 'Worldbook', anchor: 'Timeline anchor', canon: 'Canon entity' })[kind] || kind;
 }

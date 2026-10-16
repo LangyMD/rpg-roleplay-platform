@@ -396,7 +396,7 @@ function OnlineBrowse() {
     setImporting((p) => ({ ...p, [it.id]: true }));
     try {
       const r = await window.api.federation.connectorImport(it.id);
-      window.__apiToast?.(t('settings.more.online_lib.browse_import_ok'), { kind: 'ok', detail: `「${it.title}」→ ${t('settings.more.online_lib.browse_import_local')} #${r.script_id}` });
+      window.__apiToast?.(t('settings.more.online_lib.browse_import_ok'), { kind: 'ok', detail: t('settings.more.online_lib.browse_import_detail', { title: it.title, local: t('settings.more.online_lib.browse_import_local'), id: r.script_id }) });
     } catch (e) { window.__apiToast?.(t('settings.more.online_lib.browse_import_fail'), { kind: 'danger', detail: e?.payload?.error || e?.message }); }
     finally { setImporting((p) => ({ ...p, [it.id]: false })); }
   };

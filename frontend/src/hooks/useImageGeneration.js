@@ -29,6 +29,7 @@
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { isCredentialsError } from '../lib/creds.js';
+import i18n from '../i18n/index.js';
 
 export function useImageGeneration({ onDone, onFail } = {}) {
   const [generating, setGenerating] = useState(false);
@@ -64,7 +65,7 @@ export function useImageGeneration({ onDone, onFail } = {}) {
     if (perCall && perCall.onFail) { perCall.onFail(m, { creds }); return; }
     if (onFail) { onFail(m, { creds }); return; }
     if (creds) { setCredsMissing(true); setError(perCall && perCall.credsErrorText ? perCall.credsErrorText : null); }
-    else { setCredsMissing(false); setError(m || '操作失败'); }
+    else { setCredsMissing(false); setError(m || i18n.t('image_gen.op_failed')); }
   }, [stop, onFail]);
 
   const handleDone = useCallback((url) => {
@@ -83,17 +84,17 @@ export function useImageGeneration({ onDone, onFail } = {}) {
         const r = await window.api.images.get(imageId);
         if (genIdRef.current !== myGen) return;  // 陈旧轮次,已被新 generate() 取代
         if (!r) {
-          if (pc.emptyResStops) { handleFail(pc.emptyResMsg || '轮询返回空响应', pc); return; }
+          if (pc.emptyResStops) { handleFail(pc.emptyResMsg || i18n.t('image_gen.empty_poll'), pc); return; }
           pollRef.current = setTimeout(() => poll(imageId, pc, myGen), intervalMs);
           return;
         }
         const status = pc.doneFromStatus ? pc.doneFromStatus(r) : r.status;
         if (status === 'done' && (!pc.requireUrl || r.url)) { handleDone(r.url); return; }
-        if (status === 'failed') { handleFail(r.error || pc.failFallback || '生成失败', pc); return; }
+        if (status === 'failed') { handleFail(r.error || pc.failFallback || i18n.t('image_gen.gen_failed'), pc); return; }
         pollRef.current = setTimeout(() => poll(imageId, pc, myGen), intervalMs);
       } catch (e) {
         if (genIdRef.current !== myGen) return;  // 陈旧轮次
-        if (pc.catchStops) { handleFail((e && e.message) || pc.pollCatchMsg || '轮询出错', pc); return; }
+        if (pc.catchStops) { handleFail((e && e.message) || pc.pollCatchMsg || i18n.t('image_gen.poll_error'), pc); return; }
         pollRef.current = setTimeout(() => poll(imageId, pc, myGen), catchMs);
       }
     })();
@@ -119,7 +120,7 @@ export function useImageGeneration({ onDone, onFail } = {}) {
         return;
       }
       // GenerateImageModal 语义:creds 可能藏在 e / e.payload.detail|error 里 —— 预分类后给 detail。
-      const errMsg = (e && e.message) || pc.genericErrorMsg || '请求失败';
+      const errMsg = (e && e.message) || pc.genericErrorMsg || i18n.t('image_gen.request_failed');
       const payload = e && e.payload;
       const detail = (payload && (payload.detail || payload.error)) || errMsg;
       const creds = isCredentialsError(e) || isCredentialsError(detail);

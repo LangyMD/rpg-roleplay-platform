@@ -21,7 +21,16 @@
     "image_preview": "Image preview",
     "info_hint": "Info",
     "settings": "Settings",
-    "remove": "Remove"
+    "remove": "Remove",
+    "next": "Next",
+    "prev": "Previous",
+    "done": "Done",
+    "no_data": "No data",
+    "collapse_details": "Collapse details",
+    "space_sep": "  ",
+    "label_sep": ": ",
+    "comma_sep": ", ",
+    "period": "."
   },
   "settings": {
     "title": "Settings",
@@ -36,7 +45,9 @@
       "autosave": "Auto-save",
       "autosave_desc": "Write a save and backup after each turn.",
       "autosave_on": "Enabled · Once per turn",
-      "autosave_off": "Disabled"
+      "autosave_off": "Disabled",
+      "story_lang": "Story Language",
+      "story_lang_desc": "Language the GM narrates in (game and tavern), including generated summaries and NPC dialogue."
     },
     "black_swan": {
       "title": "Black Swan Events",
@@ -718,7 +729,8 @@
         "pat_revoked_badge": "Revoked",
         "pat_revoke_btn": "Revoke",
         "auth_incomplete": "Authorization incomplete (status: {{status}})",
-        "device_start_fail": "Failed to start Device Flow"
+        "device_start_fail": "Failed to start Device Flow",
+        "browse_import_detail": "\"{{title}}\" → {{local}} #{{id}}"
       }
     },
     "migrate": {
@@ -863,10 +875,12 @@
       "unit_wan_chars": "wan chars",
       "unit_nodes": "nodes",
       "unit_models": "models",
-      "no_results": "No match for「{{q}}」· try GPT, 雾港, memory, claude, API",
+      "no_results": "No match for \"{{q}}\" · try GPT, memory, claude, API",
       "kbd_select": "select",
       "kbd_open": "open",
-      "kbd_close": "close"
+      "kbd_close": "close",
+      "unit_k_chars": "{{n}}k chars",
+      "footer_mode": "full text · fuzzy"
     },
     "menu": {
       "all_modules": "All Services",
@@ -912,7 +926,9 @@
     "autosave": {
       "saved": "saved",
       "failed": "save failed",
-      "network_error": "network error"
+      "network_error": "network error",
+      "saved_label": "{{label}} saved",
+      "failed_label": "{{label}} save failed"
     },
     "achv": {
       "link_copied": "Link copied",
@@ -1023,7 +1039,13 @@
         "reset_avatar_confirm": "Reset to default",
         "saved": "Profile saved",
         "upload_title": "Upload new avatar",
-        "use_default": "Use default"
+        "use_default": "Use default",
+        "load_failed": "Failed to load your profile. Check your network and try again.",
+        "pronoun_she": "She/her",
+        "pronoun_he": "He/him",
+        "tz_shanghai": "UTC+8 · Shanghai",
+        "tz_tokyo": "UTC+9 · Tokyo",
+        "tz_la": "UTC-8 · Los Angeles"
       },
       "settings": {
         "label": "User settings",
@@ -1150,7 +1172,8 @@
         "pw_change_failed": "Change failed",
         "save_failed": "Save failed",
         "session_revoke_failed": "Sign-out failed",
-        "session_revoked": "Signed out"
+        "session_revoked": "Signed out",
+        "export_hint": "POST /api/account/export · a download link is emailed once it is ready (valid for 7 days)"
       },
       "activity_empty": "No activity yet. Once you play, branch, or import scripts, real records appear here.",
       "activity_loading": "Loading activity…",
@@ -1176,7 +1199,10 @@
       "stat_streak": "Login streak",
       "stat_streak_longest": "Longest {{n}} days",
       "stat_streak_unit": "days",
-      "stat_words": "{{n}} chars total"
+      "stat_words": "{{n}} chars total",
+      "user_fallback": "User",
+      "avatar_prompt_named": "User avatar for {{name}}",
+      "avatar_prompt": "User avatar"
     },
     "profile": {
       "greeting_late": "Late night",
@@ -1209,7 +1235,48 @@
       "no_saves_empty": "No saves",
       "tavern_no_id": "No conversation ID returned",
       "tavern_create_failed": "Failed to create conversation"
-    }
+    },
+    "admin_guard": {
+      "checking": "Checking permissions…",
+      "title": "Administrator access required",
+      "desc": "System administration (deployment and other site-wide settings) is only available to platform administrators.",
+      "role_prefix": "Your account role is",
+      "role_suffix": ". Contact an administrator if you need access.",
+      "back_home": "Back to home"
+    },
+    "refresh": {
+      "ok": "Refreshed",
+      "fail": "Refresh failed"
+    },
+    "feedback_reviewed": {
+      "title_one": "An administrator handled {{count}} of your feedback reports",
+      "title_other": "An administrator handled {{count}} of your feedback reports",
+      "detail": "Click \"Send feedback\" in the top right for details",
+      "view": "View"
+    },
+    "open_save": {
+      "none": "No save to enter",
+      "switch_chat_fail": "Failed to switch chat",
+      "loading": "Loading save…",
+      "cannot_open": "Cannot open save",
+      "deleted_or_network": "The save was deleted or there was a network error",
+      "back_to_list": "Back to saves",
+      "switch_fail": "Failed to switch save"
+    },
+    "new_save_title": "New save",
+    "create_save_rejected": "The server refused to create the save",
+    "sidebar": {
+      "collapse": "Collapse sidebar",
+      "expand": "Expand sidebar"
+    },
+    "coming_soon": {
+      "label": "Coming soon",
+      "script_settings_title": "Script settings",
+      "script_settings_desc": "Per-script setting overrides (script_overrides). Being migrated.",
+      "play_settings_title": "Game settings",
+      "play_settings_desc": "Global play defaults (meta-knowledge / guidance / spoiler protection). Being migrated."
+    },
+    "loading_editor": "Loading editor…"
   },
   "admin_page": {
     "common": {
@@ -1942,7 +2009,9 @@
       "merge_prev_btn": "Merge with Previous",
       "merge_prev_msg": "Merge chapter {{a}} into the current chapter {{b}}? The current chapter's title will be kept.",
       "promote_npc": "Copy to My Character Cards",
-      "set_protagonist": "Set as Protagonist"
+      "set_protagonist": "Set as Protagonist",
+      "extract_full_desc": "Rerun the full LLM extraction (refreshes chapter summaries, KB characters, worldbook and anchors). To redo a single module, use the matrix cards above.",
+      "extract_full_title": "Full re-extraction"
     },
     "review": {
       "eyebrow": "Settings Review · AI Extraction",
@@ -2333,8 +2402,11 @@
       "need_key_hint": "Go to Settings → API & Models to add a credential, or select a model that is already configured above.",
       "run": "Run Audit",
       "title": "AI Audit NPC Character Cards",
-      "started": "AI review started — track progress in the background-tasks panel (bottom-right)"
-    }
+      "started": "AI review started — track progress in the background-tasks panel (bottom-right)",
+      "desc_short": "Merge duplicate cards for the same person, lock the true protagonist, delete non-character cards. Run on demand; not part of the import pipeline.",
+      "section_title": "NPC cards · AI review"
+    },
+    "kb_center": "Knowledge base center"
   },
   "auth": {
     "login_tab": "Log In",
@@ -2400,7 +2472,7 @@
       "sent_notice": "Verification code sent to {{mask}}. Please verify within 10 minutes."
     },
     "login_code": {
-      "not_registered": "No account exists for this email \u2014 switched you to sign-up (email prefilled).",
+      "not_registered": "No account exists for this email — switched you to sign-up (email prefilled).",
       "desc": "Enter your verified email and we will send a one-time sign-in code.",
       "email_label": "Email",
       "email_required": "Please enter a valid email address",
@@ -2684,7 +2756,8 @@
       "role_mode_script_npc": "Script NPC",
       "script_npc_desc": "Play as a canon NPC from this script — selecting one automatically locks your origin to Native (you are that character; GM strictly follows the worldview).",
       "script_npc_empty": "This script has no NPC character cards yet. You can generate or extract characters in the Script Editor.",
-      "script_npc_pick_script": "Please select a script above first."
+      "script_npc_pick_script": "Please select a script above first.",
+      "title_with_note": "{{title}} ({{note}})"
     },
     "identity": {
       "intro": "The identity card is a positioning overlay on top of the character card (undercover / exiled noble / shelter refugee …) — unrelated to name or appearance, independent from the player origin setting below. Optional — leave blank to play as the selected character directly.",
@@ -2936,7 +3009,7 @@
       "overlay_edit_tip": "Edit",
       "overlay_delete_tip": "Delete",
       "overlay_editing": "Editing an existing entry",
-      "overlay_ph_title": "Title (e.g. Broken Sword \u00b7 Remnant)",
+      "overlay_ph_title": "Title (e.g. Broken Sword · Remnant)",
       "overlay_ph_content": "Entry text",
       "overlay_ph_keys": "Trigger keywords, comma-separated (optional)",
       "overlay_priority": "Priority",
@@ -2946,7 +3019,7 @@
       "overlay_updated": "Changes saved",
       "overlay_update_failed": "Failed to save",
       "overlay_delete_confirm": "Delete this worldbook entry?",
-      "overlay_empty": "No custom worldbook entries yet. Use the \u201c+\u201d at the top right to add one."
+      "overlay_empty": "No custom worldbook entries yet. Use the “+” at the top right to add one."
     },
     "characters": {
       "on_stage": "On Stage",
@@ -3412,7 +3485,9 @@
         "perm_read_only": "Read-only · Narrative",
         "perm_default": "Default",
         "perm_review": "Auto Review",
-        "perm_full": "Full Access"
+        "perm_full": "Full Access",
+        "ab_label": "AI rewrite suggestions",
+        "ab_desc": "When the AI misses a plot point this turn should have covered, show a rewritten version side by side so you can choose (at most once every 5 turns). Turn off to always keep the first draft."
       },
       "history": {
         "aria_label": "History",
@@ -3598,10 +3673,38 @@
       },
       "resize_rail_tip": "Drag to resize · Double-click to reset",
       "resize_panel_tip": "Drag to resize · Double-click to reset",
-      "open_panel_tip": "Open status panel"
+      "open_panel_tip": "Open status panel",
+      "weekday": {
+        "item": "{{rel}} should be {{expected}} (written as {{claimed}})",
+        "sep": "; ",
+        "title": "The weekday was miscalculated this turn (today is {{base}})",
+        "detail": "{{detail}}. Click \"Regenerate\" to retry."
+      },
+      "acceptance_ab": {
+        "save_failed": "Failed to save your choice"
+      }
     },
     "panels": {
       "rules_request_failed": "Request failed: {{fn}}"
+    },
+    "regex": {
+      "need_find": "The match pattern cannot be empty",
+      "saved": "Regex script saved",
+      "save_failed": "Save failed (the regex may be invalid)",
+      "delete_confirm": "Delete this regex script?",
+      "title": "Output regex",
+      "subtitle": "find→replace on AI output ($1 capture groups)",
+      "add_tip": "Add regex",
+      "ph_name": "Name (optional)",
+      "ph_find": "Match pattern, e.g. \\*{2,}(.+?)\\*{2,}",
+      "ph_replace": "Replace with; supports $1 $& (empty = delete match)",
+      "flag_i": "Ignore case",
+      "flag_m": "Multiline",
+      "flag_s": ". matches newline",
+      "toggle_tip": "Enable/disable",
+      "delete_match": "(delete)",
+      "delete_tip": "Delete",
+      "empty": "No regex scripts yet. Click \"+\" in the top right to add one that rewrites AI output (e.g. turn **emphasis** into quotes)."
     }
   },
   "cards": {
@@ -3988,6 +4091,18 @@
       "include_label": "Which types to re-embed",
       "include_help": "Rebuild = clears the selected types' vectors, then re-embeds them all; unchecked types are left as-is. Zero LLM — only consumes embedding-model quota.",
       "include_empty": "Pick at least one type."
+    },
+    "facts_refine": {
+      "title": "LLM chapter summary refinement",
+      "desc": "Upgrade rule-based fragment summaries to real LLM summaries plus in-story time"
+    },
+    "worldbook_enrich": {
+      "title": "Worldbook core entry enrichment",
+      "desc": "Flesh out power systems and core setting entries at the mechanics level"
+    },
+    "world_key": {
+      "title": "World split backfill",
+      "desc": "Split multi-world books (infinite-flow / transmigration) by world, with the LLM confirming boundaries"
     }
   },
   "md_editor": {
@@ -4149,7 +4264,14 @@
       "new": "New",
       "new_item": "New {{label}}",
       "new_name_placeholder": "New {{label}} name",
-      "search_placeholder": "Search all assets…"
+      "search_placeholder": "Search all assets…",
+      "kind": {
+        "chapter": "Chapter",
+        "card": "Character card",
+        "worldbook": "Worldbook",
+        "anchor": "Timeline",
+        "canon": "Setting"
+      }
     },
     "ws": {
       "label": "Workspace",
@@ -4178,7 +4300,8 @@
       "go": "Search",
       "hint": "Type a keyword, Enter to search the whole manuscript",
       "none": "0 matches",
-      "count": "{{total}} matches · {{n}} chapters"
+      "count": "{{total}} matches · {{n}} chapters",
+      "failed": "Search failed"
     },
     "history": {
       "btn": "History",
@@ -4213,7 +4336,8 @@
     },
     "ghost": {
       "btn": "AI complete",
-      "tip": "Inline completion: after a typing pause, a gray suggestion appears — press Tab to accept (uses your own model)"
+      "tip": "Inline completion: after a typing pause, a gray suggestion appears — press Tab to accept (uses your own model)",
+      "on": " · on"
     },
     "review": {
       "btn": "AI review",
@@ -4255,7 +4379,8 @@
         "row_worldbook": "Worldbook",
         "row_canon": "Canon entities",
         "empty": "No data"
-      }
+      },
+      "tip": "Knowledge base health and rebuild for this script (summary refinement / worldbook enrichment / card review / embeddings)"
     },
     "conflict": {
       "merge_prompt": "This chapter was modified elsewhere: review hunks (approve all = take theirs, reject all = keep yours)",
@@ -6218,6 +6343,10 @@
       "plus": {
         "aria": "More",
         "title": "More"
+      },
+      "slash": {
+        "aria": "Slash commands",
+        "title": "Slash commands"
       }
     },
     "new_game": {
@@ -6953,7 +7082,12 @@
         "apis": "APIs",
         "wall": "Achievement Wall"
       },
-      "page_placeholder": "Page placeholder"
+      "page_placeholder": "Page placeholder",
+      "restricted": {
+        "checking": "Checking permissions…",
+        "desc": "This page is only available to platform administrators.",
+        "title": "Administrator access required"
+      }
     },
     "home": {
       "wan_suffix": "k words",
@@ -7060,7 +7194,8 @@
       "submit_error": "Submission failed. Please try again later.",
       "aup_warning": {
         "header": "Content restrictions",
-        "body": "Feedback must not contain sexual, explicit, NSFW, or other adult-only material — regardless of your age. Violations will result in permanent account termination and a ban from registering."
+        "body": "Feedback must not contain sexual, explicit, NSFW, or other adult-only material — regardless of your age. Violations will result in permanent account termination and a ban from registering.",
+        "end": "."
       },
       "reviewed_notice": {
         "header": "{{count}} feedback item(s) reviewed by an admin",
@@ -7293,7 +7428,59 @@
       "ref": {
         "add": "@ Reference",
         "add_tip": "Pin a chapter / card / worldbook entry as context",
-        "placeholder": "Reference: chapter / card / worldbook…"
+        "placeholder": "Reference: chapter / card / worldbook…",
+        "chapter_n": "Ch. {{n}}",
+        "card_n": "Card #{{id}}",
+        "worldbook_n": "Worldbook #{{id}}",
+        "kind_chapter": "Ch",
+        "kind_card": "Card",
+        "kind_worldbook": "WB"
+      },
+      "rewrite": {
+        "selected": "{{n}} characters selected",
+        "ctx_tip": "Use the selected text as context for the chat below (the assistant will know what \"this passage\" means)",
+        "ctx_off": "○ Selection not attached",
+        "ctx_on": "● Selection attached",
+        "by_instruction_tip": "Rewrite the selected text using the instructions in the input box below",
+        "by_instruction": "Rewrite by instruction →",
+        "tighten": "Tighten",
+        "expand": "Expand",
+        "polish": "Polish",
+        "vivid": "More vivid"
+      },
+      "skills": {
+        "group": "Writing skills",
+        "review": "Review",
+        "outline": "Outline",
+        "voice": "Character voice",
+        "foreshadow": "Foreshadowing"
+      },
+      "tool_label": {
+        "get_chapter_text": "Read chapter text",
+        "get_script_chapters": "List chapters",
+        "search_manuscript": "Search manuscript",
+        "list_worldbook_entries": "List worldbook",
+        "list_canon_entities": "List canon entities",
+        "list_anchors": "List timeline",
+        "list_script_npcs": "List character cards",
+        "get_script_character_card": "Read character card",
+        "get_chapter_context": "Read chapter context",
+        "update_script_chapter": "Rewrite chapter",
+        "create_script_chapter": "Create chapter",
+        "upsert_worldbook_entry": "Write worldbook",
+        "upsert_worldbook_entries": "Batch write worldbook",
+        "delete_worldbook_entry": "Delete worldbook entry",
+        "update_npc_card": "Edit character card",
+        "create_npc_card": "Create character card",
+        "update_anchor": "Edit timeline",
+        "create_anchor": "Create timeline node",
+        "delete_anchor": "Delete timeline node",
+        "upsert_canon_entity": "Write canon entity",
+        "extract_from_selection": "Extract from selection",
+        "read_uploaded_document": "Read dropped document",
+        "preview_document_split": "Preview chapter split",
+        "import_document_as_chapters": "Import as chapters",
+        "delegate_writing_task": "Delegate writing to sub-model"
       }
     },
     "generate_image_modal": {
@@ -7469,7 +7656,9 @@
   "help_drawer": {
     "help": "Help",
     "no_slug": "Please specify a help topic.",
-    "not_found": "No help article found for: {{slug}}"
+    "not_found": "No help article found for: {{slug}}",
+    "open_external": "Open in new tab",
+    "load_failed": "Failed to load the docs (an internet connection to the docs site is required)."
   },
   "image_size": {
     "aria_group": "Image size",
@@ -7531,7 +7720,8 @@
     "time_days_ago": "{{count}} day ago",
     "time_hours_ago": "{{count}} hr ago",
     "time_just_now": "just now",
-    "time_minutes_ago": "{{count}} min ago"
+    "time_minutes_ago": "{{count}} min ago",
+    "protagonist_badge_char": "★"
   },
   "policy_banner": {
     "days_until_effective": "{{count}} day(s) until effective",
@@ -7578,5 +7768,388 @@
     "minutes_ago": "{{n}} min ago",
     "hours_ago": "{{n}}h ago",
     "days_ago": "{{n}}d ago"
+  },
+  "error_boundary": {
+    "title": "Something went wrong",
+    "desc": "The page failed to render. Please reload; if it keeps happening, contact",
+    "desc_end": ".",
+    "details": "Developer info (technical details)",
+    "reload": "Reload page"
+  },
+  "tavern_run": {
+    "chat_title": "Chat #{{id}}",
+    "pick_chat": "Select or create a chat first",
+    "idle_error": "No new output for over 120 seconds; disconnected. Please try again.",
+    "idle_title": "Generation stalled",
+    "idle_detail": "No response for 120 seconds; stopped",
+    "request_failed": "Request failed",
+    "aborted": "Connection cancelled. Your last input was kept; please try again.",
+    "receipt_partial": "Applied {{ok}} setting(s); {{fail}} did not take effect",
+    "receipt_ok": "Settings updated ({{count}})",
+    "updated": "Updated",
+    "interrupted_restored": "This turn was interrupted; your input has been restored.",
+    "empty_restored": "No reply this turn; your input has been restored. Please try again.",
+    "interrupted": "Generation interrupted",
+    "empty": "Empty reply",
+    "gen_failed": "Generation failed",
+    "retry": "Please try again",
+    "closed": "Connection lost: the stream closed without a completion event. Your last input was kept; you can retry."
+  },
+  "api_client": {
+    "network_error": "Network error: {{message}}",
+    "bad_json": "The server returned a response that could not be parsed (it may contain invalid characters). Please try again; if this keeps happening, contact an administrator.",
+    "detail_sep": "; ",
+    "http_failed": "Request failed (HTTP {{status}})",
+    "rate_limited_after": "Too many requests. Please retry in {{seconds}} seconds",
+    "rate_limited": "Too many requests. Please try again later",
+    "unavailable": "Service temporarily unavailable",
+    "cancelled": "Request cancelled",
+    "stream_read_failed": "Failed to read the stream",
+    "chunk_read_failed": "Failed to read file chunk",
+    "unknown_error": "Unknown error",
+    "request_failed": "Request failed"
+  },
+  "feedback": {
+    "decision": {
+      "pending": "Pending",
+      "ok": "Accepted",
+      "spam": "Not accepted",
+      "nsfw_terminate": "Policy violation"
+    }
+  },
+  "media": {
+    "drop_title": "Drop an image · paste · or click to choose",
+    "drop_overlay": "Drop here to upload"
+  },
+  "cap": {
+    "builtin_plugin": "Built-in platform plugin",
+    "status_off": "Disabled",
+    "status_on": "Enabled",
+    "status_connected": "Connected",
+    "status_disconnected": "Not connected",
+    "status_deployed": "Deployed",
+    "fetch_failed": "Failed to load",
+    "empty_mcp": "No MCP servers configured yet. Click \"Add server\" to add one.",
+    "empty_skills": "No skill packs imported yet. Click \"Import skill\" to upload one.",
+    "empty_plugins": "No plugins.",
+    "validate": "Validate",
+    "add_server": "Add server",
+    "import_skill": "Import skill",
+    "add_plugin": "Add plugin",
+    "plugins": "Plugins",
+    "mcp_servers": "MCP servers",
+    "skill_packs": "Skill packs",
+    "loading": "Loading…",
+    "add_mcp_server": "Add MCP server",
+    "configure_mcp": "Configure an MCP endpoint",
+    "choose_skill": "Choose a skill pack",
+    "add_platform_plugin": "Add a platform plugin",
+    "f_name": "Name",
+    "ph_mcp_name": "e.g. filesystem · local",
+    "f_transport": "Transport",
+    "opt_stdio": "stdio · local command",
+    "opt_http": "http · remote HTTP",
+    "f_command_url": "Command / URL",
+    "f_env_headers": "Environment variables / Headers",
+    "ph_env": "One per line: KEY=VALUE",
+    "f_github": "GitHub link",
+    "ph_github": "https://github.com/owner/repo (persona skill → character card + portrait)",
+    "f_local_file": "Local file",
+    "hint_local_file": ".md → character card / .zip · .tar.gz → executable skill pack (admin)",
+    "f_plugin_id": "Plugin ID",
+    "ph_plugin_id": "e.g. timeline-viz",
+    "f_display_name": "Display name",
+    "ph_display_name": "e.g. Timeline visualizer",
+    "f_desc": "Description",
+    "ph_desc": "What it does and when it triggers",
+    "submit_mcp": "Validate and enable",
+    "submit_skill": "Import and deploy",
+    "submit_add": "Add",
+    "need_repo_or_file": "Enter a GitHub link or choose a file",
+    "import_failed": "Import failed",
+    "card": "Character card",
+    "skill_imported": "Skill imported",
+    "plugins_preset": "Plugins are preinstalled by the platform · custom plugins are not supported yet",
+    "add_failed": "Add failed",
+    "disabled_toast": "Disabled",
+    "toggle_failed": "Toggle failed",
+    "skills_always_on": "All skills are enabled by default · disabling individual skills is not supported yet",
+    "plugins_managed": "Plugin state is managed by the platform · manual toggling is not supported yet",
+    "delete_unsupported": "Deleting this type is not supported yet",
+    "delete_failed": "Delete failed",
+    "log_no_instance": "(No running instance of this server found · it may be disabled or not started)",
+    "log_unsupported": "(Runtime logs are not available for this type; only MCP uses /api/mcp/runtime)",
+    "f_command": "Command",
+    "f_env": "Environment variables",
+    "f_version": "Version",
+    "f_manifest": "Manifest config",
+    "edit": "Edit",
+    "view_log": "View log",
+    "delete": "Delete",
+    "no_edit_api": "No edit API available yet",
+    "save": "Save",
+    "saved": "Saved",
+    "save_failed": "Save failed",
+    "edit_unsupported": "Editing this type is not supported yet",
+    "recent_50": "Last 50 entries",
+    "log_hint_mcp": "GET /api/mcp/runtime · stderr visible to admins",
+    "log_hint_none": "No runtime logs for this type",
+    "close": "Close",
+    "export_failed": "Export failed",
+    "confirm_delete_eyebrow": "Confirm deletion",
+    "delete_mcp_title": "Delete MCP server",
+    "cancel": "Cancel",
+    "api": {
+      "d_home": "Text RPG main game UI",
+      "g_home": "Home",
+      "d_app": "Multi-user platform / authoring UI",
+      "d_state": "Read the current playable save state",
+      "g_saves": "Saves",
+      "d_new": "Create a new game and keep a backup of the old save",
+      "d_chat": "Send a player action; returns an SSE stream",
+      "d_stop": "Interrupt the current generation",
+      "d_save": "Manually save the current game",
+      "d_permissions": "Set LLM write permissions",
+      "g_permissions": "Permissions",
+      "d_mem_add": "Add a long-term memory entry",
+      "g_memory": "Memory",
+      "d_mem_remove": "Remove a long-term memory entry",
+      "d_models": "Read the API / model list",
+      "g_models": "Models",
+      "d_models_select": "Select the current frontend model",
+      "d_scripts": "Script list",
+      "g_scripts": "Scripts",
+      "d_scripts_import": "Import a TXT / MD script and detect chapters automatically",
+      "d_chapters": "Read a script's chapter list and previews",
+      "d_saves": "Game save list",
+      "g_platform": "Platform",
+      "d_saves_create": "Create a new save from a script",
+      "d_branches": "Read the branch tree",
+      "g_branches": "Branches",
+      "d_branches_continue": "Continue from a node and create a new branch",
+      "d_branches_delete": "Delete the whole branch under an edge",
+      "d_library": "Library file list",
+      "g_library": "Library",
+      "d_upload": "Upload a file",
+      "d_mkdir": "Create a folder",
+      "d_download": "Download a file",
+      "d_mcp": "Add / update MCP server config",
+      "g_caps": "Capabilities",
+      "d_skills": "Import a skill pack (self-hosted)",
+      "search_ph": "Search path or description...",
+      "search_aria": "Search path or description",
+      "copy_path": "Copy path",
+      "copy_failed": "Copy failed",
+      "clipboard_denied": "The browser denied clipboard access",
+      "title": "Stable API",
+      "count": "v1 · {{n}} endpoints · {{g}} groups",
+      "col_path": "Path",
+      "col_desc": "Description",
+      "copied": "Copied {{path}}"
+    },
+    "validate_done": "Validation finished · {{ok}} ok / {{fail}} failed",
+    "load_failed": "Failed to load: {{err}}",
+    "counter": "({{total}} items · {{on}} enabled)",
+    "persona_img_queued": " (portrait generating)",
+    "card_generated": "Character card \"{{name}}\" created{{img}}",
+    "deleted_name": "Deleted {{name}}",
+    "log_read_failed": "Failed to read log: {{err}}",
+    "edit_mcp": "Edit MCP server",
+    "edit_skill": "Edit skill",
+    "edit_plugin": "Edit plugin",
+    "log_eyebrow": "Log · {{name}}",
+    "export": "Export",
+    "deleting": "Deleting…",
+    "confirm_delete_pre": "Delete ",
+    "confirm_delete_post": "? This cannot be undone.",
+    "log_empty": "(empty)",
+    "log_no_stderr": "(No stderr output; you may lack admin rights or the log is empty)"
+  },
+  "usage": {
+    "fetch_failed": "Failed to load usage",
+    "loading": "Loading…",
+    "refresh": "Refresh",
+    "requests_count": "Requests",
+    "tokens_in": "Input tokens",
+    "cost": "Cost",
+    "window_total": "Total for this window",
+    "cached_tokens": "Cached input tokens",
+    "cache_savings": "Estimated cache savings",
+    "discount_75": "Estimated at a 75% discount",
+    "forecast_desc": "Based on the average daily spend over the past 7 days (fixed window; not affected by the time range selector)",
+    "forecast": "Spend forecast",
+    "forecast_no_data": "Not enough data yet (needs at least 1 day of usage)",
+    "by_scenario_desc": "Request distribution by scenario for this window",
+    "by_scenario": "By scenario",
+    "daily": "Daily totals",
+    "trend": "Trend",
+    "no_recent_usage": "No recent usage",
+    "requests": "Requests",
+    "cost_usd": "Cost $",
+    "token_trend": "Token trend",
+    "input_tokens": "Input tokens",
+    "output_tokens": "Output tokens",
+    "by_api": "By API",
+    "tokens_in_out": "Tokens (in / out)",
+    "share": "Share",
+    "no_calls": "No calls yet",
+    "by_requests": "By request count",
+    "export_csv": "Export CSV",
+    "top_models": "Top models",
+    "model": "Model",
+    "recent_requests": "Recent requests",
+    "time": "Time",
+    "go_to_save": "Click to open the save",
+    "cached_in": "Cached in",
+    "context": "Context",
+    "no_recent_calls": "No recent calls",
+    "range_24h": "24 hours",
+    "range_7d": "7 days",
+    "range_30d": "30 days",
+    "range_90d": "90 days",
+    "title": "Usage",
+    "last_range": "Last {{range}}",
+    "daily_avg": "Daily avg {{n}}",
+    "output_ratio": "Output {{out}} · ratio 1 : {{ratio}}",
+    "output_none": "Output —",
+    "share_of_input": "{{pct}}% of input",
+    "alert_high": "🔴 Well above your usual spend rate (30-day projection ${{amount}})",
+    "alert_warn": "⚠️ High spend rate (30-day projection ${{amount}})",
+    "per_day": " / day",
+    "projected_30d": "Projected 30 days ",
+    "vs_prev_7d": " vs previous 7 days",
+    "pct_share": "{{pct}}% share",
+    "recent_range": "Showing {{from}}–{{to}} of {{total}}",
+    "page_of": "Page {{page}} / {{pages}}",
+    "csv": {
+      "rank": "Rank",
+      "model": "Model",
+      "requests": "Requests",
+      "input_tokens": "Input tokens",
+      "output_tokens": "Output tokens",
+      "cost": "Cost",
+      "time": "Time",
+      "cached_input": "Cached input",
+      "context_used": "Context used",
+      "context_max": "Context max",
+      "save_id": "Save ID"
+    },
+    "scenario": {
+      "chat": "Chat",
+      "opening": "Opening",
+      "extract": "Extraction",
+      "embedding": "Embedding",
+      "assistant": "Assistant",
+      "tool": "Tools"
+    }
+  },
+  "auth_page": {
+    "need_credentials": "Enter your username and password",
+    "request_failed": "Request failed",
+    "subtitle": "Turn long novels into RPGs · continue the story · multi-user authoring platform",
+    "login": "Sign in",
+    "register": "Sign up",
+    "username": "Username",
+    "username_ph": "Letters / digits / underscores",
+    "password": "Password",
+    "password_ph": "At least 8 characters",
+    "display_name": "Display name",
+    "display_name_ph": "e.g. your name",
+    "first_admin": "The first user to sign up becomes the administrator.",
+    "forgot_notice": "Ask an administrator to reset your password (self-service recovery is not available yet).",
+    "forgot_toast": "Ask an administrator to reset your password",
+    "forgot": "Forgot password",
+    "register_ok": "Signed up",
+    "login_ok": "Signed in",
+    "submitting": "Submitting…",
+    "create_account": "Create account"
+  },
+  "modules_page": {
+    "api_missing": "window.api.rules is not registered; reload the page or restart the dev server",
+    "load_failed": "Failed to load modules",
+    "launch_failed": "launch_module failed",
+    "start_failed": "Failed to start module",
+    "desc": "5E compatible",
+    "title": "5E-compatible adventure modules",
+    "loading": "Loading…",
+    "col_module": "Module",
+    "col_ruleset": "Ruleset",
+    "col_level": "Level",
+    "col_duration": "Estimated length",
+    "started": "Started: {{name}} (separate save #{{id}})",
+    "minutes": "{{n}} min",
+    "starting": "Starting…",
+    "start": "Start module",
+    "empty_pre": "No built-in adventure modules yet. Module data lives in the ",
+    "empty_post": " directory.",
+    "disclaimer": "All modules on this page use original places, characters and monsters. The rules layer is 5E-compatible and uses no official Dungeons & Dragons trademarks or non-SRD IP. The LLM only narrates; all dice rolls, checks, combat and HP/AC math are done by the deterministic RulesEngine, and GM attempts to write HP/AC/initiative directly are rejected by the State Gate."
+  },
+  "acceptance_ab": {
+    "aria": "Rewrite comparison",
+    "title": "A rewritten version was generated this turn",
+    "subtitle_one": "Rewritten to cover {{count}} missed plot point · which version do you want to keep?",
+    "subtitle_other": "Rewritten to cover {{count}} missed plot points · which version do you want to keep?",
+    "keep_current_tip": "Close the comparison and keep the version you just read",
+    "keep_current": "Keep current",
+    "current_version": "Current version (what you just read)",
+    "empty": "(empty)",
+    "keep_this": "Keep this one",
+    "rewrite_version": "Rewritten version",
+    "use_this": "Use this one",
+    "why": "Why was it rewritten? (missed plot points)"
+  },
+  "md_ai": {
+    "busy": "AI generating…  Esc to cancel",
+    "done": "AI continuation ready —  Tab to accept   Esc to discard",
+    "gen_failed": "Generation failed",
+    "failed": "AI continuation failed",
+    "empty": "AI returned no continuation",
+    "empty_detail": "The model gave no completion for this context. Try: put the cursor inside a prose paragraph, select a passage and use \"Rewrite\", or switch to another model in the right panel.",
+    "error": "AI continuation error",
+    "cmdk_continue": "AI continue (at cursor)",
+    "cmdk_rewrite": "AI rewrite selection",
+    "cmdk_label": "Instruction (optional; press Enter to just continue)",
+    "hunk_label": "This block +{{add}} / -{{del}}",
+    "accept": "Accept",
+    "reject": "Reject",
+    "panel_pending": "AI changes · {{pending}} blocks to review · +{{add}} / -{{del}} lines",
+    "panel_done": "AI changes · all handled",
+    "accept_all": "Accept all",
+    "reject_all": "Reject all"
+  },
+  "data_loader": {
+    "signed_out": "Not signed in",
+    "untitled": "Untitled",
+    "untitled_script": "Untitled script",
+    "save_n": "Save #{{id}}",
+    "demo_title": "Demo data preview",
+    "demo_body": ": the saves / characters / scripts shown are built-in samples and are not stored. Sign in to create your own.",
+    "demo_login": "Sign in now",
+    "demo_hide": "Hide",
+    "refresh_unreachable": "Can't reach the server right now. The current page data was kept; try refreshing later."
+  },
+  "achievements": {
+    "unlocked_toast": "🏆 Achievement unlocked: {{name}}"
+  },
+  "image_gen": {
+    "op_failed": "Operation failed",
+    "empty_poll": "Polling returned an empty response",
+    "gen_failed": "Generation failed",
+    "poll_error": "Polling error",
+    "request_failed": "Request failed"
+  },
+  "model_overlay": {
+    "admin_only": "Only administrators can change built-in platform models"
+  },
+  "mobile_launch": {
+    "no_save": "No save to enter",
+    "switch_failed": "Failed to switch save",
+    "switch_failed_detail": "Failed to switch save · {{error}}"
+  },
+  "wb_toast": {
+    "consulting": "GM is checking the setting",
+    "no_anchor": "No exact anchor found (the GM will proceed carefully)",
+    "consulted": "Checked · {{phase}}",
+    "done": "Lookup complete"
   }
 }

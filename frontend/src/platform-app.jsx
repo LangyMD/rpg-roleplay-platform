@@ -4,7 +4,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useState as useStatePL, useEffect as useEffectPL, useMemo as useMemoPL, useCallback as useCallbackPL } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n from './i18n/index.js';
+import i18n, { uiLocale } from './i18n/index.js';
 import { Icon } from './game-icons.jsx';
 import { useResizable, ResizeHandle } from './responsive.jsx';
 import { plNavigate } from './router.js';
@@ -192,7 +192,8 @@ const getCSModules = (t) => [
       { text: t('platform.nav.cs_user_cards'),      href: '#cards' },
       { text: t('platform.nav.cards_online', { defaultValue: '在线角色卡库' }), href: '#cards-online' },
       { text: t('platform.nav.modules'),            href: '#modules' },
-      { text: t('platform.nav.cs_play_settings'),   href: '#play-settings' },
+      // 「游戏设置」(#play-settings)导航已移除:后端尚无全局游玩默认偏好,页面仅占位;
+      // 路由保留(旧书签直链不 404),渲染占位说明。
     ] },
   // 酒馆模式:与「开始游戏」(play)**平级**、同在「游玩/Play」分类下的独立模块
   // (不再是开始游戏的子项)。页面是 Platform 内嵌子页 #tavern(见 entries/platform.jsx)。
@@ -293,25 +294,26 @@ function isAdminPage(page) { return ADMIN_PAGES.has(page); }
    防线一:顶部菜单已隐藏入口;防线二:此守卫;防线三:后端 /admin/* 返回 403。
    用户数据(role)在 mount 前已由 data-loader 注入,首屏即可判定;未就绪时短暂 loading。 */
 function AdminGuard({ children }) {
+  const { t } = useTranslation();
   const u = useReactiveUser();
   const role = u && u.role;
   if (!role) {
     return (
-      <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--muted,#8c857a)' }}>正在校验权限…</div>
+      <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--muted,#8c857a)' }}>{t('platform.admin_guard.checking')}</div>
     );
   }
   if (role !== 'admin') {
     return (
       <div style={{ maxWidth: 560, margin: '64px auto', textAlign: 'center' }}>
         <div style={{ fontSize: 30, marginBottom: 14, opacity: 0.7 }}>🔒</div>
-        <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text,#ebe7df)', marginBottom: 8 }}>需要管理员权限</div>
+        <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text,#ebe7df)', marginBottom: 8 }}>{t('platform.admin_guard.title')}</div>
         <div style={{ fontSize: 13.5, lineHeight: 1.7, color: 'var(--text-quiet,#a8a195)' }}>
-          系统管理(部署配置等站点级设置)仅平台管理员可访问。<br />
-          当前账号角色为 <strong style={{ color: 'var(--text,#ebe7df)' }}>{role}</strong>。如需权限请联系管理员。
+          {t('platform.admin_guard.desc')}<br />
+          {t('platform.admin_guard.role_prefix')} <strong style={{ color: 'var(--text,#ebe7df)' }}>{role}</strong>{t('platform.admin_guard.role_suffix')}
         </div>
         <div style={{ marginTop: 22 }}>
           <a href="/profile" onClick={(e) => { e.preventDefault(); plNavigate('profile'); }}
-            style={{ color: 'var(--accent,#c96442)', textDecoration: 'none', fontSize: 13.5 }}>← 返回主页</a>
+            style={{ color: 'var(--accent,#c96442)', textDecoration: 'none', fontSize: 13.5 }}>← {t('platform.admin_guard.back_home')}</a>
         </div>
       </div>
     );
@@ -334,9 +336,9 @@ async function _csRefresh() {
       try { window.dispatchEvent(new CustomEvent('rpg-saves-updated')); } catch (_) {}
       try { window.dispatchEvent(new CustomEvent('rpg-user-cards-updated')); } catch (_) {}
     }
-    window.__apiToast?.('已刷新', { kind: 'ok', duration: 1800 });
+    window.__apiToast?.(i18n.t('platform.refresh.ok'), { kind: 'ok', duration: 1800 });
   } catch (e) {
-    window.__apiToast?.('刷新失败', { kind: 'danger', detail: e?.message || String(e), duration: 3000 });
+    window.__apiToast?.(i18n.t('platform.refresh.fail'), { kind: 'danger', detail: e?.message || String(e), duration: 3000 });
   }
 }
 
@@ -415,11 +417,11 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
         if (!data || !data.ok) return;
         const newReviewed = (data.items || []).filter(it => it.review_decision && it.id > lastSeen);
         if (newReviewed.length > 0) {
-          window.__apiToast?.(`管理员已处理你的 ${newReviewed.length} 条反馈`, {
+          window.__apiToast?.(i18n.t('platform.feedback_reviewed.title', { count: newReviewed.length }), {
             kind: 'info',
-            detail: '点右上"提交反馈"查看详情',
+            detail: i18n.t('platform.feedback_reviewed.detail'),
             duration: 5000,
-            action: { label: '查看', onClick: () => plNavigate('feedback') },
+            action: { label: i18n.t('platform.feedback_reviewed.view'), onClick: () => plNavigate('feedback') },
           });
         }
         // 发完 toast 立刻把本次拿到的最大 id 推进 last-seen,避免刷新重弹;
@@ -438,7 +440,7 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
     window.__openContinue = async (save, nodeId) => {
       const target = save || platform.saves[0];
       const targetSaveId = target?.id;
-      if (!targetSaveId) { window.__apiToast?.("没有可进入的存档", { kind: "warn", duration: 2400 }); return; }
+      if (!targetSaveId) { window.__apiToast?.(i18n.t('platform.open_save.none'), { kind: "warn", duration: 2400 }); return; }
       // 酒馆存档:不开游戏台(Game Console),改为激活后在平台内跳到 #tavern 页。
       // 之前不分流 → 酒馆存档点「继续」也走 Game Console,离奇进了游戏台。
       const kind = target?.save_kind || target?._raw?.save_kind || 'game';
@@ -446,28 +448,28 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
         try {
           await window.api.tavern.activate(targetSaveId);
         } catch (e) {
-          window.__apiToast?.("切换对话失败", { kind: "danger", detail: e?.message, duration: 3000 });
+          window.__apiToast?.(i18n.t('platform.open_save.switch_chat_fail'), { kind: "danger", detail: e?.message, duration: 3000 });
           return;
         }
         plNavigate('tavern');
         return;
       }
+      // G1 helper: escape html for loading / error page
+      const escapeHtml = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
       // 用户手势内先开空白标签,绕过弹窗拦截
       const gameWin = window.open("about:blank", "_blank");
       // G1: activate 期间写 loading 骨架,避免黑屏
       try {
         if (gameWin && gameWin.document) {
           gameWin.document.open();
-          gameWin.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>正在加载存档…</title>
+          gameWin.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(i18n.t('platform.open_save.loading'))}</title>
 <style>body{margin:0;background:#121110;color:#c8c2b7;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh}
 .sp{width:36px;height:36px;border:3px solid #333;border-top-color:var(--accent,#c49b4e);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}</style></head>
-<body><div style="text-align:center"><div class="sp" style="margin:0 auto 18px"></div><p style="opacity:.6;font-size:14px">正在加载存档…</p></div></body></html>`);
+<body><div style="text-align:center"><div class="sp" style="margin:0 auto 18px"></div><p style="opacity:.6;font-size:14px">${escapeHtml(i18n.t('platform.open_save.loading'))}</p></div></body></html>`);
           gameWin.document.close();
         }
       } catch (_) {}
-      // G1 helper: escape html for error page
-      const escapeHtml = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
       try {
         if (nodeId != null && nodeId !== "") {
           await window.api.branches.activate({ node_id: nodeId, commit_id: nodeId });
@@ -479,17 +481,17 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
         try {
           if (gameWin && gameWin.document) {
             gameWin.document.open();
-            gameWin.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>无法打开存档</title>
+            gameWin.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(i18n.t('platform.open_save.cannot_open'))}</title>
 <style>body{margin:0;background:#121110;color:#c8c2b7;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh}</style></head>
 <body><div style="text-align:center;padding:80px 20px">
-  <h2 style="color:#d54;margin-bottom:12px">无法打开存档</h2>
-  <p style="opacity:.75;margin-bottom:20px">${escapeHtml(e?.message || "存档已被删除或网络异常")}</p>
-  <p><a href="#" style="color:#c49b4e" onclick="window.close();return false;">返回存档列表</a></p>
+  <h2 style="color:#d54;margin-bottom:12px">${escapeHtml(i18n.t('platform.open_save.cannot_open'))}</h2>
+  <p style="opacity:.75;margin-bottom:20px">${escapeHtml(e?.message || i18n.t('platform.open_save.deleted_or_network'))}</p>
+  <p><a href="#" style="color:#c49b4e" onclick="window.close();return false;">${escapeHtml(i18n.t('platform.open_save.back_to_list'))}</a></p>
 </div></body></html>`);
             gameWin.document.close();
           }
         } catch (_) {}
-        window.__apiToast?.("切换存档失败", { kind: "danger", detail: e?.message, duration: 3000 });
+        window.__apiToast?.(i18n.t('platform.open_save.switch_fail'), { kind: "danger", detail: e?.message, duration: 3000 });
         return;
       }
       // about:blank 无法解析相对 URL,必须用绝对地址
@@ -504,10 +506,10 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
     // 但没有任何地方注册 → 用户在 scripts 页弹 NewGameModal 创建时炸 not a function。
     window.__createAndEnterSave = async (payload) => {
       const created = await window.api.saves.create(buildCreateSavePayload(payload, {
-        defaultTitle: '新存档 · ' + new Date().toLocaleString(),
+        defaultTitle: i18n.t('platform.new_save_title') + ' · ' + new Date().toLocaleString(uiLocale()),
       }));
       if (created && created.ok === false) {
-        throw new Error(created.error || created.detail || '后端拒绝创建');
+        throw new Error(created.error || created.detail || i18n.t('platform.create_save_rejected'));
       }
       try { window.dispatchEvent(new CustomEvent('rpg-saves-updated')); } catch (_) {}
       const save = created && (created.save || created);
@@ -555,8 +557,8 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
           {!standalone && (
           <button
             onClick={() => setNavOpen((v) => !v)}
-            aria-label={navOpen ? '折叠侧栏' : '展开侧栏'}
-            title={navOpen ? '折叠侧栏' : '展开侧栏'}
+            aria-label={navOpen ? t('platform.sidebar.collapse') : t('platform.sidebar.expand')}
+            title={navOpen ? t('platform.sidebar.collapse') : t('platform.sidebar.expand')}
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 7, border: 0, background: 'transparent', color: '#c8c2b7', cursor: 'pointer', padding: 0, flexShrink: 0 }}
             onMouseEnter={(e) => { e.currentTarget.style.background = '#282623'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
@@ -567,7 +569,7 @@ function PlatformShellCS({ page, setPage, children, assistant, assistantOpen, on
           </button>
           )}
           <a href="/profile" onClick={(e) => { e.preventDefault(); plNavigate('profile'); }}
-            style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 16, fontWeight: 600, color: '#ebe7df', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 16, fontWeight: 600, color: '#ebe7df', textDecoration: 'none', whiteSpace: 'nowrap' }}>
             RPG Roleplay
           </a>
           <CSButtonDropdown
@@ -708,10 +710,10 @@ function promoteNpcToUserCard(c) {
   // stub — 真实实现在 pages/cards.jsx
   // 迁移流: 构造 body → window.api.cards.myUpsert(body) → dispatch rpg-user-cards-updated
   const body = {
-    name: c.name || "未命名",
+    name: c.name || "Untitled",
     identity: c.role || "—",
     appearance: c.bio || "",
-    tags: [...(c.tags || []), "源自 NPC"],
+    tags: [...(c.tags || []), "From NPC"],
     metadata: { source: "npc_promote" },
     enabled: true,
   };
