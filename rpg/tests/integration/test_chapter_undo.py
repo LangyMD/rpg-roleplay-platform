@@ -60,7 +60,7 @@ class ChapterUndoE2E(unittest.TestCase):
 
         # agent 改写
         out = _t_update_script_chapter(uid, sid, {"chapter_index": 1, "content": "AI 改写版 v1"}, None)
-        self.assertIn("已更新", out)
+        self.assertIn("Updated chapter", out)
         self.assertEqual(_chapter_content(sid, 1), "AI 改写版 v1")
 
         # 撤销 → 恢复 v0

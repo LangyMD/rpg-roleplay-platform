@@ -373,7 +373,7 @@ class TestDeterministicGate(unittest.TestCase):
         self.assertEqual(after, before + 1,
                          f"ai_images 应新增1行，before={before} after={after}")
         # 应返回 image_id 描述，不含 pending 字样
-        self.assertNotIn("待审", result,
+        self.assertNotIn("review queue", result,
                          f"第1张不应进 pending，返回={result!r}")
 
     def test_llm_chat_second_enters_pending(self):
@@ -408,7 +408,7 @@ class TestDeterministicGate(unittest.TestCase):
         self.assertEqual(gen_pending[0]["value"]["prompt"], "test gate second image")
 
         # 返回文案含门控字样
-        self.assertIn("门控", result, f"返回文案应含门控字样，实际={result!r}")
+        self.assertIn("Image generation gate", result, f"返回文案应含门控字样，实际={result!r}")
 
     def test_ui_button_bypasses_gate(self):
         """ui_button origin 不受计数门控，即使 count 已 >=1 也直接入队。"""

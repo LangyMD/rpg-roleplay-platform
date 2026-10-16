@@ -17,6 +17,7 @@ NEEDS_USER_INPUT: 哨兵 → 强制 yield user_choice_required SSE → LLM 没�
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import replace as dc_replace
 from typing import Any
 
@@ -51,9 +52,9 @@ _TAG_TABLE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "start_script_import": (("导入剧本", "新建剧本", "import script"), ("scripts",)),
     "cancel_import_job": (("取消导入", "cancel import"), ("scripts",)),
     "resplit_script": (("重新切章", "重切剧本", "resplit"), ("scripts",)),
-    "get_script_chapters": (("剧本章节", "看章节"), ()),
+    "get_script_chapters": (("剧本章节", "看章节", "script chapters", "list chapters"), ()),
     "list_script_npcs": (("剧本里的 NPC", "NPC 列表", "script npcs"), ()),
-    "get_chapter_facts": (("章节事实",), ()),
+    "get_chapter_facts": (("章节事实", "chapter facts"), ()),
     "get_worldbook": (("世界设定", "worldbook"), ()),
     "get_import_status": (("导入进度", "import status"), ()),
     "list_my_import_jobs": (("导入任务", "import jobs"), ()),
@@ -87,7 +88,7 @@ _TAG_TABLE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     # ─── 设置 / 模型 ───────────────────────────────────
     "set_preference": (("设置偏好", "改偏好", "set pref"), ("preferences",)),
     "select_model": (("切换模型", "改模型", "select model"), ("preferences",)),
-    "list_available_models": (("可用模型", "模型列表"), ()),
+    "list_available_models": (("可用模型", "模型列表", "available models", "list models"), ()),
     "probe_models": (("探测模型", "probe models"), ()),
     "list_my_credentials_meta": (("我的 API key", "凭证列表", "credentials"), ()),
     # ─── 模组 (rules) ───────────────────────────────
@@ -111,7 +112,7 @@ _TAG_TABLE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     # ─── 工具自查 ────────────────────────────────────
     "list_available_tools": (("可用工具", "available tools"), ()),
     # ─── 助手内建 (sentinel 类) ────────────────────────
-    "ask_user_choice": (("询问选择",), ()),
+    "ask_user_choice": (("询问选择", "ask user", "choose"), ()),
     "navigate_to_setting": (("跳转到设置", "去设置", "navigate"), ()),
 }
 
@@ -138,33 +139,33 @@ def apply_tags() -> None:
 # task 98: 给最常用工具配 2-3 个具体调用样本。
 _INPUT_EXAMPLES: dict[str, list[dict[str, Any]]] = {
     "create_character_card": [
-        {"name": "晓星", "summary": "开朗元气、自来熟", "identity": "女高中生穿越者"},
-        {"name": "蓝魅", "summary": "冷静腹黑、谋略型", "identity": "流亡贵族"},
-        {"name": "测试角色", "summary": "傲娇内向", "identity": "失忆剑士"},
+        {"name": "Stella", "summary": "cheerful and energetic, makes friends instantly", "identity": "high-school girl transported to another world"},
+        {"name": "Indigo", "summary": "cool-headed and scheming, a strategist", "identity": "exiled noble"},
+        {"name": "Test Character", "summary": "prickly on the outside, shy inside", "identity": "amnesiac swordsman"},
     ],
     "create_persona": [
-        {"name": "晓卡", "summary": "穿越者视角玩家", "role": "现代穿越来的高中生"},
+        {"name": "Kay", "summary": "player with a transported outsider's point of view", "role": "modern high-school student transported to another world"},
     ],
     "create_save": [
-        {"script_id": 9803, "title": "主线第一周目"},
-        {"script_id": 9803, "title": "另一条分支线", "persona_id": 46},
+        {"script_id": 9803, "title": "Main story, first run"},
+        {"script_id": 9803, "title": "Another branch", "persona_id": 46},
     ],
     "generate_character_card_draft": [
-        {"brief": "20 岁女法师, 流亡贵族", "kind": "user"},
-        {"brief": f"{_load_glossary().get('world_terms', {}).get('realm_main', '[REALM_NAME]')}郡主, 源血脉者, 前世记忆", "kind": "user", "script_id": 9803},
+        {"brief": "20-year-old female mage, exiled noble", "kind": "user"},
+        {"brief": f"Princess of {_load_glossary().get('world_terms', {}).get('realm_main', '[REALM_NAME]')}, carrier of the source bloodline, memories of a past life", "kind": "user", "script_id": 9803},
     ],
     "refine_character_card_draft": [
-        {"previous_draft": {"name": "晓星", "personality": "开朗"},
-         "feedback": "再傲娇一点, 增加冷淡气质"},
+        {"previous_draft": {"name": "Stella", "personality": "cheerful"},
+         "feedback": "make her pricklier and a bit colder"},
     ],
     "ask_user_choice": [
-        {"question": "给新角色取个什么名字?",
-         "options": ["晓星", "阿狸", "凌儿", "蓝魅"],
+        {"question": "What should the new character be called?",
+         "options": ["Stella", "Rina", "Ling", "Indigo"],
          "allow_free_text": True},
-        {"question": "性格偏哪种?",
-         "options": ["开朗元气", "冷静腹黑", "傲娇内向", "温柔治愈"],
+        {"question": "Which personality fits best?",
+         "options": ["Cheerful and energetic", "Cool and scheming", "Prickly but shy", "Gentle and soothing"],
          "allow_free_text": True,
-         "context": "影响后续 generate_character_card_draft 的 brief"},
+         "context": "shapes the brief for the next generate_character_card_draft call"},
     ],
     "select_model": [
         {"api_id": "vertex_ai", "model": "gemini-3.5-flash"},
@@ -176,7 +177,7 @@ _INPUT_EXAMPLES: dict[str, list[dict[str, Any]]] = {
     ],
     "activate_save": [{"save_id": 13735}],
     "delete_save": [{"save_id": 13744}],
-    "rename_save": [{"save_id": 13735, "title": "周目二存档"}],
+    "rename_save": [{"save_id": 13735, "title": "Second run save"}],
     "delete_character_card": [{"card_id": 306}],
     "delete_persona": [{"persona_id": 46}],
 }
@@ -220,46 +221,46 @@ def human_required(action_id: str) -> list[str]:
 # 这样用户永远看到的是"选 + 自由输入"的双轨卡片,而不是孤零零的文本框。
 _FIELD_HINTS: dict[str, dict[str, Any]] = {
     "summary": {
-        "question": "角色性格是什么样?",
-        "options": ["开朗元气", "冷静腹黑", "傲娇内向", "温柔治愈"],
+        "question": "What is the character's personality like?",
+        "options": ["Cheerful and energetic", "Cool and scheming", "Prickly but shy", "Gentle and soothing"],
         "free_text_ok": True,
     },
     "identity": {
-        "question": "角色的身份背景?",
-        "options": ["女高中生穿越者", "流亡贵族", "失忆剑士", "落魄世家继承人"],
+        "question": "What is the character's identity and background?",
+        "options": ["High-school girl transported to another world", "Exiled noble", "Amnesiac swordsman", "Heir to a fallen family"],
         "free_text_ok": True,
-        "placeholder": "或自由描述",
+        "placeholder": "Or describe it freely",
     },
     "name": {
-        "question": "给角色取个名字?",
-        "options": ["晓星", "阿狸", "凌儿", "蓝魅"],
+        "question": "What should the character be called?",
+        "options": ["Stella", "Rina", "Ling", "Indigo"],
         "free_text_ok": True,
-        "placeholder": "或自定义",
+        "placeholder": "Or enter your own",
     },
     "title": {
-        "question": "起个标题?",
-        "options": ["主线第一周目", "支线探索", "重温段落", "自由实验"],
+        "question": "What title should it have?",
+        "options": ["Main story, first run", "Side-quest exploration", "Revisiting a chapter", "Free experiment"],
         "free_text_ok": True,
-        "placeholder": "或自定义",
+        "placeholder": "Or enter your own",
     },
     "script_id": {
-        "question": "选哪个剧本?",
-        "placeholder": "剧本 ID (先调 list_scripts 看选项)",
+        "question": "Which script?",
+        "placeholder": "Script ID (call list_scripts first to see the options)",
     },
     "feedback": {
-        "question": "想怎么改?",
-        "options": ["再傲娇一点", "年龄改小一些", "加一段秘密往事", "性格更冷淡"],
+        "question": "How would you like to change it?",
+        "options": ["Make them pricklier", "Make them a bit younger", "Add a secret past", "Make them colder"],
         "free_text_ok": True,
-        "placeholder": "或自由描述",
+        "placeholder": "Or describe it freely",
     },
     "brief": {
-        "question": "用一句话描述这个新角色?",
-        "options": ["20 岁女法师,流亡贵族",
-                    "15 岁少年剑士,失忆穿越者",
-                    "中性向魔女,无限魔力",
-                    f"{_load_glossary().get('world_terms', {}).get('realm_main', '[REALM_NAME]')}郡主,源血脉者"],
+        "question": "Describe the new character in one sentence?",
+        "options": ["20-year-old female mage, exiled noble",
+                    "15-year-old boy swordsman, amnesiac outsider from another world",
+                    "Androgynous witch with limitless magic",
+                    f"Princess of {_load_glossary().get('world_terms', {}).get('realm_main', '[REALM_NAME]')}, carrier of the source bloodline"],
         "free_text_ok": True,
-        "placeholder": "或自由描述",
+        "placeholder": "Or describe it freely",
     },
 }
 
@@ -429,9 +430,10 @@ def _build_needs_input_payload(spec: ToolSpec, args: dict,
     p = props.get(first) or {}
     # 优先用 _FIELD_HINTS 的更友好版本, 否则 fallback 用 schema 里的 description
     hint = field_hint(first)
+    _first_sentence = (re.split(r"。|\.\s", spec.description, maxsplit=1)[0].strip()
+                       if spec.description else spec.name)
     question = hint.get("question") or (
-        f"创建 {spec.description.split('。')[0] if spec.description else spec.name} "
-        f"需要先告诉我 `{first}`"
+        f"To run {spec.name} ({_first_sentence}), please tell me `{first}` first"
     )
     options = hint.get("options") or p.get("enum") or p.get("examples") or []
     allow_free = hint.get("free_text_ok", True) if options else True
@@ -445,8 +447,8 @@ def _build_needs_input_payload(spec: ToolSpec, args: dict,
         "allow_free_text": allow_free,
         "placeholder": placeholder,
         "context": (
-            f"还差 {len(missing)} 项: {', '.join(missing)}. "
-            f"答完后由助手再次执行 {spec.name}。"
+            f"{len(missing)} still missing: {', '.join(missing)}. "
+            f"Once answered, the assistant will run {spec.name} again."
         ),
     }
 
@@ -474,14 +476,14 @@ def ui_invoke(user_id: int, args: dict) -> str:
     _raw_args = args.get("args")
     sub_args: dict[Any, Any] = _raw_args if isinstance(_raw_args, dict) else {}
     if not action_id:
-        return "失败: action_id 为空"
+        return "Failed: action_id is empty"
     reg = _get_reg()
     spec = reg.get(action_id)
     if spec is None:
-        return f"失败: 未知 action_id={action_id}"
+        return f"Failed: unknown action_id={action_id}"
     if "console_assistant" not in spec.origins:
-        return (f"失败: 工具 {action_id} 不允许 console_assistant 调用 "
-                f"(允许: {sorted(spec.origins)})")
+        return (f"Failed: tool {action_id} may not be called by console_assistant "
+                f"(allowed: {sorted(spec.origins)})")
 
     missing = _missing_required(spec, sub_args)
     if missing:
@@ -498,7 +500,7 @@ def ui_invoke(user_id: int, args: dict) -> str:
     )
     result = disp.dispatch_sync(env)
     if not result.ok:
-        return f"失败: {result.error or result.result or '未知'}"
+        return f"Failed: {result.error or result.result or 'unknown'}"
     return result.result
 
 
