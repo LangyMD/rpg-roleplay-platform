@@ -44,7 +44,7 @@ async def api_update_script_overrides(request: Request, script_id: int, user=Dep
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "请求 body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     # 支持两种格式: {"data": {...}} 或直接 {...}
     overrides_data = body.get("data") if isinstance(body.get("data"), dict) else body
     from platform_app.knowledge.script_overrides import upsert_overrides

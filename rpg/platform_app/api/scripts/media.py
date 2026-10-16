@@ -88,7 +88,7 @@ async def api_upload_npc_card_avatar(script_id: int, card_id: int, file: UploadF
             return json_response({"ok": False, "error": "Not allowed to modify this script"}, status_code=403)
     data = await file.read()
     if len(data) > _MAX_COVER_BYTES:
-        return json_response({"ok": False, "error": f"文件过大（上限 {_MAX_COVER_BYTES // 1024 // 1024} MB）"}, status_code=400)
+        return json_response({"ok": False, "error": f"File too large (limit {_MAX_COVER_BYTES // 1024 // 1024} MB)"}, status_code=400)
     try:
         mime, ext = _detect_cover_mime(data)
     except ValueError as exc:
@@ -134,7 +134,7 @@ async def api_upload_script_cover(script_id: int, file: UploadFile = File(...), 
     data = await file.read()
     if len(data) > _MAX_COVER_BYTES:
         return json_response(
-            {"ok": False, "error": f"文件过大（上限 {_MAX_COVER_BYTES // 1024 // 1024} MB）"},
+            {"ok": False, "error": f"File too large (limit {_MAX_COVER_BYTES // 1024 // 1024} MB)"},
             status_code=400,
         )
 

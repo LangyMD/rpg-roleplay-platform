@@ -137,7 +137,7 @@ async def api_tavern_create_chat(
         try:
             character_card_id = int(character_card_id)
         except (TypeError, ValueError):
-            return _bad("character_card_id 非法")
+            return _bad("Invalid character_card_id")
     persona_card_id = body.get("persona_card_id")
     try:
         persona_card_id = int(persona_card_id) if persona_card_id is not None else None
@@ -178,7 +178,7 @@ async def api_tavern_import_character(
                 return _bad("multipart request is missing the file field")
             blob = await file_field.read()
             if len(blob) > _MAX_IMPORT_PAYLOAD_BYTES:
-                raise ValueError(f"文件过大（上限 {_MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
+                raise ValueError(f"File too large (limit {_MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB)")
             fname = (getattr(file_field, "filename", "") or "").lower()
             if fname.endswith(".png") or fname.endswith(".webp"):
                 v2 = tavern_cards.parse_png_card(blob)
@@ -186,18 +186,18 @@ async def api_tavern_import_character(
                 try:
                     v2 = tavern_cards.parse_card(blob.decode("utf-8", errors="replace"))
                 except Exception as exc:
-                    raise ValueError(f"JSON 解析失败：{exc}") from exc
+                    raise ValueError(f"JSON parse error: {exc}") from exc
         else:
             body = await request.json()
             if body.get("png_base64"):
                 import base64 as _b64
                 png_b64 = body["png_base64"]
                 if not isinstance(png_b64, str) or len(png_b64) > _MAX_IMPORT_PAYLOAD_BYTES:
-                    raise ValueError(f"png_base64 过大或非字符串（上限 {_MAX_IMPORT_PAYLOAD_BYTES} 字节）")
+                    raise ValueError(f"png_base64 is too large or not a string (limit {_MAX_IMPORT_PAYLOAD_BYTES} bytes)")
                 try:
                     blob = _b64.b64decode(png_b64, validate=True)
                 except Exception as exc:
-                    raise ValueError(f"png_base64 不合法：{exc}") from exc
+                    raise ValueError(f"Invalid png_base64: {exc}") from exc
                 if len(blob) > 10 * 1024 * 1024:
                     raise ValueError("PNG file is too large (max 10MB after decoding)")
                 v2 = tavern_cards.parse_png_card(blob)
@@ -271,7 +271,7 @@ def _list_chats(user_id: int, archived: bool) -> list[dict[str, Any]]:
                     str(snippet_row.get("gm_output") or "").strip()
                     or str(snippet_row.get("content_preview") or "").strip()
                 )
-                raw = re.sub(r"^(GM|玩家)\s*[:：]\s*", "", raw)
+                raw = re.sub(r"^(GM|玩家|Player)\s*[:：]\s*", "", raw)
                 last_snippet = raw[:80]
             out.append({
                 "id": r.get("id"),
@@ -391,7 +391,7 @@ async def api_tavern_bind_card(
     body = await request.json()
     role = str(body.get("role") or "")
     if role not in ("character", "persona"):
-        return _bad("role 必须是 character 或 persona")
+        return _bad("role must be character or persona")
     col = "tavern_character_card_id" if role == "character" else "tavern_persona_card_id"
     raw = body.get("card_id")
     cid: int | None = None
@@ -406,7 +406,7 @@ async def api_tavern_bind_card(
                 "select * from character_cards where id = %s and user_id = %s", (cid, user_id),
             ).fetchone()
             if not _card_row:
-                return _bad("无权使用该角色卡", 403)
+                return _bad("Not allowed to use this character card", 403)
         if _card_row is not None:
             # 双源病根修(persona 已修、character 曾漏网):persona GM 读 state.data['player'],
             # character GM 读 state.data['tavern']['character'](context_providers/tavern.py)。
@@ -552,12 +552,12 @@ async def api_tavern_set_immersive(
 
 
 _AI_REPLY_SYS = (
-    "你在一段角色扮演对话里【扮演玩家自己的角色】,替玩家写一条【符合上下文】的回复,"
-    "回应对方角色刚刚说的话。要求:\n"
-    "- 用玩家角色的第一人称、自然口吻;贴合此前对话的语气与情境。\n"
-    "- 只写玩家这一方的台词与简短动作,**绝不替对方角色说话或行动**,不写旁白解说。\n"
-    "- 简洁,通常一到三句,像真人对话。\n"
-    '只返回 JSON:{"reply":"……"};reply 为要发出的回复正文,不含引号/解释/前后缀。'
+    "In a roleplay conversation you are **playing the player's own character**. Write one reply for the player "
+    "that **fits the context** and responds to what the other character just said. Requirements:\n"
+    "- Write in the player character's first person with a natural voice; match the tone and situation of the conversation so far.\n"
+    "- Write only the player's own lines and brief actions; **never speak or act for the other character**, and do not add narration.\n"
+    "- Keep it brief, usually one to three sentences, like a real conversation.\n"
+    'Return JSON only: {"reply":"..."}; reply is the reply text to send, with no quotes, explanations, prefixes or suffixes.'
 )
 
 
@@ -586,9 +586,9 @@ async def api_tavern_ai_reply(
     player = ss.get("player") or {}
     history = ss.get("history") or []
     if not history:
-        return _bad("对话还没开始,无法帮回", 400)
-    char_name = (tav.get("character") or {}).get("name") or "对方"
-    player_name = player.get("name") or "我"
+        return _bad("The conversation has not started yet, so there is nothing to reply to", 400)
+    char_name = (tav.get("character") or {}).get("name") or "Other character"
+    player_name = player.get("name") or "Me"
     persona_desc = ""
     try:
         pid = tav.get("persona_card_id")
@@ -611,11 +611,11 @@ async def api_tavern_ai_reply(
         lines.append(f"{who}:{txt[:600]}")
     convo = "\n".join(lines)
     user_block = (
-        f"你扮演的玩家角色:{player_name}\n"
-        + (f"玩家角色设定:{persona_desc[:800]}\n" if persona_desc else "")
-        + f"对方角色:{char_name}\n\n"
-        f"最近的对话(玩家={player_name},对方={char_name}):\n{convo}\n\n"
-        f"现在请以 {player_name} 的身份,写一条回应 {char_name} 最后这段话的回复。"
+        f"Player character you are playing: {player_name}\n"
+        + (f"Player character profile: {persona_desc[:800]}\n" if persona_desc else "")
+        + f"Other character: {char_name}\n\n"
+        f"Recent conversation (player = {player_name}, other = {char_name}):\n{convo}\n\n"
+        f"Now, as {player_name}, write a reply to {char_name}'s last message."
     )
     try:
         # 结构化微任务禁深思(268 实锤族)+空正文护栏
@@ -633,7 +633,7 @@ async def api_tavern_ai_reply(
             max_tokens=400, timeout_sec=30, agent_kind="tavern_ai_reply", save_id=chat_id,
         )
     except Exception as exc:
-        return _bad(f"AI 帮回失败:{type(exc).__name__}", 502)
+        return _bad(f"AI reply failed: {type(exc).__name__}", 502)
     reply = ""
     try:
         t = (text or "").strip()
@@ -649,13 +649,13 @@ async def api_tavern_ai_reply(
     if not reply:
         reply = (text or "").strip()
     if not reply:
-        return _bad("AI 帮回未产生内容", 502)
+        return _bad("AI reply produced no content", 502)
     return _json({"ok": True, "reply": reply[:4000]})
 
 
 _TITLE_SYS = (
-    '你为一段对话起一个简短的中文标题,概括主题或场景。'
-    '只返回 JSON,格式 {"title":"标题"};标题 4-14 字,不含引号/书名号/标点/表情/解释。'
+    'Give this conversation a short title that sums up its topic or scene. '
+    'Return JSON only, in the form {"title":"Title"}; the title is 2-8 words, with no quotes, punctuation, emoji or explanation.'
 )
 
 
@@ -664,7 +664,7 @@ def _is_default_title(t: str) -> bool:
     t = (t or "").strip()
     if not t or t in ("New conversation", "新对话"):
         return True
-    return bool(re.match(r"^与 .+ 的对话$", t))
+    return bool(re.match(r"^与 .+ 的对话$", t) or re.match(r"^Chat with .+$", t))
 
 
 def _sanitize_title(raw: str) -> str:
@@ -686,7 +686,7 @@ def _sanitize_title(raw: str) -> str:
     t = t.splitlines()[0].strip() if t else ""
     t = t.strip('“”"\'`《》「」【】（）()').strip()
     t = t.rstrip("。.!！?？,，、;；:：…")
-    return t[:24]
+    return t[:60]
 
 
 @router.post("/api/tavern/chats/{chat_id}/autotitle")
@@ -722,7 +722,7 @@ async def api_tavern_autotitle(
                      if m.get("role") == "assistant" and str(m.get("content") or "").strip()), "")
     if not (user_msg and asst_msg):
         return _json({"ok": True, "title": None, "skipped": "too_short"})
-    excerpt = f"玩家:{str(user_msg)[:500]}\n回应:{str(asst_msg)[:500]}"
+    excerpt = f"Player: {str(user_msg)[:500]}\nResponse: {str(asst_msg)[:500]}"
     try:
         # 结构化微任务禁深思(268 实锤族)+空正文护栏
         from agents._harness import call_agent_json_guarded
@@ -747,7 +747,8 @@ async def api_tavern_autotitle(
         db.execute(
             "update game_saves set title = %s, updated_at = now() "
             "where id = %s and user_id = %s and save_kind = 'tavern' "
-            "and (title is null or title = '' or title = 'New conversation' or title like '与 %% 的对话')",
+            "and (title is null or title = '' or title in ('New conversation', '新对话') "
+            "or title like '与 %% 的对话' or title like 'Chat with %%')",
             (title, chat_id, user_id),
         )
     return _json({"ok": True, "title": title})
@@ -797,20 +798,20 @@ async def api_tavern_import_jsonl(
                 return _bad("multipart request is missing the file field")
             blob = await file_field.read()
             if len(blob) > _MAX_IMPORT_PAYLOAD_BYTES:
-                raise ValueError(f"文件过大（上限 {_MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
+                raise ValueError(f"File too large (limit {_MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB)")
             jsonl_text = blob.decode("utf-8", errors="replace")
             custom_title = (str(form.get("title") or "")).strip() or None
         else:
             body = await request.json()
             jsonl_text = body.get("jsonl") or ""
             if not isinstance(jsonl_text, str) or not jsonl_text.strip():
-                return _bad("需要 jsonl 字段（JSONL 字符串）或 multipart file")
+                return _bad("A jsonl field (JSONL string) or a multipart file is required")
             custom_title = (body.get("title") or "").strip() or None
 
         header, commits = tavern_chats.parse_chat_jsonl(jsonl_text)
 
         # 自动 resolve / 建一张角色卡(best-effort:同名已存在则复用,否则建最小 pc 卡)。
-        char_name = str(header.get("character_name") or "").strip() or "导入角色"
+        char_name = str(header.get("character_name") or "").strip() or "Imported character"
         character_card_id: int | None = None
         init_db()
         with connect() as db:

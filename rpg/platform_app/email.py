@@ -141,7 +141,7 @@ def _render_email(
             <div class="sr-rule" style="height:1px;line-height:1px;background:#36322d;">&nbsp;</div>
             <div style="height:14px;line-height:14px;">&nbsp;</div>
             <div class="sr-muted" style="color:#968f85;font-size:13px;line-height:1.65;">
-              {footer_html or '如果你没有请求此邮件，可以安全忽略。<br>If you did not request this email, you can safely ignore it.'}
+              {footer_html or 'If you did not request this email, you can safely ignore it.'}
               <br><a class="sr-link" style="color:#d97955;text-decoration:none;font-weight:700;" href="{support_url}">rpg-roleplay.stellatrix.icu</a>
             </div>
           </td>
@@ -191,6 +191,9 @@ def build_verification_email(code: str, lang: str = "en") -> tuple[str, str, str
         "---\n"
         f"Your Stellatrix RPG verification code: {code}\n\n"
         "Valid for 10 minutes. Ignore if you did not request this."
+    ) if is_zh else (
+        f"Your Stellatrix RPG verification code: {code}\n\n"
+        "Valid for 10 minutes. Ignore this email if you did not request it."
     )
     lead = (
         "请输入以下 6 位验证码完成注册。验证码会在 <strong style=\"color:#ebe7df;\">10 分钟</strong>后失效。"
@@ -207,12 +210,13 @@ def build_verification_email(code: str, lang: str = "en") -> tuple[str, str, str
     secondary = """
       <div style="height:18px;line-height:18px;">&nbsp;</div>
       <div class="sr-muted" style="color:#968f85;font-size:13px;line-height:1.65;">
-        为了保护账号安全，请不要把验证码转发给任何人。<br>
-        For your security, never forward this code to anyone.
+        %s
       </div>
-    """
+    """ % ("为了保护账号安全，请不要把验证码转发给任何人。<br>\n        For your security, never forward this code to anyone."
+           if is_zh else "For your security, never forward this code to anyone.")
     html = _render_email(
-        preheader=f"验证码 {code}，10 分钟内有效",
+        preheader=(f"验证码 {code}，10 分钟内有效" if is_zh else f"Code {code}, valid for 10 minutes"),
+        footer_html=('如果你没有请求此邮件，可以安全忽略。<br>If you did not request this email, you can safely ignore it.' if is_zh else None),
         eyebrow="Verification Code",
         title="你的注册验证码" if is_zh else "Your verification code",
         lead_html=lead,
@@ -242,6 +246,9 @@ def build_login_code_email(code: str, lang: str = "en") -> tuple[str, str, str]:
         "---\n"
         f"Your Stellatrix RPG login code: {code}\n\n"
         "Valid for 10 minutes. Ignore if you did not request this."
+    ) if is_zh else (
+        f"Your Stellatrix RPG login code: {code}\n\n"
+        "Valid for 10 minutes. Ignore this email if you did not request it."
     )
     lead = (
         "请输入以下 6 位验证码完成登录。验证码会在 <strong style=\"color:#ebe7df;\">10 分钟</strong>后失效。"
@@ -258,12 +265,13 @@ def build_login_code_email(code: str, lang: str = "en") -> tuple[str, str, str]:
     secondary = """
       <div style="height:18px;line-height:18px;">&nbsp;</div>
       <div class="sr-muted" style="color:#968f85;font-size:13px;line-height:1.65;">
-        该验证码只能用于登录 RPG Roleplay，请不要转发给任何人。<br>
-        This code only signs in to RPG Roleplay. Never forward it to anyone.
+        %s
       </div>
-    """
+    """ % ("该验证码只能用于登录 RPG Roleplay，请不要转发给任何人。<br>\n        This code only signs in to RPG Roleplay. Never forward it to anyone."
+           if is_zh else "This code only signs in to RPG Roleplay. Never forward it to anyone.")
     html = _render_email(
-        preheader=f"登录验证码 {code}，10 分钟内有效",
+        preheader=(f"登录验证码 {code}，10 分钟内有效" if is_zh else f"Login code {code}, valid for 10 minutes"),
+        footer_html=('如果你没有请求此邮件，可以安全忽略。<br>If you did not request this email, you can safely ignore it.' if is_zh else None),
         eyebrow="Login Code",
         title="你的登录验证码" if is_zh else "Your login code",
         lead_html=lead,
@@ -287,6 +295,9 @@ def build_password_reset_email(to: str, token: str, lang: str = "en") -> tuple[s
         f"点击以下链接重置你的 Stellatrix RPG 密码（30 分钟内有效）：\n{link}\n\n"
         "如果这不是你本人的操作，请忽略此邮件。你的密码不会被更改。\n\n"
         "---\n"
+        f"Click the link below to reset your Stellatrix RPG password (valid for 30 minutes):\n{link}\n\n"
+        "If you did not request this, ignore this email. Your password will not be changed."
+    ) if is_zh else (
         f"Click the link below to reset your Stellatrix RPG password (valid for 30 minutes):\n{link}\n\n"
         "If you did not request this, ignore this email. Your password will not be changed."
     )
@@ -314,6 +325,7 @@ def build_password_reset_email(to: str, token: str, lang: str = "en") -> tuple[s
         title="重置你的密码" if is_zh else "Reset your password",
         lead_html=lead,
         main_html=main,
+        footer_html=('如果你没有请求此邮件，可以安全忽略。<br>If you did not request this email, you can safely ignore it.' if is_zh else None),
     )
     return subject, text, html
 
@@ -362,12 +374,7 @@ def build_policy_notice_email(
             f"Summary of changes:\n{summary}\n\n"
             f"Effective date: {effective_display}\n\n"
             f"Read the full policy: {url}\n\n"
-            f"For questions, contact support@stellatrix.icu\n\n"
-            f"---\n"
-            f"[ZH] Stellatrix RPG 即将更新{name_zh}({new_version})。\n"
-            f"变更摘要: {summary}\n"
-            f"生效时间: {effective_display}\n"
-            f"完整政策: {url}"
+            f"For questions, contact support@stellatrix.icu"
         )
         title = f"{name_en} Update"
         lead = f"Stellatrix RPG is updating its <strong style=\"color:#ebe7df;\">{escape(name_en)}</strong>."
@@ -393,7 +400,8 @@ def build_policy_notice_email(
         title=title,
         lead_html=lead,
         main_html=main,
-        footer_html="如有疑问，请联系 support@stellatrix.icu。<br>For questions, contact support@stellatrix.icu.",
+        footer_html=("如有疑问，请联系 support@stellatrix.icu。<br>For questions, contact support@stellatrix.icu."
+                     if is_zh else "For questions, contact support@stellatrix.icu."),
     )
     return subject, text, html
 
@@ -437,20 +445,21 @@ def build_feedback_reply_email(
         f"""
       <div style="height:16px;line-height:16px;">&nbsp;</div>
       <div class="sr-muted" style="color:#968f85;font-size:13px;line-height:1.65;">
-        你的反馈:{escape(preview_short)}
+        {'你的反馈:' if is_zh else 'Your feedback: '}{escape(preview_short)}
       </div>
     """
         if preview_short
         else ""
     )
     html = _render_email(
-        preheader="We replied to your feedback" if is_zh else "We replied to your feedback",
+        preheader="你的反馈有回复了" if is_zh else "We replied to your feedback",
         eyebrow="Feedback Reply",
-        title="We replied to your feedback" if is_zh else "We replied to your feedback",
+        title="你的反馈有回复了" if is_zh else "We replied to your feedback",
         lead_html=lead,
         main_html=main,
         secondary_html=secondary,
-        footer_html="这封邮件因你在反馈时留下了邮箱而发送。<br>You received this because you left an email with your feedback.",
+        footer_html=("这封邮件因你在反馈时留下了邮箱而发送。<br>You received this because you left an email with your feedback."
+                     if is_zh else "You received this because you left an email with your feedback."),
     )
     return subject, text, html
 

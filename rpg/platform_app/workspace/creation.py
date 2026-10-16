@@ -361,7 +361,7 @@ def create_tavern_save(
         snapshot["history"] = hist
 
     if card is not None:
-        save_title = (title or "").strip() or f"与 {character_snapshot.get('name') or '角色'} 的对话"
+        save_title = (title or "").strip() or f"Chat with {character_snapshot.get('name') or 'character'}"
     else:
         save_title = (title or "").strip() or "New conversation"
 

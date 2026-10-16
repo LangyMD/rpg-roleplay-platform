@@ -123,7 +123,7 @@ def _apply_canon_patch(db, script_id: int, body: dict):
             try:
                 imp = int(body["importance"] or 0)
             except (TypeError, ValueError):
-                return json_response({"ok": False, "error": "「重要度」要填整数"}, status_code=400)
+                return json_response({"ok": False, "error": "\"Importance\" must be an integer"}, status_code=400)
             sets.append("importance=%s")
             args.append(imp)
         if "aliases" in body and isinstance(body["aliases"], list):
@@ -149,13 +149,13 @@ def _apply_canon_patch(db, script_id: int, body: dict):
         frm = (body.get("from_key") or "").strip()
         into = (body.get("into_key") or "").strip()
         if not frm or not into:
-            return json_response({"ok": False, "error": "缺 from_key/into_key"}, status_code=400)
+            return json_response({"ok": False, "error": "Missing from_key/into_key"}, status_code=400)
         src = db.execute("select name, aliases from kb_canon_entities where script_id=%s and logical_key=%s", (script_id, frm)).fetchone()
         if not src:
-            return json_response({"ok": False, "error": f"from_key 不存在: {frm}"}, status_code=404)
+            return json_response({"ok": False, "error": f"from_key not found: {frm}"}, status_code=404)
         dst = db.execute("select 1 from kb_canon_entities where script_id=%s and logical_key=%s", (script_id, into)).fetchone()
         if not dst:
-            return json_response({"ok": False, "error": f"into_key 不存在: {into}"}, status_code=400)
+            return json_response({"ok": False, "error": f"into_key not found: {into}"}, status_code=400)
         merged_aliases = list({*(src.get("aliases") or []), src["name"]})
         # 别名并进来了 → 合并目标的嵌入文本变了,向量置空等重嵌。
         updated = db.execute(
@@ -166,7 +166,7 @@ def _apply_canon_patch(db, script_id: int, body: dict):
             (merged_aliases, script_id, into),
         ).rowcount
         if updated == 0:
-            return json_response({"ok": False, "error": "into_key 更新失败,未执行 DELETE"}, status_code=500)
+            return json_response({"ok": False, "error": "Failed to update into_key; DELETE was not executed"}, status_code=500)
         db.execute("delete from kb_canon_entities where script_id=%s and logical_key=%s", (script_id, frm))
         moved = detach_canon_children(db, script_id, frm, new_parent=into)
         return json_response({"ok": True, "merged": True, "moved_children": moved})
@@ -177,7 +177,7 @@ def _apply_canon_patch(db, script_id: int, body: dict):
         n = db.execute("delete from kb_canon_entities where script_id=%s and logical_key=%s", (script_id, lk)).rowcount
         detached = detach_canon_children(db, script_id, lk) if n else []
         return json_response({"ok": True, "deleted": n, "detached_children": detached})
-    return json_response({"ok": False, "error": f"未知 op: {op}"}, status_code=400)
+    return json_response({"ok": False, "error": f"Unknown op: {op}"}, status_code=400)
 
 
 @router.post("/api/scripts/{script_id}/mark-reviewed")

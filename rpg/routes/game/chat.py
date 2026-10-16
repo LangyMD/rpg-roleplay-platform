@@ -98,53 +98,53 @@ async def api_chat_estimate(
 # layer id → (category key, label, color)
 _LAYER_CATEGORY = {
     # 对话历史
-    "recent_chat": ("history", "对话历史", "#4f8ef7"),
+    "recent_chat": ("history", "Chat history", "#4f8ef7"),
     # 系统提示 / 规则
-    "rules": ("system_prompt", "系统提示", "#9b6bdf"),
-    "agent_runtime": ("system_prompt", "系统提示", "#9b6bdf"),
-    "timeline_pending": ("system_prompt", "系统提示", "#9b6bdf"),
-    "worldline": ("system_prompt", "系统提示", "#9b6bdf"),
-    "write_results": ("system_prompt", "系统提示", "#9b6bdf"),
-    "context_agent": ("system_prompt", "系统提示", "#9b6bdf"),
-    "candidate_actions": ("system_prompt", "系统提示", "#9b6bdf"),
-    "state_schema": ("system_prompt", "系统提示", "#9b6bdf"),
+    "rules": ("system_prompt", "System prompt", "#9b6bdf"),
+    "agent_runtime": ("system_prompt", "System prompt", "#9b6bdf"),
+    "timeline_pending": ("system_prompt", "System prompt", "#9b6bdf"),
+    "worldline": ("system_prompt", "System prompt", "#9b6bdf"),
+    "write_results": ("system_prompt", "System prompt", "#9b6bdf"),
+    "context_agent": ("system_prompt", "System prompt", "#9b6bdf"),
+    "candidate_actions": ("system_prompt", "System prompt", "#9b6bdf"),
+    "state_schema": ("system_prompt", "System prompt", "#9b6bdf"),
     # 状态摘要
-    "state": ("system_prompt", "系统提示", "#9b6bdf"),
+    "state": ("system_prompt", "System prompt", "#9b6bdf"),
     # RAG 召回
-    "rag": ("retrieved_chunks", "RAG 召回", "#2bae8a"),
-    "novel_retrieval": ("retrieved_chunks", "RAG 召回", "#2bae8a"),
+    "rag": ("retrieved_chunks", "RAG retrieval", "#2bae8a"),
+    "novel_retrieval": ("retrieved_chunks", "RAG retrieval", "#2bae8a"),
     # 长期记忆
-    "fact_groups": ("memory_facts", "长期记忆", "#e6a817"),
-    "hypotheses": ("memory_facts", "长期记忆", "#e6a817"),
-    "memory": ("memory_facts", "长期记忆", "#e6a817"),
+    "fact_groups": ("memory_facts", "Long-term memory", "#e6a817"),
+    "hypotheses": ("memory_facts", "Long-term memory", "#e6a817"),
+    "memory": ("memory_facts", "Long-term memory", "#e6a817"),
     # 角色卡
-    "player_card": ("character_cards", "角色卡", "#e05c7a"),
-    "npc_cards": ("character_cards", "角色卡", "#e05c7a"),
-    "novel_characters": ("character_cards", "角色卡", "#e05c7a"),
+    "player_card": ("character_cards", "Character cards", "#e05c7a"),
+    "npc_cards": ("character_cards", "Character cards", "#e05c7a"),
+    "novel_characters": ("character_cards", "Character cards", "#e05c7a"),
     # 酒馆模式的卡层(AI 角色 / 用户 persona / 卡内高优先级指令)—— 此前未映射 → 错归 system_prompt。
-    "tavern_character": ("character_cards", "角色卡", "#e05c7a"),
-    "tavern_persona": ("character_cards", "角色卡", "#e05c7a"),
-    "tavern_card_system": ("character_cards", "角色卡", "#e05c7a"),
+    "tavern_character": ("character_cards", "Character cards", "#e05c7a"),
+    "tavern_persona": ("character_cards", "Character cards", "#e05c7a"),
+    "tavern_card_system": ("character_cards", "Character cards", "#e05c7a"),
     # 世界书
-    "worldbook": ("worldbook", "世界书", "#3dbad4"),
-    "novel_worldbook": ("worldbook", "世界书", "#3dbad4"),
-    "module_worldbook": ("worldbook", "世界书", "#3dbad4"),
+    "worldbook": ("worldbook", "Worldbook", "#3dbad4"),
+    "novel_worldbook": ("worldbook", "Worldbook", "#3dbad4"),
+    "module_worldbook": ("worldbook", "Worldbook", "#3dbad4"),
     # 阶段摘要
-    "novel_timeline": ("phase_digests", "阶段摘要", "#f07a3c"),
-    "runtime_phase_digests": ("phase_digests", "阶段摘要", "#f07a3c"),
+    "novel_timeline": ("phase_digests", "Phase digests", "#f07a3c"),
+    "runtime_phase_digests": ("phase_digests", "Phase digests", "#f07a3c"),
     # 玩家输入（不计入 breakdown，归入 history）
-    "user_input": ("history", "对话历史", "#4f8ef7"),
+    "user_input": ("history", "Chat history", "#4f8ef7"),
 }
 
 _CATEGORY_ORDER = [
-    ("history", "对话历史", "#4f8ef7"),
-    ("system_prompt", "系统提示", "#9b6bdf"),
-    ("retrieved_chunks", "RAG 召回", "#2bae8a"),
-    ("memory_facts", "长期记忆", "#e6a817"),
-    ("character_cards", "角色卡", "#e05c7a"),
-    ("worldbook", "世界书", "#3dbad4"),
-    ("phase_digests", "阶段摘要", "#f07a3c"),
-    ("tools", "工具/MCP", "#8899aa"),
+    ("history", "Chat history", "#4f8ef7"),
+    ("system_prompt", "System prompt", "#9b6bdf"),
+    ("retrieved_chunks", "RAG retrieval", "#2bae8a"),
+    ("memory_facts", "Long-term memory", "#e6a817"),
+    ("character_cards", "Character cards", "#e05c7a"),
+    ("worldbook", "Worldbook", "#3dbad4"),
+    ("phase_digests", "Phase digests", "#f07a3c"),
+    ("tools", "Tools/MCP", "#8899aa"),
 ]
 
 
@@ -201,7 +201,7 @@ async def api_context_breakdown(
 
     free_tokens = max(0, ctx_limit - used_sum)
     free_pct = round(100 * free_tokens / ctx_limit, 1) if ctx_limit else 0.0
-    breakdown.append({"key": "free", "label": "剩余空间", "tokens": free_tokens, "pct": free_pct, "color": "#555e6a"})
+    breakdown.append({"key": "free", "label": "Free space", "tokens": free_tokens, "pct": free_pct, "color": "#555e6a"})
 
     return json_response({
         "ok": True,
@@ -263,7 +263,7 @@ async def api_chat(
     _MAX_CHAT_MSG_CHARS = 32000
     if len(message) > _MAX_CHAT_MSG_CHARS:
         return StreamingResponse(
-            iter([_sse("error", {"message": f"消息过长({len(message)} 字符,上限 {_MAX_CHAT_MSG_CHARS});请拆分后发送"})]),
+            iter([_sse("error", {"message": f"Message too long ({len(message)} characters, limit {_MAX_CHAT_MSG_CHARS}); please split it up"})]),
             media_type="text/event-stream",
         )
     attachments = _save_attachments(body_dict.get("attachments") or [], user_id=api_user["id"] if api_user else None)
@@ -302,7 +302,7 @@ async def api_chat(
                 status_code=409,
                 content={
                     "code": "save_id_mismatch",
-                    "message": "当前激活存档已切换，请刷新页面后重试",
+                    "message": "The active save has changed; please refresh the page and try again",
                     "client_save_id": int(client_save_id),
                     "active_save_id": _active_sid,
                 },
@@ -343,7 +343,7 @@ async def api_chat(
                             _rath_db.commit()
                     from rath.engine import _trace as _rath_trace
                     for _r in _rath_hits:
-                        _rath_trace(int(_r["id"]), "玩家回归,世界暂停",
+                        _rath_trace(int(_r["id"]), "Player returned; world paused",
                                     clock=int(_r.get("world_clock_min") or 0))
         except Exception:
             pass
@@ -557,7 +557,7 @@ async def api_chat(
                 try:
                     _persist_chat_turn(
                         api_user, pipeline_ctx.state, pipeline_ctx.message_for_model,
-                        _partial + "\n\n【网络中断,已保留部分内容】",
+                        _partial + "\n\n[Connection lost; partial content kept]",
                         persist_user_id=pipeline_ctx.persist_user_id,
                         active_save_id=pipeline_ctx.active_save_id,
                         interrupted=True,
@@ -582,7 +582,7 @@ async def api_chat(
                 duration_ms=int((time.time() - _chat_start_time) * 1000),
             )
             yield _sse("error", {
-                "message": str(_conf) or "存档已在别处推进,请刷新后重试。",
+                "message": str(_conf) or "This save was advanced elsewhere; please refresh and try again.",
                 "kind": "save_conflict",
             })
             yield _sse("done", {"interrupted": True, "status": _payload_sse(api_user)})

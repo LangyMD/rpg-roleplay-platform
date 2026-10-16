@@ -314,12 +314,7 @@ def _build_email(
             f"Summary of changes:\n{summary}\n\n"
             f"Effective date: {effective_display}\n\n"
             f"Read the full policy: {url}\n\n"
-            f"For questions, contact support@stellatrix.icu\n\n"
-            f"---\n"
-            f"[ZH] Stellatrix RPG 即将更新{name_zh}({new_version})。\n"
-            f"变更摘要: {summary}\n"
-            f"生效时间: {effective_display}\n"
-            f"完整政策: {url}"
+            f"For questions, contact support@stellatrix.icu"
         )
 
     return subject, body

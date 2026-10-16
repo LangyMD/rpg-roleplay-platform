@@ -30,7 +30,7 @@ async def api_script_character_card(script_id: int, card_id: int, user=Depends(r
     except ValueError as exc:
         return value_error_response(exc, status_code=403)
     if not card:
-        return json_response({"ok": False, "error": "character_card 不存在"}, status_code=404)
+        return json_response({"ok": False, "error": "character_card not found"}, status_code=404)
     return json_response({"ok": True, "card": card})
 
 
@@ -53,7 +53,7 @@ async def api_script_upsert_character_card(request: Request, script_id: int, use
             from psycopg.errors import UniqueViolation
             if isinstance(exc, UniqueViolation):
                 return json_response(
-                    {"ok": False, "error": "该剧本已存在同名 NPC 角色卡,请改用不同的名字"},
+                    {"ok": False, "error": "This script already has an NPC character card with that name; please use a different name"},
                     status_code=400,
                 )
         except Exception:

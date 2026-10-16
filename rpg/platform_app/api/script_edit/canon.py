@@ -24,7 +24,6 @@ from psycopg.types.json import Jsonb
 
 from kb.alias import invalidate_alias_cache
 from kb.canon_repo import (
-    CANON_TYPE_LABELS_ZH,
     allocate_canon_logical_key,
     canon_embedding_reset_sql,
     canon_logical_key_problem,
@@ -47,13 +46,14 @@ _CANON_COLS = (
 # 纯文本列(NOT NULL default ''):null → 空串,绝不写字面量 "None"。
 _TEXT_FIELDS = ("full_name", "summary", "identity", "background", "entity_subtype", "parent_logical_key")
 # 整数列(NOT NULL default 0):null / 空串 → 0;非整数 → 400 可读报错。
-_INT_FIELDS = {"importance": "重要度", "first_revealed_chapter": "首次出现章节"}
+_INT_FIELDS = {"importance": "Importance", "first_revealed_chapter": "First appearance chapter"}
 _EDITOR_SOURCE = {"source": "editor"}
 _NOT_FOUND = "This lore entity does not exist (it may have been deleted); refresh the list and try again"
 
 
 def _type_label(entity_type: str) -> str:
-    return CANON_TYPE_LABELS_ZH.get(entity_type, entity_type)
+    # 用户可见文案已英文化:直接用类型 key(character / faction / ...)。
+    return entity_type
 
 
 class _CanonInputError(ValueError):
@@ -66,7 +66,7 @@ def _parse_int(label: str, value: Any) -> int:
     try:
         return int(value.strip()) if isinstance(value, str) else int(value)
     except (TypeError, ValueError):
-        raise _CanonInputError(f"「{label}」要填整数,现在是「{value}」") from None
+        raise _CanonInputError(f"\"{label}\" must be an integer, got \"{value}\"") from None
 
 
 def _parse_bool(value: Any) -> bool:
@@ -88,15 +88,15 @@ def _parse_canon_fields(body: dict, *, creating: bool) -> dict[str, Any]:
     if creating or "name" in body:
         name = str(body.get("name") or "").strip()
         if not name:
-            raise _CanonInputError("名称不能为空")
+            raise _CanonInputError("Name cannot be empty")
         out["name"] = name
     if creating or "type" in body:
         raw = body.get("type")
         if raw is None or not str(raw).strip():
-            raise _CanonInputError(f"请选择类型:{canon_type_choices_text()}")
+            raise _CanonInputError(f"Please choose a type: {canon_type_choices_text()}")
         entity_type = normalize_canon_type(raw)
         if not entity_type:
-            raise _CanonInputError(f"类型「{raw}」不认识,可选:{canon_type_choices_text()}")
+            raise _CanonInputError(f"Unknown type \"{raw}\"; choose one of: {canon_type_choices_text()}")
         out["type"] = entity_type
     for col in _TEXT_FIELDS:
         if col in body:
@@ -125,7 +125,7 @@ def _parse_canon_fields(body: dict, *, creating: bool) -> dict[str, Any]:
         elif isinstance(v, dict):
             out["attrs"] = v
         else:
-            raise _CanonInputError("attrs 要是键值对象")
+            raise _CanonInputError("attrs must be a key-value object")
     return out
 
 
@@ -160,7 +160,7 @@ async def api_canon_update(
         return json_response({"ok": False, "error": "An entity cannot be its own parent"}, status_code=400)
     if not fields:
         return json_response(
-            {"ok": False, "error": "没有可更新的字段(可改:名称、类型、摘要、身份、背景、别名、上级、重要度等)"},
+            {"ok": False, "error": "No fields to update (editable: name, type, summary, identity, background, aliases, parent, importance, etc.)"},
             status_code=400,
         )
 
@@ -186,9 +186,9 @@ async def api_canon_update(
             if dup:
                 return json_response({
                     "ok": False,
-                    "error": (f"本剧本已经有同名的{_type_label(new_type)}「{dup['name']}」"
-                              f"(logical_key: {dup['logical_key']}),这样改会和它重复。"
-                              f"如果本来就是同一个,请在知识库复核里把两条合并"),
+                    "error": (f"This script already has a {_type_label(new_type)} named \"{dup['name']}\" "
+                              f"(logical_key: {dup['logical_key']}); this change would duplicate it. "
+                              f"If they are the same thing, merge the two in the knowledge base review"),
                     "existing_logical_key": dup["logical_key"],
                 }, status_code=409)
         sets, args = [], []
@@ -228,7 +228,7 @@ async def api_canon_update(
             script_id=script_id,
             user_id=user["id"],
             kind="canon_edit",
-            message=f"编辑 canon entity: {logical_key}",
+            message=f"Edit canon entity: {logical_key}",
             payload={"table": "kb_canon_entities", "op": "edit", "before": before, "after": after, "ids": {"logical_key": logical_key}},
         )
         db.commit()
@@ -272,8 +272,8 @@ async def api_canon_add(
         if dup:
             return json_response({
                 "ok": False,
-                "error": (f"本剧本已经有同名的{_type_label(fields['type'])}「{dup['name']}」"
-                          f"(logical_key: {dup['logical_key']}),请直接编辑那一条,不要重复新建"),
+                "error": (f"This script already has a {_type_label(fields['type'])} named \"{dup['name']}\" "
+                          f"(logical_key: {dup['logical_key']}); edit that one instead of creating a duplicate"),
                 "existing_logical_key": dup["logical_key"],
             }, status_code=409)
 
@@ -313,10 +313,10 @@ async def api_canon_add(
                 break
         if not new_row:
             if explicit_key:
-                msg = (f"logical_key「{explicit_key}」已被本剧本的另一个实体占用。"
-                       "换一个,或者留空让系统自动生成")
+                msg = (f"logical_key \"{explicit_key}\" is already used by another entity in this script. "
+                       "Choose another, or leave it blank to have one generated automatically")
             else:
-                msg = "自动编号时和别人同时新建撞了号,请再试一次"
+                msg = "Auto-numbering collided with a concurrent create; please try again"
             return json_response({"ok": False, "error": msg}, status_code=409)
         after = dict(new_row)
         logical_key = after["logical_key"]
@@ -326,7 +326,7 @@ async def api_canon_add(
             script_id=script_id,
             user_id=user["id"],
             kind="canon_add",
-            message=f"新增 canon entity: {logical_key}",
+            message=f"Add canon entity: {logical_key}",
             payload={"table": "kb_canon_entities", "op": "add", "after": after, "ids": {"logical_key": logical_key}},
         )
         db.commit()
@@ -373,7 +373,7 @@ async def api_canon_delete(
             script_id=script_id,
             user_id=user["id"],
             kind="canon_delete",
-            message=f"删除 canon entity: {logical_key}",
+            message=f"Delete canon entity: {logical_key}",
             payload={"table": "kb_canon_entities", "op": "delete", "before": before,
                      "detached_children": detached, "ids": {"logical_key": logical_key}},
         )

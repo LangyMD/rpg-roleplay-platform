@@ -212,7 +212,7 @@ async def api_script_timeline(script_id: int, user=Depends(require_user)):
     # 按 story_phase 聚合;phase 全空时归"未分阶段"
     buckets: dict[str, list[dict[str, Any]]] = {}
     for r in rows:
-        phase = (r.get("story_phase") or "").strip() or "未分阶段"
+        phase = (r.get("story_phase") or "").strip() or "Unphased"
         buckets.setdefault(phase, []).append({
             "anchor_id": r["id"],
             "id": r["id"],
@@ -342,7 +342,7 @@ async def api_script_birthpoints(script_id: int, user=Depends(require_user)):
         # 沿用 arc 标签命名,每段章号取该段锚点的真实首尾 —— 保证每段都有真实锚点、绝不空。
         if phases is None:
             labels = [pr["phase_label"] for pr in phase_rows] if phase_rows else \
-                ["开端", "发展前期", "发展中期", "发展后期", "结局"]
+                ["Beginning", "Early development", "Middle development", "Late development", "Ending"]
             n_seg = max(1, len(labels))
             total = len(all_anchors)
             phases = []
@@ -351,7 +351,7 @@ async def api_script_birthpoints(script_id: int, user=Depends(require_user)):
                 if not seg:
                     continue
                 phases.append({
-                    "phase_label": labels[i] if i < len(labels) else f"阶段 {i + 1}",
+                    "phase_label": labels[i] if i < len(labels) else f"Phase {i + 1}",
                     "chapter_min": int(seg[0]["chapter_min"]),
                     "chapter_max": int(seg[-1]["chapter_max"]),
                     "chapter_count": int(seg[-1]["chapter_max"]) - int(seg[0]["chapter_min"]) + 1,
@@ -417,9 +417,9 @@ async def api_script_recommend_identity(request: Request, script_id: int, user=D
         try:
             payload = _j.loads(result.result) if isinstance(result.result, str) else result.result
         except Exception:
-            payload = {"ok": False, "error": "无法解析推荐结果", "raw": str(result.result)[:200]}
+            payload = {"ok": False, "error": "Could not parse the recommendation result", "raw": str(result.result)[:200]}
         if not result.ok:
-            return json_response({"ok": False, "error": result.error or "工具执行失败"}, status_code=200)
+            return json_response({"ok": False, "error": result.error or "Tool execution failed"}, status_code=200)
         # task: 工具自报 ok=false (LLM 403 / 上下文不足 / 模型不可用 等)返 200 + ok:false,
         # payload.error 含详细原因(如 Vertex 403:用户 SA 缺权限 / 未启用 API)。
         # 前端按 ok 字段判断,不再被 HTTP 502 generic message 吞掉真因。

@@ -30,7 +30,7 @@ async def api_script_worldbook_entry(script_id: int, entry_id: int, user=Depends
     except ValueError as exc:
         return value_error_response(exc)
     if not entry:
-        return json_response({"ok": False, "error": "这条世界书条目不存在(可能已被删除),刷新列表后再试"},
+        return json_response({"ok": False, "error": "This worldbook entry does not exist (it may have been deleted); refresh the list and try again"},
                              status_code=404)
     return json_response({"ok": True, "entry": entry})
 

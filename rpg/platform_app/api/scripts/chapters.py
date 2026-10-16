@@ -74,7 +74,7 @@ async def api_chapter_detail(script_id: int, chapter_index: int, user=Depends(re
             (script_id, chapter_index),
         ).fetchone()
     if not row:
-        return json_response({"ok": False, "error": "章节不存在"}, status_code=404)
+        return json_response({"ok": False, "error": "Chapter not found"}, status_code=404)
     from ...db import expose as _expose
     return json_response({"ok": True, "chapter": _expose(row)})
 
@@ -95,7 +95,7 @@ async def api_chapter_update(request: Request, script_id: int, chapter_index: in
         ))
     except script_import.ChapterConflict as conflict:
         return json_response(
-            {"ok": False, "conflict": True, "error": "章节已被他方更新",
+            {"ok": False, "conflict": True, "error": "The chapter was updated by someone else",
              "server_chapter": conflict.server_chapter},
             status_code=409)
     except ValueError as exc:
