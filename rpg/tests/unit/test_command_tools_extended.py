@@ -114,7 +114,7 @@ class SavesUserToolsExecution(unittest.TestCase):
         )
 
     def test_delete_branch_blocked_from_llm_chat(self):
-        r = self._call("delete_branch", {"branch_id": 5}, origin="llm_chat", trace_id="td-2")
+        r = self._call("delete_branch", {"branch_node_id": 5}, origin="llm_chat", trace_id="td-2")
         self.assertFalse(r.ok)
         self.assertTrue(
             "origin_forbidden" in (r.error or "") or "destructive_blocked" in (r.error or ""),
@@ -189,6 +189,74 @@ class SavesUserToolsExecution(unittest.TestCase):
         r = self._call("continue_branch", {"save_id": 7, "from_turn": 99}, trace_id="tcb-4")
         self.assertFalse(r.ok)
         cont.assert_not_called()
+
+    # list/activate/delete_branch 曾查不存在的 game_branches 表 → 恒失败。
+    # 现接 platform_app/branches(branch_refs + activate_node / delete_subtree)。
+    def test_branch_tools_do_not_reference_missing_table(self):
+        src = (Path(__file__).resolve().parents[2] / "tools_dsl" / "command_tools_saves.py").read_text(encoding="utf-8")
+        self.assertNotIn("game_branches", src)
+
+    def test_activate_branch_uses_activate_node(self):
+        from unittest.mock import MagicMock
+        from platform_app import branches as _b
+        act = MagicMock(return_value={"ok": True, "save": {"id": 7}})
+        with patch.object(_b, "activate_node", act):
+            r = self._call("activate_branch", {"branch_node_id": 42}, trace_id="tab-1")
+        self.assertTrue(r.ok, r.result)
+        act.assert_called_once_with(1, 42)
+        self.assertIn("Activated branch node 42", r.result)
+
+    def test_activate_branch_foreign_node_fails(self):
+        from unittest.mock import MagicMock
+        from platform_app import branches as _b
+        act = MagicMock(side_effect=ValueError("No access to this branch node"))
+        with patch.object(_b, "activate_node", act):
+            r = self._call("activate_branch", {"branch_node_id": 42}, trace_id="tab-2")
+        self.assertFalse(r.ok)
+        self.assertIn("permission", r.result)
+
+    def test_delete_branch_uses_delete_subtree(self):
+        from unittest.mock import MagicMock
+        from platform_app import branches as _b
+        dele = MagicMock(return_value={"nodes": [{"id": 1}]})
+        with patch.object(_b, "delete_subtree", dele):
+            r = self._call("delete_branch", {"branch_node_id": 9}, trace_id="tdb-1")
+        self.assertTrue(r.ok, r.result)
+        dele.assert_called_once_with(1, 9)
+
+    def test_list_branches_reads_branch_refs(self):
+        from platform_app.db import connect, init_db
+        init_db()
+        with connect() as db:
+            uid = db.execute(
+                "insert into users (username, password_hash, display_name) values (%s, 'x', 'b') returning id",
+                (f"branch_tool_{id(self)}",),
+            ).fetchone()["id"]
+            sid = db.execute(
+                "insert into game_saves (user_id, title, state_path, save_kind) values (%s, 'b', '', 'tavern') returning id",
+                (uid,),
+            ).fetchone()["id"]
+            cid = db.execute(
+                "insert into branch_commits (save_id, object_hash, turn_index, kind, title, summary, state_path) "
+                "values (%s, %s, 3, 'turn', 't', 'The duel at dawn', '') returning id",
+                (sid, f"h{id(self)}"),
+            ).fetchone()["id"]
+            db.execute(
+                "insert into branch_refs (save_id, name, target_commit_id, is_active) "
+                "values (%s, 'refs/heads/main', %s, true)",
+                (sid, cid),
+            )
+        try:
+            from tools_dsl.command_tools_saves import _t_list_branches
+            out = _t_list_branches(uid, {"save_id": sid})
+            self.assertIn(f"branch_node_id={cid}", out)
+            self.assertIn("turn=3 [active]", out)
+            self.assertIn("The duel at dawn", out)
+            self.assertIn("permission", _t_list_branches(uid + 10_000_000, {"save_id": sid}))
+        finally:
+            with connect() as db:
+                db.execute("delete from game_saves where id = %s", (sid,))
+                db.execute("delete from users where id = %s", (uid,))
 
 
 # ────────────────────────────────────────────────────────────

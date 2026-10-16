@@ -374,33 +374,61 @@ def _t_delete_saves(user_id: int, args: dict) -> str:
     return "\n".join(summary_lines)
 
 
+def _branch_node_arg(args: dict):
+    """branch_node_id(与 ui_manifest 同名)优先;兼容旧参数名 node_id / branch_id。"""
+    for k in ("branch_node_id", "node_id", "branch_id"):
+        if args.get(k) is not None:
+            return args.get(k)
+    return None
+
+
+def _invalidate_state_cache(user_id: int) -> None:
+    # 与 POST /api/branches/activate|delete 同:切换/删除后清 app.py 进程内 state 缓存,
+    # 否则 /api/state 仍读旧 runtime。
+    try:
+        import app as _ui
+        _ui._invalidate_user_cache({"id": int(user_id)})
+    except Exception:
+        pass
+
+
 def _t_list_branches(user_id: int, args: dict) -> str:
+    """列出存档的分支 = branch_refs(git 式命名分支)及其指向的 commit。
+
+    旧实现查一张不存在的分支表,工具恒失败;现接真实存储(platform_app/branches)。
+    归属走 perms.owns_save(单一真相源)。"""
     save_id = args.get("save_id")
     _chk = require_int_arg(save_id, "save_id", fail="Failed: save_id must be an integer")
     if isinstance(_chk, str):
         return _chk
     try:
         from platform_app.db import connect, init_db
+        from platform_app.perms import owns_save
         init_db()
         with connect() as db:
-            owned = db.execute(
-                "select 1 from game_saves where id = %s and user_id = %s",
-                (int(save_id), user_id),
-            ).fetchone()
-            if not owned:
+            if not owns_save(db, int(save_id), int(user_id)):
                 return "Failed (permission): this save does not belong to the current user"
+            save = db.execute(
+                "select active_commit_id from game_saves where id = %s", (int(save_id),),
+            ).fetchone() or {}
             rows = db.execute(
-                "select id, label, turn, created_at from game_branches "
-                "where save_id = %s order by created_at desc limit 50",
+                "select r.name, r.target_commit_id, r.is_active, c.turn_index, c.summary, c.title "
+                "from branch_refs r left join branch_commits c on c.id = r.target_commit_id "
+                "where r.save_id = %s order by r.id desc limit 50",
                 (int(save_id),),
             ).fetchall() or []
         if not rows:
             return f"Save {save_id} has no branches yet"
+        active_commit = save.get("active_commit_id")
         lines = [f"{len(rows)} branches of save {save_id}:"]
         for r in rows[:20]:
+            nid = r.get("target_commit_id")
+            active = bool(r.get("is_active")) or (nid is not None and nid == active_commit)
+            summary = str(r.get("summary") or r.get("title") or "").strip().replace("\n", " ")[:80]
             lines.append(
-                f"  · branch_id={r['id']} label={r.get('label') or '(no label)'} "
-                f"turn={r.get('turn')}"
+                f"  · branch_node_id={nid} name={r.get('name') or '(unnamed)'} "
+                f"turn={r.get('turn_index')}{' [active]' if active else ''}"
+                + (f" - {summary}" if summary else "")
             )
         return "\n".join(lines)
     except Exception as exc:
@@ -408,53 +436,39 @@ def _t_list_branches(user_id: int, args: dict) -> str:
 
 
 def _t_activate_branch(user_id: int, args: dict) -> str:
-    branch_id = args.get("branch_id")
-    _chk = require_int_arg(branch_id, "branch_id", fail="Failed: branch_id must be an integer")
+    """切到某分支节点(branch_commits.id),与 POST /api/branches/activate 同源 activate_node。
+    归属由 activate_node 内 _commit_for_user(user_id) 校验。"""
+    node_id = _branch_node_arg(args)
+    _chk = require_int_arg(node_id, "branch_node_id", fail="Failed: branch_node_id must be an integer")
     if isinstance(_chk, str):
         return _chk
     try:
         from platform_app import branches as _branches
-
-        # branches.activate_branch 期望 (user_id, branch_id) 但有的版本要 dict
-        # 这里通过 DB 自校验所有权
-        from platform_app.db import connect, init_db
-        init_db()
-        with connect() as db:
-            row = db.execute(
-                "select b.save_id from game_branches b "
-                "join game_saves s on b.save_id = s.id "
-                "where b.id = %s and s.user_id = %s",
-                (int(branch_id), user_id),
-            ).fetchone()
-            if not row:
-                return "Failed (permission): this branch does not belong to the current user"
-        if hasattr(_branches, "activate_branch"):
-            result = _branches.activate_branch(user_id, int(branch_id))
-            return f"Activated branch {branch_id} ✓ (returned {result})"
-        return f"Activated branch {branch_id} (core API returned no details)"
+        result = _branches.activate_node(int(user_id), int(node_id))
+        _invalidate_state_cache(user_id)
+        return (f"Activated branch node {node_id} ✓ "
+                f"(save={((result or {}).get('save') or {}).get('id', '?')})")
+    except ValueError as exc:
+        return f"Failed (permission): {exc}"
     except Exception as exc:
         return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_delete_branch(user_id: int, args: dict) -> str:
-    branch_id = args.get("branch_id")
-    _chk = require_int_arg(branch_id, "branch_id", fail="Failed: branch_id must be an integer")
+    """删除某分支节点起的整棵子树,与 POST /api/branches/delete 同源 delete_subtree。
+    归属由 delete_subtree 内 _commit_for_user(user_id) 校验。"""
+    node_id = _branch_node_arg(args)
+    _chk = require_int_arg(node_id, "branch_node_id", fail="Failed: branch_node_id must be an integer")
     if isinstance(_chk, str):
         return _chk
     try:
-        from platform_app.db import connect, init_db
-        init_db()
-        with connect() as db:
-            row = db.execute(
-                "select b.id from game_branches b "
-                "join game_saves s on b.save_id = s.id "
-                "where b.id = %s and s.user_id = %s",
-                (int(branch_id), user_id),
-            ).fetchone()
-            if not row:
-                return "Failed (permission): this branch does not belong to the current user"
-            db.execute("delete from game_branches where id = %s", (int(branch_id),))
-        return f"Deleted branch {branch_id} ✓"
+        from platform_app import branches as _branches
+        result = _branches.delete_subtree(int(user_id), int(node_id)) or {}
+        _invalidate_state_cache(user_id)
+        return (f"Deleted branch node {node_id} and everything after it ✓ "
+                f"({len(result.get('nodes') or [])} nodes remain in the save)")
+    except ValueError as exc:
+        return f"Failed: {exc}"
     except Exception as exc:
         return f"Failed: {type(exc).__name__}: {exc}"
 
@@ -672,7 +686,7 @@ def _branch_specs() -> list:
     return [
         ToolSpec(
             name="list_branches",
-            description="List all branches of a save.",
+            description="List the branches of a save (each with its branch_node_id, turn and whether it is active).",
             input_schema={
                 "type": "object",
                 "properties": {"save_id": {"type": "integer"}},
@@ -684,11 +698,15 @@ def _branch_specs() -> list:
         ),
         ToolSpec(
             name="activate_branch",
-            description="Make the given branch the active branch.",
+            description=(
+                "Make the given branch node the active one (checks out that point of the story). "
+                "Get branch_node_id from list_branches."
+            ),
             input_schema={
                 "type": "object",
-                "properties": {"branch_id": {"type": "integer"}},
-                "required": ["branch_id"],
+                "properties": {"branch_node_id": {
+                    "type": "integer", "description": "Branch node (commit) id from list_branches"}},
+                "required": ["branch_node_id"],
             },
             executor=_t_activate_branch,
             scope="user",
@@ -696,11 +714,15 @@ def _branch_specs() -> list:
         ),
         ToolSpec(
             name="delete_branch",
-            description="**Permanently delete** the given branch. Irreversible.",
+            description=(
+                "**Permanently delete** the given branch node and everything after it. Irreversible. "
+                "Get branch_node_id from list_branches."
+            ),
             input_schema={
                 "type": "object",
-                "properties": {"branch_id": {"type": "integer"}},
-                "required": ["branch_id"],
+                "properties": {"branch_node_id": {
+                    "type": "integer", "description": "Branch node (commit) id from list_branches"}},
+                "required": ["branch_node_id"],
             },
             executor=_t_delete_branch,
             scope="user",
