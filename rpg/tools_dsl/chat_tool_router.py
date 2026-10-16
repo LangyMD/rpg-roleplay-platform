@@ -372,7 +372,7 @@ def build_tool_call_router(
         try:
             return fallback_mcp_call(server_id, tool_name, arguments)
         except Exception as exc:
-            return {"ok": False, "error": f"MCP 工具调用异常: {type(exc).__name__}: {exc}"}
+            return {"ok": False, "error": f"MCP tool call error: {type(exc).__name__}: {exc}"}
 
     return _router
 

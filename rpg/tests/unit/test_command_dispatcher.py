@@ -769,6 +769,39 @@ class FailureResultDetection(unittest.TestCase):
         self.assertTrue(self._make("OK: 历史锚点已写入 [级联失败:Y]").ok)
         self.assertTrue(self._make("pending_write p1 已拒绝").ok)
 
+    # ── English forms (producers switched to English; Chinese forms above stay detected) ──
+
+    def test_english_bare_prefixes_detected(self):
+        self.assertFalse(self._make("Failed: index must be an integer").ok)
+        self.assertFalse(self._make("Failed (permission): save 1 does not belong to you").ok)
+        self.assertFalse(self._make("Error: something broke").ok)
+        self.assertFalse(self._make("ERROR: upstream 500").ok)
+        self.assertFalse(self._make("Refused: not allowed").ok)
+
+    def test_english_toolname_and_verb_prefixed_failure_detected(self):
+        self.assertFalse(self._make("advance_story_progress failed: to_chapter must be an integer").ok)
+        self.assertFalse(self._make("set_world_time error: ValueError: x").ok)
+        self.assertFalse(self._make("Delegation failed: no usable model found.").ok)
+        self.assertFalse(self._make("Image generation failed (image_id=3): unknown error.").ok)
+        self.assertFalse(self._make("Batch delete failed (requested 5, succeeded 0):").ok)
+
+    def test_english_success_and_partial_success_stay_ok(self):
+        self.assertTrue(self._make("Progress advanced: chapter 17 -> chapter 30").ok)
+        self.assertTrue(self._make("Noted: the lesson from the failed attempt").ok)
+        self.assertTrue(self._make("Name updated (card write-back failed: X)").ok)
+        self.assertTrue(self._make("OK: history anchor written [cascade failed: Y]").ok)
+        self.assertTrue(self._make("pending_write p1 rejected").ok)
+        self.assertTrue(self._make("Errors fixed: 0 remaining").ok)
+
+    def test_public_helper_matches_both_forms(self):
+        from tools_dsl.command_dispatcher import is_failure_result_text
+        self.assertTrue(is_failure_result_text("失败: x"))
+        self.assertTrue(is_failure_result_text("委派失败: x"))
+        self.assertTrue(is_failure_result_text("Failed: x"))
+        self.assertTrue(is_failure_result_text("foo failed: x"))
+        self.assertFalse(is_failure_result_text("OK"))
+        self.assertFalse(is_failure_result_text(None))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
