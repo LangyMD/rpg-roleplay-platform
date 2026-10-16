@@ -12,6 +12,8 @@ feature gate: core.feature_flags.feature_enabled("consequence_ledger", user_id)ï
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -58,7 +60,7 @@ class ConsequenceEchoProvider(ContextProvider):
             priority=PRIORITY,
             layers=[layer],
             facts=[f"Consequence echo (planted on turn {e.get('created_turn')}): {e.get('text', '')}" for e in entries],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"fired_count": len(entries)},
         )
 

@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import time
 
-# 粗略 token 估算:中文 ~1.5 char/token,英文 ~4 char/token。保守按 1.6 char/token。
-_CHARS_PER_TOKEN = 1.6
 _BUDGET_MIN = 800
 _BUDGET_MAX = 3000
 
@@ -30,7 +28,9 @@ def invalidate_constant_cache(script_id: int | None = None) -> None:
 
 
 def _est_tokens(text: str) -> int:
-    return int(len(text) / _CHARS_PER_TOKEN)
+    # 语言感知(中文 ~1.6 / 英文 ~4 char/token),权威在 core.token_estimate。
+    from core.token_estimate import estimate_tokens
+    return estimate_tokens(text)
 
 
 def compute_budget(db, script_id: int) -> int:

@@ -13,6 +13,8 @@ Save 级 runtime phase digest provider — 把当前 save 已经摘要好的历�
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -70,7 +72,7 @@ class RuntimePhaseDigestProvider(ContextProvider):
                 f"({p.get('phase_label') or 'untitled'})"
                 for p in phases
             ],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"phase_count": len(phases), "save_id": save_id},
         )
 

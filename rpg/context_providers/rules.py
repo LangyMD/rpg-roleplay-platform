@@ -4,6 +4,8 @@ RulesProvider — 在 manifest.ruleset 非 none 时启用。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -105,7 +107,7 @@ class RulesProvider(ContextProvider):
             priority=80,
             facts=facts,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={
                 "ruleset": ruleset.get("id"),
                 "pc_hp": pc.get("hp"),

@@ -23,7 +23,9 @@ def _preview(text: str, limit: int = 140) -> str:
 
 
 def _estimate_tokens(text: str) -> int:
-    return max(1, len(text or "") // 2)
+    # 语言感知估算(CJK ~1.6 char/token,拉丁 ~4),权威在 core.token_estimate。
+    from core.token_estimate import estimate_tokens
+    return max(1, estimate_tokens(text or ""))
 
 
 def _cache_plan(debug_layers: list[dict[str, Any]], prompt_parts: list[str]) -> dict[str, Any]:

@@ -5,6 +5,8 @@ Module providers — 只在 manifest.kind == 'module_adventure' 时启用。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -101,7 +103,7 @@ class ModuleSceneProvider(ContextProvider):
             priority=90,
             facts=facts,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={
                 "module_id": module_id,
                 "current_room": current_room_id,
@@ -164,7 +166,7 @@ class ModuleEncounterProvider(ContextProvider):
             priority=85,
             facts=facts,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={
                 "active": bool(encounter.get("active")),
                 "preset_encounters": [e.get("id") for e in rel],
@@ -213,7 +215,7 @@ class ModuleWorldbookProvider(ContextProvider):
             kind="module_worldbook",
             priority=75,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"factions": [f.get('id') for f in (wb.get('factions') or [])]},
         )
 

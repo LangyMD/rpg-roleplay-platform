@@ -16,6 +16,8 @@ priority 76：紧贴 novel.py 里 npc_cards layer（78）之下——议程是�
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -64,7 +66,7 @@ class NpcAgendaProvider(ContextProvider):
                 f"wants \"{e.get('goal', '')}\"; toward the player: \"{e.get('stance', '')}\""
                 for e in entries
             ],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"agenda_count": len(entries)},
         )
 

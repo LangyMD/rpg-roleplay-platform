@@ -13,6 +13,8 @@ feature gate: episodic_recall(与 novel 路径同一 flag,全局已开);无命�
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -83,7 +85,7 @@ class EpisodicRecallProvider(ContextProvider):
             kind="episodic_recall",
             priority=PRIORITY,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"source": source, "hits": len(lines)},
         )
 

@@ -3,6 +3,8 @@ RecentChatProvider — 通用最近对话注入。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -38,7 +40,7 @@ class RecentChatProvider(ContextProvider):
             kind="recent_chat",
             priority=20,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"turns": len(history)},
         )
 

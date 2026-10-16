@@ -160,7 +160,7 @@ def layer_budget_chars(api_id: str | None, model_name: str | None) -> int:
     except (TypeError, ValueError):
         share = 0.45
     share = min(max(share, 0.05), 0.9)
-    # _estimate_tokens 用的是 len//2,这里按同一口径反算字符,保持全站一致
+    # 文本语言未知:按 2 char/token 反算字符(介于 CJK 1.6 与拉丁 4 之间,对中文不超窗,对英文偏保守)
     return max(0, int(window_tokens * share) * 2)
 
 

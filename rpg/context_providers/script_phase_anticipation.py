@@ -16,6 +16,8 @@ script_phase_anticipation.py — task 107E (part 2/2)
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -68,7 +70,7 @@ class ScriptPhaseAnticipationProvider(ContextProvider):
             priority=42,
             layers=[layer],
             facts=[f"Next script segment: {p.get('phase_label')}" for p in phases],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"current_phase": current_phase, "lookahead": len(phases)},
         )
 

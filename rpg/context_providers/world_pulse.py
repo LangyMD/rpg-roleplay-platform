@@ -15,6 +15,8 @@ memory 60，高于历史摘要 48），novel + freeform 双 manifest 都挂。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -90,7 +92,7 @@ class WorldPulseProvider(ContextProvider):
             priority=PRIORITY,
             layers=[layer],
             facts=[f"World pulse (happened on turn {e.get('created_turn')}): {e.get('text', '')}" for e in to_surface],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"surfaced_count": len(to_surface)},
         )
 

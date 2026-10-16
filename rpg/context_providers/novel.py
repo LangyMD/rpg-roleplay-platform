@@ -14,6 +14,8 @@ Novel providers — 只在 manifest.kind == 'novel_adaptation' 时启用。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -76,7 +78,7 @@ class NovelTimelineProvider(ContextProvider):
             kind="novel_timeline",
             priority=70,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"label": label, "anchor": anchor, "pending_jump": pending},
         )
 
@@ -157,7 +159,7 @@ class NovelRetrievalProvider(ContextProvider):
             priority=72 if anchor_section else 40,
             layers=layers,
             retrieval_items=[{"text": text}],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"query": query, "chars": len(text), "has_anchor_pending": bool(anchor_section)},
         )
 
@@ -490,7 +492,7 @@ class NovelWorldbookProvider(ContextProvider):
             kind="novel_worldbook",
             priority=72,
             layers=[layer],
-            tokens_estimate=len(content) // 2,
+            tokens_estimate=estimate_tokens(content),
             debug={"entries_count": len(entries)},
         )
 
