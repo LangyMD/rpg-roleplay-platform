@@ -122,7 +122,7 @@ async def api_import_json_card(request: Request, user=Depends(require_user)):
         elif body.get("json_string"):
             v2 = tavern_cards.parse_card(body["json_string"])
         else:
-            return json_response({"ok": False, "error": "需要 json 或 json_string 字段"}, status_code=400)
+            return json_response({"ok": False, "error": "A json or json_string field is required"}, status_code=400)
         payload = tavern_cards.tavern_to_user_card(v2)
         if ai_split:
             try:
@@ -154,16 +154,16 @@ async def api_import_tavern_chat(request: Request, user=Depends(require_user)):
     """
     raw_body = await request.body()
     if len(raw_body) > 16 * 1024 * 1024:
-        return json_response({"ok": False, "error": "文件过大"}, status_code=400)
+        return json_response({"ok": False, "error": "File too large"}, status_code=400)
     try:
         body = json.loads(raw_body)
     except (json.JSONDecodeError, ValueError):
-        return json_response({"ok": False, "error": "请求体须为 JSON 格式"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be JSON"}, status_code=400)
     from ... import save_io, tavern_chats
 
     jsonl_text = body.get("jsonl") or ""
     if not isinstance(jsonl_text, str) or not jsonl_text.strip():
-        return json_response({"ok": False, "error": "需要 jsonl 字段（JSONL 字符串）"}, status_code=400)
+        return json_response({"ok": False, "error": "A jsonl field (JSONL string) is required"}, status_code=400)
 
     custom_title = (body.get("title") or "").strip() or None
 

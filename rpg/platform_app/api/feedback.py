@@ -243,12 +243,12 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
     if not consent_token or len(consent_token) != 64:
         raise HTTPException(
             status_code=400,
-            detail="consent_token 缺失或格式不正确（须为 64 字符 SHA256 hex）",
+            detail="consent_token is missing or malformed (must be a 64-character SHA256 hex)",
         )
     try:
         int(consent_token, 16)
     except ValueError:
-        raise HTTPException(status_code=400, detail="consent_token 不是合法的 hex 字符串")
+        raise HTTPException(status_code=400, detail="consent_token is not a valid hex string")
 
     # ── 校验总长 50KB ─────────────────────────────────────────────────────────
     excerpts_raw = json.dumps(excerpts, ensure_ascii=False)
@@ -256,7 +256,7 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
     if total_bytes > _MAX_PAYLOAD_BYTES:
         raise HTTPException(
             status_code=400,
-            detail=f"free_text + excerpts 超过 50KB 上限（当前 {total_bytes} 字节）",
+            detail=f"free_text + excerpts exceed the 50KB limit (currently {total_bytes} bytes)",
         )
 
     # ── excerpts 结构简单校验 ──────────────────────────────────────────────────
@@ -264,7 +264,7 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
         raise HTTPException(status_code=400, detail="excerpts must be an array")
     for i, ex in enumerate(excerpts):
         if not isinstance(ex, dict):
-            raise HTTPException(status_code=400, detail=f"excerpts[{i}] 须为对象")
+            raise HTTPException(status_code=400, detail=f"excerpts[{i}] must be an object")
 
     # ── FB-04 NSFW 预审 ────────────────────────────────────────────────────────
     # 只在反馈通道生效；不影响 GM / 对话 / 记忆等主数据流（成人内容产品允许 NSFW）。
@@ -325,8 +325,8 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
             detail={
                 "error_key": "feedback.nsfw_terminate",
                 "message": (
-                    "反馈内容违反 AUP §2.J 红线，账号已终止；"
-                    "30 天内可下载数据。详情见 legal/acceptable-use-policy。"
+                    "The feedback violates the AUP §2.J red line and the account has been terminated; "
+                    "you can download your data within 30 days. See legal/acceptable-use-policy for details."
                 ),
             },
         )
@@ -417,14 +417,14 @@ async def submit_feedback_anon(request: Request):
     consent_token: str = body.get("consent_token", "") or ""
 
     if not free_text.strip():
-        raise HTTPException(status_code=400, detail="反馈内容不能为空")
+        raise HTTPException(status_code=400, detail="Feedback cannot be empty")
     if consent_token:
         if len(consent_token) != 64:
-            raise HTTPException(status_code=400, detail="consent_token 格式不正确")
+            raise HTTPException(status_code=400, detail="consent_token is malformed")
         try:
             int(consent_token, 16)
         except ValueError:
-            raise HTTPException(status_code=400, detail="consent_token 不是合法 hex")
+            raise HTTPException(status_code=400, detail="consent_token is not valid hex")
     if not isinstance(excerpts, list):
         raise HTTPException(status_code=400, detail="excerpts must be an array")
 
@@ -436,7 +436,7 @@ async def submit_feedback_anon(request: Request):
         + len(env_raw.encode("utf-8"))
     )
     if total_bytes > _MAX_PAYLOAD_BYTES:
-        raise HTTPException(status_code=400, detail=f"内容超过 50KB 上限(当前 {total_bytes} 字节)")
+        raise HTTPException(status_code=400, detail=f"Content exceeds the 50KB limit (currently {total_bytes} bytes)")
 
     # 按 IP 限流(无登录闸,这是主要防滥用手段)
     with connect() as db:
@@ -445,7 +445,7 @@ async def submit_feedback_anon(request: Request):
             (ip,),
         ).fetchone()
         if recent and int(recent["n"]) >= _ANON_RATE_PER_HOUR:
-            raise HTTPException(status_code=429, detail="提交过于频繁,请稍后再试")
+            raise HTTPException(status_code=429, detail="Submitting too often; please try again later")
 
     # NSFW 预审(与登录路径同一把关)
     verdict = await moderate_feedback(free_text + "\n" + excerpts_raw)
@@ -498,7 +498,7 @@ async def submit_feedback_anon(request: Request):
             log.error("anon feedback auto_reject CSAM: ip=%s linked=%s cats=%s", ip, linked_user_id, verdict.categories)
             raise HTTPException(
                 status_code=403,
-                detail={"error_key": "feedback.nsfw_terminate", "message": "反馈内容违反 AUP §2.J 红线。"},
+                detail={"error_key": "feedback.nsfw_terminate", "message": "The feedback violates the AUP §2.J red line."},
             )
 
         excerpts_with_verdict = list(excerpts)
@@ -582,7 +582,7 @@ async def list_anon_feedback_replies(client_id: str = "", limit: int = 30):
     仅返回该安装自己的提交。"""
     client_id = (client_id or "").strip()[:128]
     if len(client_id) < 16:
-        raise HTTPException(status_code=400, detail="client_id 缺失或过短")
+        raise HTTPException(status_code=400, detail="client_id is missing or too short")
     limit = max(1, min(100, limit))
     with connect() as db:
         rows = db.execute(
@@ -634,11 +634,11 @@ async def delete_my_feedback(
         # 匿名反馈 user_id 为 NULL;Python 中 None != <id> 恒 True 会让归属校验形同虚设,
         # 任何登录用户都能删他人匿名反馈。NULL 视为无主,一律禁删。
         if row["user_id"] is None or row["user_id"] != user["id"]:
-            raise HTTPException(status_code=403, detail="无权操作此反馈")
+            raise HTTPException(status_code=403, detail="Not allowed to modify this feedback")
         if row["review_decision"] == "nsfw_terminate":
             raise HTTPException(
                 status_code=403,
-                detail="该反馈已被标记为 nsfw_terminate，根据 AUP §2.J 不允许删除（合规证据保留）",
+                detail="This feedback is marked nsfw_terminate and cannot be deleted under AUP §2.J (kept as compliance evidence)",
             )
 
         db.execute("delete from feedback where id = %s", (feedback_id,))
@@ -742,7 +742,7 @@ async def admin_feedback_decision(
     if decision not in _VALID_DECISIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"decision 须为 {' | '.join(_VALID_DECISIONS)}",
+            detail=f"decision must be one of {' | '.join(_VALID_DECISIONS)}",
         )
 
     with connect() as db:
@@ -768,11 +768,11 @@ async def admin_feedback_decision(
             # SQL/格式化崩溃成 500。直接拒绝(已记 review_decision,合规证据仍留存)。
             if row["user_id"] is None:
                 return json_response(
-                    {"ok": False, "error": "匿名反馈无关联账户,无法执行 nsfw_terminate"},
+                    {"ok": False, "error": "Anonymous feedback has no linked account; nsfw_terminate cannot be applied"},
                     status_code=409,
                 )
             from ..dmca import queue_account_termination
-            terminate_reason = f"反馈审查 nsfw_terminate (feedback_id={feedback_id}): {notes}"
+            terminate_reason = f"Feedback review nsfw_terminate (feedback_id={feedback_id}): {notes}"
             queue_account_termination(db, row["user_id"], terminate_reason)
             log.warning(
                 "feedback nsfw_terminate: feedback_id=%s user_id=%s admin=%s",

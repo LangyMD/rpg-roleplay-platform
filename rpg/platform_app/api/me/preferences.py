@@ -20,11 +20,11 @@ async def api_set_preference(request: Request, user=Depends(require_user)):
     replace = bool(body.get("replace", False))
     payload = body.get("preferences") if "preferences" in body else body.get("value", body)
     if not isinstance(payload, dict):
-        return json_response({"ok": False, "error": "preferences 必须是对象"}, status_code=400)
+        return json_response({"ok": False, "error": "preferences must be an object"}, status_code=400)
     # SEC(H-13): payload 字节上限,防认证用户反复 POST 大 JSON 做存储放大 DoS(JSONB || 合并无界增长)。
     import json as _json
     if len(_json.dumps(payload, ensure_ascii=False).encode("utf-8")) > 32 * 1024:
-        return json_response({"ok": False, "error": "preferences 过大(上限 32KB)"}, status_code=400)
+        return json_response({"ok": False, "error": "preferences are too large (limit 32KB)"}, status_code=400)
     # 本端点收任意键(界面主题/字号/默认模型…都塞这里),但 `<key>.enabled` 是
     # core.feature_flags 的特性开关命名空间 —— 灰度/未开放特性不许用户自己写开,
     # 否则「默认关」形同虚设(08-01 反馈:「为什么普通用户可以看到 rath」)。
@@ -34,7 +34,7 @@ async def api_set_preference(request: Request, user=Depends(require_user)):
     bad = rejected_feature_keys(payload)
     if bad:
         return json_response(
-            {"ok": False, "error": f"这些特性开关不可由用户自行设置: {', '.join(sorted(bad))}"},
+            {"ok": False, "error": f"These feature flags cannot be set by users: {', '.join(sorted(bad))}"},
             status_code=403,
         )
     with connect() as db:

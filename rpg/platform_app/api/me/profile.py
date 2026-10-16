@@ -65,7 +65,7 @@ async def api_patch_profile(request: Request, user=Depends(require_user)):
     display_name = (body.get("display_name") or "").strip()[:64]
     co_builder_opt_out = body.get("co_builder_opt_out")
     if not username and not display_name and co_builder_opt_out is None:
-        return json_response({"ok": False, "error": "至少提供 username、display_name 或 co_builder_opt_out"}, status_code=400)
+        return json_response({"ok": False, "error": "Provide at least one of username, display_name or co_builder_opt_out"}, status_code=400)
     with connect() as db:
         if username:
             dup = db.execute(
@@ -73,7 +73,7 @@ async def api_patch_profile(request: Request, user=Depends(require_user)):
                 (username, user["id"]),
             ).fetchone()
             if dup:
-                return json_response({"ok": False, "error": "用户名已被占用"}, status_code=400)
+                return json_response({"ok": False, "error": "Username is already taken"}, status_code=400)
             db.execute(
                 "update users set username = %s, updated_at = now() where id = %s",
                 (username, user["id"]),
@@ -202,7 +202,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
             save_title = r["save_title"] or "Untitled save"
             events.append({
                 "type": "turn", "tag": "回合", "icon": "play",
-                "text": f"在《{save_title}》推进到第 {int(r['turn_index'])} 回合",
+                "text": f"Reached turn {int(r['turn_index'])} in \"{save_title}\"",
                 "sub": (r["summary"] or "")[:60],
                 "ts": r["created_at"].isoformat() if r["created_at"] else None,
                 "save_id": r["save_id"],
@@ -227,7 +227,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
             save_title = r["save_title"] or "Untitled save"
             events.append({
                 "type": "branch", "tag": "分支", "icon": "branch",
-                "text": f"在《{save_title}》第 {int(r['turn_index'])} 回合开辟新分支",
+                "text": f"Opened a new branch at turn {int(r['turn_index'])} in \"{save_title}\"",
                 "sub": "",
                 "ts": r["created_at"].isoformat() if r["created_at"] else None,
                 "save_id": r["save_id"],
@@ -245,12 +245,12 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
             cc = int(r["chapter_count"] or 0)
             parts = []
             if cc:
-                parts.append(f"{cc} 章")
+                parts.append(f"{cc} chapters")
             if wc:
-                parts.append(f"{wc / 10000:.1f} 万字" if wc >= 10000 else f"{wc} 字")
+                parts.append(f"{wc / 1000:.1f}k characters" if wc >= 10000 else f"{wc} characters")
             events.append({
                 "type": "script", "tag": "剧本", "icon": "book",
-                "text": f"导入剧本《{r['title'] or '未命名'}》",
+                "text": f"Imported script \"{r['title'] or 'Untitled'}\"",
                 "sub": " · ".join(parts),
                 "ts": r["created_at"].isoformat() if r["created_at"] else None,
                 "script_id": r["id"],

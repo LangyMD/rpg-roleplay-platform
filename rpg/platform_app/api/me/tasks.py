@@ -15,22 +15,22 @@ from ._shared import router
 # 给右下角全局浮窗用。只读聚合,UNION import_jobs(导入+各模块重建)+ ai_images(生图),
 # 不做 schema 迁移。如实状态:import 类有真实 overall_progress 进度,生图类只有阶段+耗时。
 _TASK_IMPORT_KIND_LABELS = {
-    "full_pipeline": "导入流水线",
-    "llm_extract": "LLM 二次提取",
-    "knowledge_sync": "知识库同步",
+    "full_pipeline": "Import pipeline",
+    "llm_extract": "LLM re-extraction",
+    "knowledge_sync": "Knowledge base sync",
     "account_import": "Account migration import",
-    "rebuild_chunks": "切块重建",
-    "rebuild_facts": "章节事实重建",
-    "rebuild_canon": "规范实体重建",
-    "rebuild_cards": "角色卡重建",
-    "rebuild_worldbook": "世界书重建",
-    "rebuild_anchors": "时间线重建",
-    "rebuild_embeddings": "向量重嵌入",
-    "cards_audit": "AI 复核角色卡",
+    "rebuild_chunks": "Rebuild chunks",
+    "rebuild_facts": "Rebuild chapter facts",
+    "rebuild_canon": "Rebuild canon entities",
+    "rebuild_cards": "Rebuild character cards",
+    "rebuild_worldbook": "Rebuild worldbook",
+    "rebuild_anchors": "Rebuild timeline",
+    "rebuild_embeddings": "Re-embed vectors",
+    "cards_audit": "AI review of character cards",
 }
 _TASK_IMAGE_KIND_LABELS = {
-    "chat": "聊天生图", "cover": "封面生图", "avatar": "头像生图",
-    "game": "场景生图", "persona": "人设图生成",
+    "chat": "Chat image", "cover": "Cover image", "avatar": "Avatar image",
+    "game": "Scene image", "persona": "Persona image",
 }
 
 
@@ -89,7 +89,7 @@ async def api_active_tasks(user=Depends(require_user)):
             ).fetchall()
         for r in rows:
             kind = r["kind"] or ""
-            label = _TASK_IMPORT_KIND_LABELS.get(kind, kind or "后台任务")
+            label = _TASK_IMPORT_KIND_LABELS.get(kind, kind or "Background task")
             stitle = (r["script_title"] or "").strip()
             if stitle:
                 title = f"{stitle} · {label}"
@@ -144,7 +144,7 @@ async def api_active_tasks(user=Depends(require_user)):
             ).fetchall()
         for r in rows2:
             kind = r["kind"] or ""
-            label = _TASK_IMAGE_KIND_LABELS.get(kind, "生图")
+            label = _TASK_IMAGE_KIND_LABELS.get(kind, "Image generation")
             prompt = (r["prompt"] or "").strip().replace("\n", " ")
             title = label + ("：" + prompt[:24] if prompt else "")
             tasks.append({

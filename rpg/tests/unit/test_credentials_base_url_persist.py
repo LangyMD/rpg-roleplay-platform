@@ -70,7 +70,7 @@ def test_custom_provider_key_resave_uses_stored_base_url(monkeypatch):
 def test_custom_provider_without_any_base_url_still_rejected(monkeypatch):
     resp, calls = _post(monkeypatch, {"api_id": "my-relay", "api_key": "sk-x"}, role="user", stored="")
     assert resp.status_code == 400
-    assert "必须填写 Base URL" in json.loads(resp.body)["error"]
+    assert "requires a Base URL" in json.loads(resp.body)["error"]
     assert calls == []
 
 

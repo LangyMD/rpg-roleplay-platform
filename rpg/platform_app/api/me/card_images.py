@@ -65,9 +65,9 @@ async def api_generate_persona_image(request: Request, card_id: int, user=Depend
     if isinstance(result, dict):
         err = result.get("error", "")
         if err == "quota_exceeded":
-            return json_response({"ok": False, "error": "quota_exceeded", "detail": "已达每日生图配额上限"}, status_code=429)
+            return json_response({"ok": False, "error": "quota_exceeded", "detail": "Daily image generation quota reached"}, status_code=429)
         if err == "credentials_required":
-            return json_response({"ok": False, "error": "credentials_required", "detail": "请先在设置中配置生图服务的 API Key"}, status_code=402)
+            return json_response({"ok": False, "error": "credentials_required", "detail": "Configure an API key for the image generation service in Settings first"}, status_code=402)
     return json_response(result)
 
 
@@ -186,7 +186,7 @@ async def api_upload_card_avatar(card_id: int, file: UploadFile = File(...), use
     # 2. 读取文件
     data = await file.read()
     if len(data) > _MAX_IMAGE_BYTES:
-        return json_response({"ok": False, "error": f"文件过大（上限 {_MAX_IMAGE_BYTES // 1024 // 1024} MB）"}, status_code=400)
+        return json_response({"ok": False, "error": f"File too large (limit {_MAX_IMAGE_BYTES // 1024 // 1024} MB)"}, status_code=400)
 
     # 3. MIME 魔数校验
     try:
@@ -246,7 +246,7 @@ async def api_upload_persona_image(card_id: int, file: UploadFile = File(...), u
     # 2. 读取文件
     data = await file.read()
     if len(data) > _MAX_IMAGE_BYTES:
-        return json_response({"ok": False, "error": f"文件过大（上限 {_MAX_IMAGE_BYTES // 1024 // 1024} MB）"}, status_code=400)
+        return json_response({"ok": False, "error": f"File too large (limit {_MAX_IMAGE_BYTES // 1024 // 1024} MB)"}, status_code=400)
 
     # 3. MIME 魔数校验
     try:

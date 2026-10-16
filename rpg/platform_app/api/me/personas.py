@@ -35,7 +35,7 @@ async def api_get_persona(persona_id: int, user=Depends(require_user)):
     from ... import user_cards
     p = user_cards.get_persona(user["id"], persona_id)
     if not p:
-        return json_response({"ok": False, "error": "persona 不存在"}, status_code=404)
+        return json_response({"ok": False, "error": "Persona not found"}, status_code=404)
     return json_response({"ok": True, "persona": p})
 
 
