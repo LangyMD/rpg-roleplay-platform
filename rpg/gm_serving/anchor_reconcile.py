@@ -85,28 +85,12 @@ _EST_SUMMARY_CAP = 160
 # 出现在本回合正文 = 到达。保守 LLM 判定器对此屡漏(用户报「更新速度跟实际对不上」)→ 补一条
 # 确定性路径,与 maintain_structured_kb 的 canon 名扫描同源同口径(名入正文=现身)。事件型锚点
 # (非 intro)无法靠名字确定性判定,仍交给 LLM 判定器。
-_INTRO_MARKERS = ("首次登场", "首次引入", "首次出现")
-
-
-def _intro_subject(summary: str) -> str | None:
-    """从 intro 锚点摘要提取主体名。覆盖三种 seed 格式:
-      · concept「苍白之血」首次引入 / item「D20」首次引入  → 「」/『』 内
-      · 爱丽丝(character)首次登场                        → NAME( 之前
-      · 场景秋叶原避难所首次出现                          → 场景…首次 之间
-    取冒号前的标题段再解析,失败返 None。"""
-    import re
-    s = (summary or "").split(":", 1)[0].split("：", 1)[0].strip()
-    m = re.search(r"[「『]([^」』]+)[」』]", s)
-    if m:
-        return m.group(1).strip()
-    m = re.match(r"^场景(.+?)首次", s)
-    if m:
-        return m.group(1).strip()
-    m = re.match(r"^(.+?)[（(]", s)
-    if m:
-        return m.group(1).strip()
-    m = re.match(r"^(.+?)首次", s)
-    return m.group(1).strip() if m else None
+# 中英两种 seed 格式的识别/主体名解析统一在 kb.section_markers(旧存档行仍是中文)。
+from kb.section_markers import (  # noqa: E402
+    INTRO_MARKERS as _INTRO_MARKERS,
+    intro_subject as _intro_subject,
+    is_scene_intro as _is_scene_intro,
+)
 
 
 def _deterministic_intro_hits(
@@ -127,8 +111,8 @@ def _deterministic_intro_hits(
     #     GM 正文仍含「秋叶原」→ 名匹配会误标 → 过早退役未访问的强制场景。**改用权威信号:玩家当前所在地**
     #     (player.current_location,结构化态、GM 维护),且只用【全名】匹配(秋叶原避难所 ∈ "秋叶原避难所·入口
     #     通道" 命中;但 ∉ "秋叶原废墟·废土小径入口" → 拒绝/路过不误标)。短别名(秋叶原)会把废墟误配,故弃用。
-    ent_pend = [a for a in intro_pend if not (a.get("summary") or "").lstrip().startswith("场景")]
-    scene_pend = [a for a in intro_pend if (a.get("summary") or "").lstrip().startswith("场景")]
+    ent_pend = [a for a in intro_pend if not _is_scene_intro(a.get("summary") or "")]
+    scene_pend = [a for a in intro_pend if _is_scene_intro(a.get("summary") or "")]
     from platform_app.db import connect, init_db
     init_db()
     alias_map: dict[str, list[str]] = {}

@@ -194,21 +194,19 @@ def _extract_anchor_npc_names(state, save_id: int | None) -> list[str]:
         for a in anchors:
             summary = a.get("summary", "") or ""
             # 匹配"X(character)首次登场" 模式
-            import re as _re
-            m = _re.match(r"^([^(（]+)[（(]character[)）]首次登场", summary)
-            if m:
-                nm = m.group(1).strip()
-                if nm and nm not in seen:
+            from kb.section_markers import character_intro_name, participant_name
+            nm = character_intro_name(summary)
+            if nm:
+                if nm not in seen:
                     seen.add(nm)
                     out.append(nm)
                 continue
             # 备用:must_preserve 里有 "X 参与" 也算 (location/concept anchor 的 participant 字段)
             mp = a.get("must_preserve") or []
             for s in (mp if isinstance(mp, list) else []):
-                m2 = _re.match(r"^([^\s]+)\s+参与", str(s))
-                if m2:
-                    nm = m2.group(1).strip()
-                    if nm and nm not in seen:
+                nm = participant_name(str(s))
+                if nm:
+                    if nm not in seen:
                         seen.add(nm)
                         out.append(nm)
         return out

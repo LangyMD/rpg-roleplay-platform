@@ -573,14 +573,8 @@ def _backfill_chapter_facts_events_from_canon(script_id: int) -> int:
                 hint = " / ".join(hint_parts)
 
                 # 事件文本:type 不同模板不同
-                if etype == "character":
-                    ev_text = f"{name}({etype})首次登场"
-                elif etype == "location":
-                    ev_text = f"场景{name}首次出现"
-                elif etype in ("concept", "item", "faction"):
-                    ev_text = f"{etype}「{name}」首次引入"
-                else:
-                    ev_text = f"{name} 首次出现"
+                from kb.section_markers import format_intro_event
+                ev_text = format_intro_event(name, etype)
                 if hint:
                     ev_text += f": {hint}"
                 if ev_text in seen_texts:

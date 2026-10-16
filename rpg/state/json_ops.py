@@ -330,6 +330,8 @@ _LEAKED_SCAFFOLD_KEYS: tuple[str, ...] = (
     "script phase summar", "current story phase", "recent plot summary", "relevant source excerpts",
     "relevant characters", "organizations / factions / locations", "jump progress note",
     "anchor chapter source text", "forbidden names", "relevant past events",
+    "time jump progress note", "postgres source excerpts", "postgres chapterfact",
+    "(vector recall)", "knowledge base recall", "offline world digest",
 )
 _SCAFFOLD_HEADER_RE = re.compile(r"^\s*=+\s*(.+?)\s*=+\s*$")
 # 模型"内部推理→开始正文"的转场标记(中文 thinking 泄漏的收尾句)。

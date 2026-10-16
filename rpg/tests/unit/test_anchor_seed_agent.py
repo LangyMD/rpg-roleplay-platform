@@ -132,17 +132,17 @@ class TestDeriveMustPreserve(unittest.TestCase):
 
     def test_string_participants_included(self):
         result = self._fn("普通事件", ["蕾穆丽娜", "穆蕾莉娅"])
-        self.assertIn("蕾穆丽娜 参与", result)
-        self.assertIn("穆蕾莉娅 参与", result)
+        self.assertIn("蕾穆丽娜 takes part", result)
+        self.assertIn("穆蕾莉娅 takes part", result)
 
     def test_dict_participants_included(self):
         result = self._fn("普通事件", [{"name": "蕾穆丽娜"}, {"name": "穆蕾莉娅"}])
-        self.assertIn("蕾穆丽娜 参与", result)
+        self.assertIn("蕾穆丽娜 takes part", result)
 
     def test_participants_capped_at_3(self):
         participants = ["A", "B", "C", "D", "E"]
         result = self._fn("事件", participants)
-        participant_items = [x for x in result if "参与" in x]
+        participant_items = [x for x in result if "takes part" in x]
         self.assertLessEqual(len(participant_items), 3)
 
     def test_fatal_keyword_appended(self):

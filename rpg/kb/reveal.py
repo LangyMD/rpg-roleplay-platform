@@ -23,7 +23,9 @@ log = logging.getLogger("kb.reveal")
 
 _MIN_SUMMARY_LEN = 6
 _MIN_IMPORTANCE = 40
-_DEFAULT_MAY_VARY = ["place", "timing", "bystanders"]
+from agents.anchor_seed_agent import DEFAULT_MAY_VARY as _SEED_MAY_VARY  # noqa: E402
+
+_DEFAULT_MAY_VARY = list(_SEED_MAY_VARY)
 
 _TRUTHY = ("1", "true", "on", "yes")
 

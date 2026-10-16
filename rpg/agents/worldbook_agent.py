@@ -54,7 +54,7 @@ class WorldbookResult:
         if self.timeline_anchor:
             a = self.timeline_anchor
             parts.append(
-                f"=== 剧本时间线锚点 ===\n"
+                f"=== Script Timeline Anchor ===\n"
                 f"phase: {a.get('phase', '(unmatched)')}\n"
                 f"Source chapters: {a.get('chapter_min', '?')}-{a.get('chapter_max', '?')}\n"
                 f"Time label: {a.get('time_label', '')}"
@@ -62,7 +62,7 @@ class WorldbookResult:
         if self.phase_digest and str(self.phase_digest.get('summary') or '').strip():
             pd = self.phase_digest
             parts.append(
-                f"=== 剧本阶段摘要 ({pd.get('phase_label', '')}) ===\n"
+                f"=== Script Phase Summary ({pd.get('phase_label', '')}) ===\n"
                 f"{_cap(pd.get('summary', ''), 1500)}"
             )
         if self.chapter_facts:
@@ -74,14 +74,14 @@ class WorldbookResult:
                     f"  Summary: {_cap(cf.get('summary') or '', 200)}\n"
                     f"  Events: {_cap(ev, 160)}"
                 )
-            parts.append("=== 剧本章节事实 ===\n" + "\n\n".join(lines))
+            parts.append("=== Script Chapter Facts ===\n" + "\n\n".join(lines))
         if self.worldbook_entries:
             lines = []
             for wb in self.worldbook_entries[:5]:
                 lines.append(f"[{wb.get('title', '')}]\n{_cap(wb.get('content') or '', 400)}")
-            parts.append("=== 世界设定 ===\n" + "\n\n".join(lines))
+            parts.append("=== World Setting ===\n" + "\n\n".join(lines))
         if self.progress_note:
-            parts.append(f"=== 跳跃进度说明 ===\n{self.progress_note}")
+            parts.append(f"=== Time Jump Progress Note ===\n{self.progress_note}")
         return "\n\n".join(parts)
 
 

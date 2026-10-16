@@ -39,7 +39,11 @@ from typing import Any
 
 from psycopg.types.json import Jsonb
 
+from kb.section_markers import format_participant
 from platform_app.db import connect, init_db
+
+# Default may_vary dimensions for a seeded anchor (same values as kb/reveal._DEFAULT_MAY_VARY).
+DEFAULT_MAY_VARY = ("place", "timing", "bystanders")
 
 log = logging.getLogger(__name__)
 
@@ -168,16 +172,7 @@ def seed_anchors_for_save(save_id: int, *, force: bool = False) -> dict[str, Any
         # Q 根因修复:同名实体「首次引入/首次登场」去重。提取层会把同一实体(如 D20)拆成
         # item + concept(D20_concept/D20系统/...),在不同章各生成一个「首次引入」事件 → 玩家在
         # ch1 碰 D20 却被判到达 ch11 的 D20 锚点 → floor 棘轮跳章。按 chapter 升序只留最早一个首次锚点。
-        import re as _re
-        def _intro_name(s: str):
-            m = _re.search(r"[「『]([^」』]+)[」』]", s)        # item「D20」/ concept「苍白之血」
-            if m:
-                return m.group(1).strip()
-            m = _re.match(r"^场景(.+?)首次", s)                 # 场景秋叶原避难所首次出现
-            if m:
-                return m.group(1).strip()
-            m = _re.match(r"^(.+?)[（(]", s)                    # 爱丽丝(character)首次登场
-            return m.group(1).strip() if m else None
+        from kb.section_markers import intro_subject as _intro_name, is_intro_summary
         seen_intro_names: set[str] = set()
         for fact in facts:
             events_raw = fact.get("events") or []
@@ -204,7 +199,7 @@ def seed_anchors_for_save(save_id: int, *, force: bool = False) -> dict[str, Any
                 # 同名实体首次引入/登场/出现去重:只留 chapter 升序里最早那个,跳掉后续重复
                 # (治 D20 在 ch1 item + ch11 concept 各生成首次锚点导致的跳章误判;含场景「首次出现」,
                 # 与 anchor_reconcile._INTRO_MARKERS 口径一致,避免同一场景多条首次锚点)。
-                if ("首次引入" in summary) or ("首次登场" in summary) or ("首次出现" in summary):
+                if is_intro_summary(summary):
                     _nm = _intro_name(summary)
                     if _nm:
                         if _nm in seen_intro_names:
@@ -217,7 +212,7 @@ def seed_anchors_for_save(save_id: int, *, force: bool = False) -> dict[str, Any
                 # may_vary 默认是 ["地点", "时机", "旁观者"]
                 # must_preserve 默认是事件主语 + 关键词
                 must_preserve = _derive_must_preserve(summary, participants)
-                may_vary = ["地点", "触发时机", "旁观者"]
+                may_vary = list(DEFAULT_MAY_VARY)
                 db.execute(
                     """
                     insert into save_anchor_states (
@@ -336,11 +331,11 @@ def _derive_must_preserve(summary: str, participants: list[Any]) -> list[str]:
     # 主要参与者 (前 3 人)
     for p in (participants or [])[:3]:
         if isinstance(p, str) and p:
-            items.append(f"{p} 参与")
+            items.append(format_participant(p))
         elif isinstance(p, dict):
             name = str(p.get("name") or "").strip()
             if name:
-                items.append(f"{name} 参与")
+                items.append(format_participant(name))
     # 命中的关键词
     kw = _first_hit(summary, _CRITICAL_KEYWORDS, _CRITICAL_RE_EN)
     if kw:
