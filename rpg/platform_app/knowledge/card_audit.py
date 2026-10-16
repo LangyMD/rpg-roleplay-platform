@@ -235,7 +235,6 @@ def schedule_card_audit(user_id: int, script_id: int, api_id: str = "", model: s
     """
     init_db()
     import secrets
-    import threading
 
     from platform_app import import_pipeline
     rapi, rmodel = _resolve_audit_model(user_id, api_id, model)
@@ -253,6 +252,8 @@ def schedule_card_audit(user_id: int, script_id: int, api_id: str = "", model: s
                 api_id=rapi, model=rmodel,
                 credential_api_id=import_pipeline._credential_api_id_for(rapi))
 
+    from platform_app.import_pipeline.liveness import reap_dead_jobs_quietly, start_job_thread
+    reap_dead_jobs_quietly(user_id=user_id)
     with connect() as db:
         existing = db.execute(
             "select job_id from import_jobs where user_id=%s and script_id=%s and kind=%s "
@@ -273,10 +274,7 @@ def schedule_card_audit(user_id: int, script_id: int, api_id: str = "", model: s
                 Jsonb([{"id": "audit", "label": "AI character card audit", "status": "pending"}]),
             ),
         )
-    th = threading.Thread(
-        target=_run_card_audit, args=(job_id, user_id, script_id, rapi, rmodel), daemon=True,
-    )
-    th.start()
+    start_job_thread(job_id, _run_card_audit, (job_id, user_id, script_id, rapi, rmodel))
     return {"ok": True, "job_id": job_id, "reused": False}
 
 

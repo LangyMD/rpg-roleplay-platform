@@ -300,6 +300,16 @@ async def lifespan(app: FastAPI):
     except Exception:
         log.exception("[startup] zombie import_jobs reap failed")
 
+    # 3c. worker 已死的任务按心跳收尾(见 import_pipeline/liveness.py)。本地模式是单进程:
+    #     本进程刚起,任何非终态任务都不可能还有活 worker → 不看心跳,全部收尾,
+    #     重启后不再有「你已有导入任务在跑」/「取消中」卡死。
+    try:
+        from core.config import is_local_mode
+        from platform_app.import_pipeline.liveness import reap_dead_jobs
+        reap_dead_jobs(all_unfinished=is_local_mode())
+    except Exception:
+        log.exception("[startup] dead import_jobs reap failed")
+
     # 4. 清理残留上传分片（防磁盘泄漏）
     try:
         from platform_app.script_import import cleanup_stale_upload_chunks

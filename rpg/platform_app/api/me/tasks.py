@@ -64,6 +64,9 @@ async def api_active_tasks(user=Depends(require_user)):
     tasks: list[dict] = []
 
     # ── import_jobs:导入 + 全部模块重建 ──(独立连接 + try,单表故障不拖垮整端点)
+    # 先把 worker 已死(进程重启/崩溃)的任务落终态:浮窗如实显示「失败」,而不是永远「进行中」。
+    from platform_app.import_pipeline.liveness import reap_dead_jobs_quietly
+    reap_dead_jobs_quietly(user_id=uid)
     try:
         with connect() as db:
             rows = db.execute(
