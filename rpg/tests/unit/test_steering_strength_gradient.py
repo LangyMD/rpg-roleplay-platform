@@ -61,22 +61,22 @@ class FallbackSoftGoalGradient(unittest.TestCase):
     def test_guided_is_gentle(self):
         out = self._run("guided")
         self.assertIn("蕾穆丽娜登场", out["soft_goal"])
-        self.assertNotIn("强制", out["soft_goal"])
-        self.assertIn("交给玩家选择", out["soft_goal"])
+        self.assertNotIn("forced", out["soft_goal"])
+        self.assertIn("up to the player's choices", out["soft_goal"])
 
     def test_rail_is_forceful(self):
         out = self._run("rail")
         sg = out["soft_goal"]
         # 强措辞:下一拍 / 强制收束 / 1-3 轮拉回 / 允许变体但不长期跑偏
-        self.assertIn("强制收束", sg)
-        self.assertIn("下一拍", sg)
-        self.assertIn("1-3 轮", sg)
+        self.assertIn("forced convergence", sg)
+        self.assertIn("next beat", sg)
+        self.assertIn("1-3 turns", sg)
         self.assertIn("drift", sg)  # 允许合理变体
-        self.assertIn("不可另起炉灶", sg)
+        self.assertIn("never start over", sg)
         # 带 top-2 提示往哪推
         self.assertIn("主角与穆蕾莉娅初遇", sg)
         # rail 决不能退化成 guided 的温和措辞
-        self.assertNotIn("交给玩家选择", sg)
+        self.assertNotIn("up to the player's choices", sg)
         self.assertEqual(out["pending_anchors"], ["a1"])
         self.assertEqual(out.get("strength"), "rail")
 
@@ -93,25 +93,25 @@ class InjectionWrapperLabelGradient(unittest.TestCase):
     def test_rail_uses_hard_label_not_soft(self):
         out = build_injection(_ConstEmptyDB(), script_id=1,
                               steering_hint="X", steering_strength="rail")
-        self.assertIn("强制下一拍", out["text"])
-        self.assertNotIn("软目标(引导非铁轨)", out["text"])
+        self.assertIn("forced next beat", out["text"])
+        self.assertNotIn("soft goal (guidance, not rails)", out["text"])
 
     def test_guided_keeps_soft_label(self):
         out = build_injection(_ConstEmptyDB(), script_id=1,
                               steering_hint="X", steering_strength="guided")
-        self.assertIn("软目标(引导非铁轨)", out["text"])
-        self.assertNotIn("强制下一拍", out["text"])
+        self.assertIn("soft goal (guidance, not rails)", out["text"])
+        self.assertNotIn("forced next beat", out["text"])
 
     def test_default_strength_is_guided(self):
         # 不传 steering_strength → 默认 guided 行为不变(软标签)
         out = build_injection(_ConstEmptyDB(), script_id=1, steering_hint="X")
-        self.assertIn("软目标(引导非铁轨)", out["text"])
+        self.assertIn("soft goal (guidance, not rails)", out["text"])
 
     def test_empty_hint_injects_no_steering_block(self):
         out = build_injection(_ConstEmptyDB(), script_id=1,
                               steering_hint="", steering_strength="rail")
-        self.assertNotIn("强制下一拍", out["text"])
-        self.assertNotIn("软目标", out["text"])
+        self.assertNotIn("forced next beat", out["text"])
+        self.assertNotIn("soft goal", out["text"])
 
 
 if __name__ == "__main__":

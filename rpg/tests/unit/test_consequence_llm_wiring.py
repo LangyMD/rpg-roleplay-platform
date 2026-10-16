@@ -65,7 +65,7 @@ def test_gm_guide_block_follows_flag(monkeypatch):
 
     monkeypatch.setattr(ff, "feature_enabled", lambda key, uid=None: True)
     block_on = master._consequence_guide_block(1)
-    assert "后果账本" in block_on and "consequence" in block_on
+    assert "Consequence ledger" in block_on and "consequence" in block_on
 
     monkeypatch.setattr(ff, "feature_enabled", lambda key, uid=None: False)
     assert master._consequence_guide_block(1) == ""

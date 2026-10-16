@@ -149,7 +149,7 @@ class AcceptanceRetryFiresE2E(unittest.TestCase):
         self.assertEqual(_last.get("role"), "user", "改写指令应是最后一条 user 消息")
         _last_txt = str(_last.get("content", ""))
         self.assertIn(_first_draft, _last_txt, "首稿应作为『待改写对象』放进改写指令")
-        self.assertTrue(("不是续写" in _last_txt) or ("不要接着往下写" in _last_txt),
+        self.assertTrue(("not a continuation" in _last_txt) or ("Do not keep writing" in _last_txt),
                         "改写指令须明确『不是续写』")
         # 3. 最终 state 落的是【首稿】(不含红茶)—— 候选不静默替换首稿
         state = self.client.get("/api/v1/state", cookies=cookies).json()

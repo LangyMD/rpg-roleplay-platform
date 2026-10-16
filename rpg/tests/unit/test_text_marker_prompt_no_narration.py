@@ -18,15 +18,15 @@ def test_no_tools_returns_empty():
 
 def test_tool_list_still_present():
     out = _format_tools_for_prompt(_TOOLS)
-    assert "本轮可用 MCP 工具清单" in out
+    assert "MCP tools available this turn" in out
     assert "set_tavern_character" in out
 
 
 def test_no_narration_rule_injected():
     out = _format_tools_for_prompt(_TOOLS)
     # 铁律段落 + 关键反例措辞都在
-    assert "正文铁律" in out
-    assert "角色已创建" in out
-    assert "一切就绪" in out
+    assert "prose iron rule" in out
+    assert "character created" in out
+    assert "all set" in out
     # 明确「不要旁白工具执行过程」的语义
-    assert "旁白" in out
+    assert "never narrate" in out

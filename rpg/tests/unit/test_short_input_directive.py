@@ -65,5 +65,14 @@ def test_ordinary_short_input_still_hits_lens_rule():
 
 def test_continue_directive_demands_forward_motion():
     from chat_pipeline import _CONTINUE_DIRECTIVE
-    assert "推进" in _CONTINUE_DIRECTIVE
-    assert "软目标" in _CONTINUE_DIRECTIVE
+    assert "move forward" in _CONTINUE_DIRECTIVE
+    assert "soft goal" in _CONTINUE_DIRECTIVE
+
+
+def test_short_english_rp_uses_latin_threshold():
+    # 英文按字符计同样意思长得多:无 CJK 的输入走 RPG_SHORT_INPUT_CHARS_LATIN(默认 80)。
+    assert cp._should_inject_short_input_directive("I nod.") is True
+    assert cp._should_inject_short_input_directive("I clench my fists, look at her, and say nothing.") is True
+    long_rp = ("I walk to the window and push open the half-closed shutters; the night wind carries "
+               "the damp smell of the sea inside, and I turn back to ask her whether she is all right.")
+    assert cp._should_inject_short_input_directive(long_rp) is False

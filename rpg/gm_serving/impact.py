@@ -13,17 +13,31 @@ _WORLD = re.compile(r"宣战|开战|世界大战|核|毁灭|灭国|登基|加冕
 _FACTION = re.compile(r"势力|阵营|军队|联盟|背叛|结盟|政变|刺杀(?:首领|元首|国王|皇帝|领袖)|占领|攻陷|起义|叛乱|公开身份")
 _SCENE = re.compile(r"战斗|交火|爆炸|起火|逃跑|追击|抓捕|搜查|集会|宴会|审讯")
 
+# English equivalents(词边界 + 忽略大小写;同样保守:不收 army/faction 这类叙述高频裸词)。
+_WORLD_EN = re.compile(
+    r"\b(?:declares?\s+war|declared\s+war|world\s+war|nuclear|nuke[sd]?|annihilat\w*|"
+    r"crowned|coronation|ascends?\s+the\s+throne|ascended\s+the\s+throne|"
+    r"fall\s+of\s+the\s+empire|empire\s+(?:falls|fell|collapses|collapsed)|peace\s+treaty|armistice|"
+    r"change\s+the\s+course\s+of\s+history)\b", re.IGNORECASE)
+_FACTION_EN = re.compile(
+    r"\b(?:betray\w*|coup|uprising|rebellion|revolt\w*|form(?:s|ed)?\s+an\s+alliance|ally\s+with|"
+    r"assassinat\w*\s+(?:the\s+)?(?:leader|king|queen|emperor|empress|chancellor|president|head\s+of\s+state)|"
+    r"occup(?:y|ies|ied)|conquer\w*|reveal\w*\s+(?:my|his|her|their)\s+(?:true\s+)?identity)\b", re.IGNORECASE)
+_SCENE_EN = re.compile(
+    r"\b(?:fight\w*|battle\w*|combat|firefight|gunfire|explo(?:de|des|ded|sion)\w*|set\s+fire|"
+    r"flee\w*|fled|chase\w*|pursu\w*|arrest\w*|raid\w*|banquet|feast|rally|interrogat\w*)\b", re.IGNORECASE)
+
 IMPACT_LEVELS = ("local", "scene", "faction", "world")
 
 
 def classify_impact(action_text: str) -> str:
     """对玩家动作/事件分级。返回 local|scene|faction|world。"""
     t = action_text or ""
-    if _WORLD.search(t):
+    if _WORLD.search(t) or _WORLD_EN.search(t):
         return "world"
-    if _FACTION.search(t):
+    if _FACTION.search(t) or _FACTION_EN.search(t):
         return "faction"
-    if _SCENE.search(t):
+    if _SCENE.search(t) or _SCENE_EN.search(t):
         return "scene"
     return "local"
 

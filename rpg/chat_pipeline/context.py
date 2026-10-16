@@ -98,7 +98,7 @@ async def run_context_phase(
             agent_result = item
 
     if agent_result is None:
-        yield ("error", {"message": "上下文子代理未返回结果", "partial": ctx.response})
+        yield ("error", {"message": "The context sub-agent returned no result", "partial": ctx.response})
         ctx.early_return = True
         return
 

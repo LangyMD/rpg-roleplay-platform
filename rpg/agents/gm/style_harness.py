@@ -24,8 +24,8 @@ KNOBS: dict[str, dict[str, Any]] = {
     # 正文篇幅:数值插值。默认 45 → 约 300-450 字(复刻"≥300字实质推进"绑定规则)。
     "reply_length": {
         "default": 45,
-        "lo": 120,   # knob=0  → ~120 字下限锚
-        "hi": 900,   # knob=100 → ~900 字上限锚
+        "lo": 80,    # knob=0  → ~80 words(原 ~120 字)
+        "hi": 600,   # knob=100 → ~600 words(原 ~900 字)
     },
     # 镜头焦点(#28 维度):玩家动作 vs 对方反应的篇幅占比。默认 15 → 强对方反应优先。
     "player_action_focus": {"default": 15},
@@ -65,7 +65,7 @@ def validate_patch(patch: Any) -> dict[str, int]:
     """校验前端/API 传来的 gm_style patch:只接受已知 6 键、值归一到 0-100 整数,
     未知键忽略。用于写端点入参清洗。空/非 dict → ValueError。"""
     if not isinstance(patch, dict):
-        raise ValueError("gm_style 必须是对象(6 个旋钮 key → 0-100 整数)")
+        raise ValueError("gm_style must be an object (6 knob keys -> integers 0-100)")
     out: dict[str, int] = {}
     for k, v in patch.items():
         if k in KNOBS and v is not None:
@@ -87,47 +87,47 @@ def _band(knob: int) -> int:
 
 _FOCUS_LEVELS = [
     # default 15 → band 0:强对方反应优先(复刻镜头铁律行162)
-    "正文主体写【对方 NPC 与世界对玩家行动的反应、回应与后果】——神态、话语、肢体、情绪与立场变化、环境/局势变动;玩家自己的动作至多一两句承接带过,绝不替玩家加台词、加心理、加他没写的后续动作。玩家写得越短,越说明他在等对方反应,越不能把篇幅耗在给玩家动作加戏。",
-    "正文以对方反应与后果为主体,玩家动作简短承接即可,不替玩家延展未写的动作或心理。",
-    "玩家动作的承接与对方反应大致各半:既如实推进对方的回应,也可对玩家的动作做一两句有质感的描摹,但不替玩家做未写的决定。",
-    "可以较细致地描摹玩家这一动作的展开、力度与质感,再写对方与环境的回应;仍不替玩家补未写的台词或决定。",
-    "重点铺陈玩家这一行动本身的过程、细节与张力,把对方反应作为衬托;但绝不替玩家做未授权的后续决定。",
+    "The body of the prose covers **how the other NPCs and the world react to, answer and are affected by the player's action** — expressions, words, body language, shifts in emotion and stance, changes in the environment / situation; acknowledge the player's own action in one or two sentences at most, and never add lines, inner thoughts or follow-up actions the player didn't write. The shorter the player's input, the more clearly they are waiting for a reaction, and the less you should spend the length dramatizing their action.",
+    "The prose centers on the other side's reactions and the consequences; a brief acknowledgment of the player's action is enough, and you do not extend actions or thoughts the player didn't write.",
+    "Roughly half acknowledging the player's action and half the other side's reaction: advance their response faithfully, and you may give the player's action a sentence or two of textured description, but make no decisions the player didn't write.",
+    "You may describe the unfolding, force and texture of the player's action in some detail, then write how others and the environment respond; still do not add lines or decisions the player didn't write.",
+    "Focus on the process, details and tension of the player's action itself, with the other side's reaction as the backdrop; but never make unauthorized follow-up decisions for the player.",
 ]
 
 _DRAMA_LEVELS = [
-    "戏剧密度严格镜像玩家本回合输入:玩家轻描淡写你也轻描淡写,玩家剧烈你才剧烈。不因检索注入的原文戏剧浓度高就升级当前场景;玩家括号里的状态词按字面处理('(昏迷)'=晕过去,不是濒死)。",
+    "Dramatic density strictly mirrors the player's input this turn: if the player is understated, so are you; only when the player is intense are you intense. Do not escalate the current scene because the retrieved source text is dramatically dense; take state words in the player's brackets literally ('(passes out)' = faints, not dying).",
     # default 35 → band 1:基本镜像、略放大(复刻 task131"镜像而非放大")
-    "戏剧密度基本镜像玩家输入,只在情节自然需要时极克制地加一点张力;不把日常场景升级成原文式的极端事件。",
-    "戏剧密度可比玩家输入略高一档:在合理处主动加入张力与转折,但不脱离当前情境的真实强度。",
-    "允许较明显地放大戏剧张力:主动制造冲突、转折与情绪起伏,推动场面更有戏。",
-    "高戏剧张力:主动升级冲突与情绪强度,追求强烈的戏剧效果(注意仍不违背设定与人物)。",
+    "Dramatic density basically mirrors the player's input, adding a very restrained touch of tension only where the plot naturally calls for it; do not escalate everyday scenes into source-style extreme events.",
+    "Dramatic density may run one notch above the player's input: actively add tension and twists where reasonable, without departing from the real intensity of the current situation.",
+    "You may noticeably amplify dramatic tension: actively create conflict, twists and emotional swings to make the scene more dramatic.",
+    "High dramatic tension: actively escalate conflict and emotional intensity, aiming for strong dramatic effect (still without breaking the setting or the characters).",
 ]
 
 _INTERIORITY_LEVELS = [
-    "只描写外部可观察的事实(动作、表情、话语、环境),不替玩家或 NPC 补写没有依据的内心独白、潜台词或'情绪暗涌'。",
+    "Describe only externally observable facts (actions, expressions, words, environment); do not add unfounded inner monologue, subtext or 'emotional undercurrents' for the player or NPCs.",
     # default 20 → band 1:字面为主,极少内心(复刻"不补潜台词")
-    "以外部描写为主,仅在有明确依据时点到极少量人物情绪,不展开内心独白。",
-    "适度补写 NPC 的内心活动与潜台词,帮助塑造人物;玩家内心仍以玩家所写为准。",
-    "较多刻画 NPC 的心理、动机与潜台词,让人物更立体。",
-    "深入铺陈 NPC 的内心戏与潜台词层次;但玩家角色的内心仍只反映玩家本人所写。",
+    "Mostly external description; touch on a character's emotions very sparingly and only with clear grounds, without unfolding inner monologue.",
+    "Moderately add NPCs' inner activity and subtext to help shape them; the player's inner life is still whatever the player wrote.",
+    "Portray NPCs' psychology, motives and subtext more fully, so the characters feel more three-dimensional.",
+    "Explore NPCs' inner drama and layers of subtext in depth; but the player character's inner life still reflects only what the player wrote.",
 ]
 
 _CLIFF_LEVELS = [
-    "结尾平稳收束这一节拍,不刻意制造悬念。",
-    "结尾给一个轻微的余韵或未尽之意。",
-    "结尾留一个温和的张力点,让玩家自然有接话的方向。",
+    "Close this beat smoothly at the end, without deliberately creating suspense.",
+    "End with a slight lingering note or something left unsaid.",
+    "End on a gentle point of tension that naturally gives the player something to respond to.",
     # default 60 → band 3:有张力的留白(复刻留白铁律行158)
-    "推进完这一轮后,用一个有张力的场景节拍收尾——NPC 的动作、环境变化、一句未尽的话、一个逼近的危机——让玩家自然接话;绝大多数回合不要在结尾显式问'你接下来想怎么做'这类话,只有真正的分叉抉择才用结构化 question 弹窗给选项。",
-    "结尾抛出强钩子:一个迫近的危机、一句惊人的话或一个突变,制造强烈的悬念把玩家拽进下一轮(仍不在正文里显式反问玩家要怎么做)。",
+    "After advancing this turn, close on a tense scene beat — an NPC's action, a change in the environment, an unfinished sentence, an approaching threat — so the player naturally picks it up; in the vast majority of turns do not explicitly ask 'what do you do next?' at the end; only genuine branching choices get options, via the structured question popup.",
+    "End with a strong hook: an imminent threat, a startling line or a sudden turn, creating strong suspense that pulls the player into the next turn (still without explicitly asking the player in the prose what they will do).",
 ]
 
 _GUIDANCE_LEVELS = [
-    "高自由度:跟随玩家的行动自然展开,不主动把剧情往原著锚点拉;仅在玩家明显卡住时给一点方向。",
-    "以玩家为主,偶尔顺势把剧情往待发生锚点的方向轻推。",
-    "主动推进剧情:每轮先让世界/NPC 行动起来,并适度往最近的待发生锚点引导。",
+    "High freedom: let things unfold naturally from the player's actions, without actively pulling the story toward source anchors; give a little direction only when the player is clearly stuck.",
+    "Player-led, occasionally nudging the story along toward the pending anchors when the moment allows.",
+    "Actively advance the story: each turn, set the world / NPCs in motion first, and steer moderately toward the nearest pending anchor.",
     # default 60 → band 3:主动推进+收束(复刻推进铁律行157+收束行88)
-    "每轮先根据剧情流程把这一轮推进了(NPC 行动/事件发生/世界反应),不把'该怎么发展'丢回给玩家;玩家偏离待发生锚点时,1-3 轮内用巧合/误会/他人介入/环境压力等命运式手段把剧情拉回最近锚点,让玩家感觉不到强引导但锚点照样发生。",
-    "强收束:连续主动地把剧情往待发生锚点推进,显著降低自由度,确保关键节点尽快发生(适用于 drift 过高需要强力拉回时)。",
+    "Each turn, first move this turn forward according to the plot (NPCs act / events happen / the world reacts), and do not hand 'how should this develop' back to the player; when the player strays from the pending anchors, use fate-like devices such as coincidence / misunderstanding / intervention by others / environmental pressure to pull the story back to the nearest anchor within 1-3 turns, so the player doesn't feel strong-armed yet the anchor still happens.",
+    "Strong convergence: continuously and actively push the story toward the pending anchors, markedly reducing freedom so the key beats happen as soon as possible (for when drift is too high and needs a strong pull back).",
 ]
 
 
@@ -142,13 +142,13 @@ def render_style_block(profile: dict[str, Any] | None) -> str:
     # 篇幅下限:默认档保留"实质推进、不敷衍"的硬约束(≥ 约 0.7*target)
     floor = int(round(target * 0.7))
     lines = [
-        "# 叙事风格(本局可调倾向 — 由玩家偏好确定,不影响下方安全/正确性铁律)",
-        f"- 正文篇幅:本轮正文目标约 {floor}-{target} 字的【实质推进】,要有场景、动作、对白、感官细节,推动情节明显往前走;严禁一两句话敷衍后立刻甩选项。",
-        f"- 镜头焦点:{_FOCUS_LEVELS[_band(p['player_action_focus'])]}",
-        f"- 戏剧密度:{_DRAMA_LEVELS[_band(p['drama_density'])]}",
-        f"- 心理与潜台词:{_INTERIORITY_LEVELS[_band(p['interiority'])]}",
-        f"- 收尾与悬念:{_CLIFF_LEVELS[_band(p['cliffhanger'])]}",
-        f"- 剧情推进与引导:{_GUIDANCE_LEVELS[_band(p['guidance_force'])]}",
+        "# Narrative style (this game's adjustable tendencies — set by player preference; they do not affect the safety / correctness iron rules)",
+        f"- Length: aim for about {floor}-{target} words of **substantive progress** in this turn's prose, with scene, action, dialogue and sensory detail that clearly moves the plot forward; never brush the player off with a sentence or two and then immediately throw out options.",
+        f"- Camera focus: {_FOCUS_LEVELS[_band(p['player_action_focus'])]}",
+        f"- Dramatic density: {_DRAMA_LEVELS[_band(p['drama_density'])]}",
+        f"- Inner life and subtext: {_INTERIORITY_LEVELS[_band(p['interiority'])]}",
+        f"- Endings and suspense: {_CLIFF_LEVELS[_band(p['cliffhanger'])]}",
+        f"- Story progression and guidance: {_GUIDANCE_LEVELS[_band(p['guidance_force'])]}",
     ]
     return "\n".join(lines)
 

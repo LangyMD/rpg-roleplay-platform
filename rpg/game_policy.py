@@ -148,29 +148,29 @@ class ModuleAdventurePolicy(GamePolicy):
         lines: list[str] = []
 
         # 1) 场景事实快照 — 客观陈述,不带"不得 X"
-        lines.append("【场景事实快照】")
+        lines.append("【Scene fact snapshot】")
         room_enemies = current_room.get("enemies") or []
         if room_enemies:
-            names = "、".join(
+            names = ", ".join(
                 (e.get("name") or e.get("id") or "?") for e in room_enemies
             )
-            lines.append(f"- 当前房间 enemies = [{names}]")
+            lines.append(f"- current room enemies = [{names}]")
         else:
-            lines.append("- 当前房间 enemies = 空")
+            lines.append("- current room enemies = none")
         lines.append(
-            "- encounter.active = " + ("是" if enc.get("active") else "否")
+            "- encounter.active = " + ("yes" if enc.get("active") else "no")
         )
 
         # 2) 数据层级 — 数据来源指南 (Codex #4 + #7)
         ref_block = [
-            "【数据层级 — 真相源 vs 参考】",
-            "- state / scene / encounter / dice_log / player_character / active_entities = **当前事实真相源**",
-            "  这些是 RulesEngine / 模组数据写入的硬事实,GM 必须以此为准。",
-            "- 知识检索 (retrieved_context / 章节摘要 / 角色卡库 / 世界书) = **风格与背景参考**",
-            "  仅用于补叙事色彩,不能覆盖 state 当前位置 / 当前 HP / 当前敌人。",
-            "  例:retrieval 提到玩家曾在矿坑深处遇敌,但 state.scene.location_id=mine_entrance —",
-            "  GM 应按 state 写『在矿道入口』,retrieval 信息可作『你想起之前那次...』的回忆,",
-            "  不可作『你正身处矿坑深处』的当前事实。",
+            "【Data hierarchy — source of truth vs. reference】",
+            "- state / scene / encounter / dice_log / player_character / active_entities = **the source of truth for current facts**",
+            "  These are hard facts written by the RulesEngine / module data; the GM must go by them.",
+            "- Knowledge retrieval (retrieved_context / chapter summaries / character card library / worldbook) = **style and background reference**",
+            "  Only for adding narrative color; it can never override the current location / current HP / current enemies in state.",
+            "  e.g. retrieval mentions the player once met enemies deep in the mine, but state.scene.location_id=mine_entrance —",
+            "  the GM writes \"at the mine entrance\" per state; the retrieved information may serve as a memory (\"you recall that time before...\"),",
+            "  never as the current fact \"you are deep inside the mine\".",
         ]
         return lines + [""] + ref_block
 
@@ -193,10 +193,10 @@ class NovelAdaptationPolicy(GamePolicy):
     def gm_prompt_constraints(self, state: Any) -> list[str]:
         # 小说也要明示 "state 是真相源,retrieval 是参考"
         return [
-            "【数据层级 — 真相源 vs 参考】",
-            "- state.player / state.world / state.relationships / state.memory = **当前事实**",
-            "- 知识检索 (章节原文 / 角色卡 / 世界书) = **风格与背景参考**,",
-            "  补充氛围 / 用词 / 设定细节,但不覆盖 state 当前时刻 / 地点 / 关系。",
+            "【Data hierarchy — source of truth vs. reference】",
+            "- state.player / state.world / state.relationships / state.memory = **current facts**",
+            "- Knowledge retrieval (chapter text / character cards / worldbook) = **style and background reference**,",
+            "  adding atmosphere / wording / setting details, but never overriding the current moment / place / relationships in state.",
         ]
 
 
@@ -215,8 +215,8 @@ class FreeformPolicy(GamePolicy):
 
     def gm_prompt_constraints(self, state: Any) -> list[str]:
         return [
-            "【数据层级 — 真相源 vs 参考】",
-            "- state.* = 当前事实;检索内容仅作参考,不覆盖 state。",
+            "【Data hierarchy — source of truth vs. reference】",
+            "- state.* = current facts; retrieved content is reference only and never overrides state.",
         ]
 
 

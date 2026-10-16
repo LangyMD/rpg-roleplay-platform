@@ -35,7 +35,7 @@ def assemble_gm_context(db, *, save_id: int, user_id: int, user_input: str = "",
 
     ctx = _save_ctx(db, save_id, user_id)
     if not ctx:
-        return {"error": "无权访问该存档", "injection_text": "", "kb_tools": []}
+        return {"error": "You do not have access to this save", "injection_text": "", "kb_tools": []}
     script_id = ctx["script_id"]
     if not script_id:
         # 无剧本存档(酒馆未绑剧本/自由模式):常驻世界书/steering/KB 全是 script 域数据,

@@ -78,16 +78,16 @@ async def run_rules_phase(
         persist_runtime_checkpoint(state, api_user)
         yield ("agent", {
             "phase": "rules_gate",
-            "message": _combat_gate.get("reason") or "RulesEngine 要求玩家先明确动作",
+            "message": _combat_gate.get("reason") or "The RulesEngine needs the player to specify their action first",
             "status": "done",
             "elapsed_ms": 0,
             "gate_kind": _combat_gate.get("kind"),
         })
         yield ("status", payload_fn(api_user))
         # 把规则裁定的问询当 GM 正文流出去,前端 chat history 才有记录
-        _gate_msg_lines = [f"【规则要求先确认】{_q_text}"]
+        _gate_msg_lines = [f"[The rules need you to confirm first] {_q_text}"]
         if _q_opts:
-            _gate_msg_lines.append("可选:")
+            _gate_msg_lines.append("Options:")
             _gate_msg_lines.extend(f"  · {opt}" for opt in _q_opts)
         _gate_msg = "\n".join(_gate_msg_lines)
         yield ("token", {"text": _gate_msg})
@@ -128,7 +128,7 @@ async def run_rules_phase(
         bundle.setdefault("debug", {})["rule_results"] = rule_results
         yield ("agent", {
             "phase": "rules_engine",
-            "message": "RulesEngine 已完成本轮规则裁定。",
+            "message": "The RulesEngine has finished this turn's rulings.",
             "status": "done",
             "elapsed_ms": 0,
             "rule_results": rule_results,
@@ -137,7 +137,7 @@ async def run_rules_phase(
         yield ("updates", {
             "stage": "rules_engine",
             "items": [
-                f"RulesEngine: {(r.get('action') or {}).get('kind')} 已裁定"
+                f"RulesEngine: {(r.get('action') or {}).get('kind')} resolved"
                 for r in rule_results
             ],
         })
@@ -208,7 +208,7 @@ async def run_rules_phase(
                 "ts": _dt.now().isoformat(timespec="seconds"),
                 "kind": "curator_low_confidence",
                 "source": "curator",
-                "hint": f"confidence={_confidence:.2f} 偏低,但 GM 仍推进剧情(不再短路反问)",
+                "hint": f"confidence={_confidence:.2f} is low, but the GM still advances the story (no longer short-circuits to a question)",
                 "turn": state.data.get("turn", 0),
             })
             state.data["permissions"]["audit_log"] = audit[-200:]
