@@ -44,19 +44,19 @@ def _parse_github_repo(url: str) -> tuple[str, str, str | None]:
     """
     u = str(url or "").strip()
     if not u:
-        raise ValueError("缺少 GitHub 仓库地址")
+        raise ValueError("Missing GitHub repository address")
     u = re.sub(r"^https?://", "", u)
     u = re.sub(r"^(www\.)?github\.com/", "", u)
     parts = [p for p in u.split("/") if p]
     if len(parts) < 2:
-        raise ValueError("GitHub 地址格式应为 owner/repo")
+        raise ValueError("GitHub address must be in owner/repo format")
     owner, repo = parts[0], parts[1]
     repo = re.sub(r"\.git$", "", repo)
     branch: str | None = None
     if len(parts) >= 4 and parts[2] in ("tree", "blob"):
         branch = parts[3]
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", owner) or not re.fullmatch(r"[A-Za-z0-9_.-]+", repo):
-        raise ValueError("GitHub owner/repo 含非法字符")
+        raise ValueError("GitHub owner/repo contains invalid characters")
     return owner, repo, branch
 
 
@@ -79,7 +79,7 @@ def _fetch_github_markdown(url: str) -> tuple[list[tuple[str, str]], str]:
             log.info("[persona-skill] github fetch %s@%s failed: %s", repo, br, exc)
             data = None
     if not data:
-        raise ValueError("拉取失败:仓库不存在或非公开(仅支持公开仓库的 main/master 分支)")
+        raise ValueError("Fetch failed: the repository does not exist or is not public (only the main/master branch of public repositories is supported)")
     return _extract_md_from_tar(data), canonical
 
 
@@ -90,7 +90,7 @@ def _extract_md_from_tar(data: bytes) -> list[tuple[str, str]]:
     try:
         tf = tarfile.open(fileobj=io.BytesIO(data), mode="r:gz")
     except Exception as exc:
-        raise ValueError(f"压缩包解析失败: {exc}") from exc
+        raise ValueError(f"Failed to parse the archive: {exc}") from exc
     with tf:
         for member in tf:
             if len(out) >= _MAX_FILES:
@@ -119,7 +119,7 @@ def _extract_md_from_tar(data: bytes) -> list[tuple[str, str]]:
             if text:
                 out.append((base, text))
     if not out:
-        raise ValueError("仓库里没有可用的 .md 文件")
+        raise ValueError("The repository has no usable .md files")
     return out
 
 
@@ -143,7 +143,7 @@ def _normalize_upload_files(files: list[dict[str, Any]]) -> list[tuple[str, str]
         if text:
             out.append((name, text))
     if not out:
-        raise ValueError("没有可用的 .md 内容")
+        raise ValueError("No usable .md content")
     return out
 
 
@@ -177,7 +177,7 @@ def _derive_name(files: list[tuple[str, str]], fallback: str) -> str:
         mm = re.search(r"^#\s+(.+?)\s*$", t, re.MULTILINE)
         if mm:
             return mm.group(1).strip()[:120]
-    return (fallback or "导入人格")[:120]
+    return (fallback or "Imported persona")[:120]
 
 
 def _concat_for_distill(files: list[tuple[str, str]]) -> str:
@@ -259,7 +259,7 @@ def import_persona_skill(
     use_llm=True 时再在映射结果上叠一层 LLM 归类整理(可选、要 BYOK)。返回 {ok, skill_id, card_id, card, image_status}。
     """
     if not user_id:
-        raise ValueError("需要登录")
+        raise ValueError("Login required")
     init_db()
 
     # 1) 取 markdown 文件 + 溯源

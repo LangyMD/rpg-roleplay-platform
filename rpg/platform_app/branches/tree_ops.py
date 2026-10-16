@@ -36,7 +36,7 @@ def tree(user_id: int, save_id: int, limit: int | str | None = None, cursor: str
     with connect() as db:
         save = db.execute("select * from game_saves where id = %s and user_id = %s", (save_id, user_id)).fetchone()
         if not save:
-            raise ValueError("无权访问该存档")
+            raise ValueError("No access to this save")
         needs_seed = not db.execute("select 1 from branch_commits where save_id = %s limit 1", (save_id,)).fetchone()
     if needs_seed:
         seed_tree(save_id, save["state_path"])

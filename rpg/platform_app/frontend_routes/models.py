@@ -27,25 +27,25 @@ async def api_models_visibility(request: Request):
     # 全局模型目录写操作:与同级 /api/models/* 一致,须管理员(CWE-862)。
     user = require_user(request)
     if not is_admin(user):
-        return _bad("需要管理员权限", status=403)
+        return _bad("Administrator privileges required", status=403)
     body = await request.json() or {}
     api_id = body.get("api_id") or body.get("api")
     model_real_name = body.get("model") or body.get("real_name")
     visible = body.get("visible")
     if not api_id or model_real_name is None or visible is None:
-        return _bad("缺少参数")
+        return _bad("Missing parameters")
     from model_registry import find_api, load_model_catalog, upsert_model
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
     if not api:
-        return _bad(f"未知 API: {api_id}")
+        return _bad(f"Unknown API: {api_id}")
     # locate model by real_name or id
     model_entry = next(
         (m for m in api.get("models", []) if m.get("real_name") == model_real_name or m.get("id") == model_real_name),
         None,
     )
     if not model_entry:
-        return _bad(f"模型不存在: {model_real_name}")
+        return _bad(f"Model not found: {model_real_name}")
     # upsert_model merges into catalog and calls save_model_catalog (writes DB + JSON)
     upsert_model(api_id, {**model_entry, "enabled": bool(visible)})
     return json_response({"ok": True})
@@ -66,11 +66,11 @@ async def api_me_models_visibility(request: Request):
     model = body.get("model") or body.get("real_name") or body.get("model_id")
     visible = body.get("visible")
     if not api_id or model is None or visible is None:
-        return _bad("缺少参数")
+        return _bad("Missing parameters")
     from platform_app.user_models import set_overlay_model_enabled
     n = set_overlay_model_enabled(user["id"], api_id, model, bool(visible))
     if not n:
-        return _bad("该模型不在你的同步清单里(只能隐藏你自己同步来的模型)", status=404)
+        return _bad("This model is not in your synced list (you can only hide models you synced yourself)", status=404)
     return json_response({"ok": True, "updated": n})
 
 
@@ -88,11 +88,11 @@ async def api_me_models_display_name(request: Request):
     model = body.get("model") or body.get("real_name") or body.get("model_id")
     display = str(body.get("display_name") or body.get("display") or "").strip()
     if not api_id or not model or not display:
-        return _bad("缺少参数:api_id / model / display_name 必填")
+        return _bad("Missing parameters: api_id / model / display_name are required")
     from platform_app.user_models import set_overlay_model_display_name
     n = set_overlay_model_display_name(user["id"], api_id, str(model), display)
     if not n:
-        return _bad("该模型不在你的模型清单里(平台内置目录的模型只有管理员能改名)", status=404)
+        return _bad("This model is not in your model list (only admins can rename models in the built-in catalog)", status=404)
     return json_response({"ok": True, "updated": n})
 
 
@@ -113,7 +113,7 @@ async def api_me_models_model(request: Request):
     api_id = body.get("api_id") or body.get("api")
     real = (body.get("real_name") or body.get("model") or body.get("model_id") or "").strip()
     if not api_id or not real:
-        return _bad("缺少参数:api_id 与 real_name 必填")
+        return _bad("Missing parameters: api_id and real_name are required")
     from platform_app.user_models import upsert_manual_model
     saved = upsert_manual_model(user["id"], api_id, {
         "id": real,
@@ -123,7 +123,7 @@ async def api_me_models_model(request: Request):
         "enabled": True,
     })
     if not saved:
-        return _bad("参数不合法(api_id / real_name 无法规范化)")
+        return _bad("Invalid parameters (api_id / real_name cannot be normalized)")
     return json_response({"ok": True, "model": saved})
 
 
@@ -135,11 +135,11 @@ async def api_me_models_model_delete(request: Request):
     api_id = body.get("api_id") or body.get("api")
     model = body.get("real_name") or body.get("model") or body.get("model_id")
     if not api_id or not model:
-        return _bad("缺少参数")
+        return _bad("Missing parameters")
     from platform_app.user_models import delete_overlay_model
     n = delete_overlay_model(user["id"], api_id, str(model))
     if not n:
-        return _bad("该模型不在你的清单里", status=404)
+        return _bad("This model is not in your list", status=404)
     return json_response({"ok": True, "deleted": n})
 
 

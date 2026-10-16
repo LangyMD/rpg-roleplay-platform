@@ -84,10 +84,10 @@ def delete_subtree(user_id: int, node_id: int) -> dict[str, Any]:
     with connect() as db:
         node = _commit_for_user(db, user_id, node_id)
         if not node:
-            raise ValueError("无权访问该分支节点")
+            raise ValueError("No access to this branch node")
         node = round_start_node(db, node)
         if node["parent_id"] is None:
-            raise ValueError("不能删除根节点")
+            raise ValueError("Cannot delete the root node")
         # 与回合提交 / autosave 同 key 的锁:删子树可能改 game_saves 活跃指针(active 被删时回退到
         # fallback),读 game_saves 之前取,防并发回合在我们读指针与写 fallback 之间提交被覆盖。
         acquire_save_advisory_lock(db, node["save_id"], user_id)
@@ -166,7 +166,7 @@ def rollback_to_message(
     init_db()
     msg_index = int(message_index)
     if msg_index < 0:
-        raise ValueError("message_index 不能小于 0")
+        raise ValueError("message_index cannot be less than 0")
     runtime_payload: dict[str, Any] | None = None
 
     with connect() as db:
@@ -178,7 +178,7 @@ def rollback_to_message(
             (save_id, user_id),
         ).fetchone()
         if not save:
-            raise ValueError("无权访问该存档,或存档不存在")
+            raise ValueError("No access to this save, or the save does not exist")
 
         current_commit_id = save.get("active_commit_id") or save.get("active_branch_node_id")
 
@@ -242,7 +242,7 @@ def rollback_to_message(
                 (save_id,),
             ).fetchone()
         if not target_commit:
-            raise ValueError(f"找不到 turn {target_turn} 的 commit,无法回滚")
+            raise ValueError(f"No commit found for turn {target_turn}; cannot roll back")
 
         trash_ref = None
         if current_commit_id and current_commit_id != target_commit["id"]:
@@ -332,7 +332,7 @@ def rewind_last_round(user_id: int, save_id: int) -> dict[str, Any] | None:
             (save_id, user_id),
         ).fetchone()
         if not save:
-            raise ValueError("无权访问该存档,或存档不存在")
+            raise ValueError("No access to this save, or the save does not exist")
         active_id = save.get("active_commit_id") or save.get("active_branch_node_id")
         if not active_id:
             return None

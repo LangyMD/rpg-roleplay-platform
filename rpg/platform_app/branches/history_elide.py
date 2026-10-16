@@ -70,7 +70,7 @@ def hydrate_commit_state(db, save_id: int, commit_row: dict[str, Any]) -> dict[s
     ).fetchone()
     hist = (((donor or {}).get("state_snapshot") or {}).get("history")) or []
     if len(hist) < n:
-        raise RuntimeError(f"history hydrate 失败: commit {cid} 需要 {n} 条,无足量后代供体")
+        raise RuntimeError(f"history hydrate failed: commit {cid} needs {n} entries but no descendant donor has enough")
     snap["history"] = hist[:n]
     snap.pop("_history_elided", None)
     return snap

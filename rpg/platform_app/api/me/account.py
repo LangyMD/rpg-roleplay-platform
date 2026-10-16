@@ -65,16 +65,16 @@ async def api_account_import(request: Request, user=Depends(require_user)):
             form = await request.form()
             file = form.get("file")
             if not file or not hasattr(file, "read"):
-                raise HTTPException(status_code=400, detail="缺 file 字段")
+                raise HTTPException(status_code=400, detail="Missing file field")
             raw = await file.read()
         else:
             raw = await request.body()
         if not raw:
-            raise HTTPException(status_code=400, detail="空文件")
+            raise HTTPException(status_code=400, detail="Empty file")
         if len(raw) > _MAX_ACCOUNT_IMPORT_BYTES:
-            raise HTTPException(status_code=400, detail=f"文件过大 (>{_MAX_ACCOUNT_IMPORT_BYTES // 1024 // 1024}MB)")
+            raise HTTPException(status_code=400, detail=f"File too large (>{_MAX_ACCOUNT_IMPORT_BYTES // 1024 // 1024}MB)")
         if raw[:4] != b"PK\x03\x04":
-            raise HTTPException(status_code=400, detail="不是合法的 zip 文件")
+            raise HTTPException(status_code=400, detail="Not a valid zip file")
         # 异步作业:返回 job_id,前端用 streamImport 看真实逐项进度(剧本 i/N…)。
         return json_response(account_io.import_account_job(user["id"], raw))
     except HTTPException:

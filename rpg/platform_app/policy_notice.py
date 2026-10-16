@@ -102,7 +102,7 @@ def schedule_policy_change(
     Returns: notice record dict (含 id).
     """
     if slug not in POLICY_SLUGS:
-        raise ValueError(f"未知 slug: {slug!r}")
+        raise ValueError(f"Unknown slug: {slug!r}")
 
     if effective_at is None:
         effective_at = datetime.now(UTC) + timedelta(days=NOTICE_LEAD_TIME_DAYS)
@@ -173,7 +173,7 @@ def dispatch_notice(db, notice_id: str) -> dict:
     rows = db.execute(
         """
         select u.email,
-               coalesce(pe.default_language, 'zh-CN') as lang
+               coalesce(pe.default_language, 'en') as lang
         from   users u
         left   join profile_extras pe on pe.user_id = u.id
         where  u.email_verified = true
@@ -314,12 +314,7 @@ def _build_email(
             f"Summary of changes:\n{summary}\n\n"
             f"Effective date: {effective_display}\n\n"
             f"Read the full policy: {url}\n\n"
-            f"For questions, contact support@stellatrix.icu\n\n"
-            f"---\n"
-            f"[ZH] Stellatrix RPG 即将更新{name_zh}({new_version})。\n"
-            f"变更摘要: {summary}\n"
-            f"生效时间: {effective_display}\n"
-            f"完整政策: {url}"
+            f"For questions, contact support@stellatrix.icu"
         )
 
     return subject, body

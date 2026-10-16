@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 def _require_admin(request: Request):
     user = current_user(request)
     if not is_admin(user):
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise HTTPException(status_code=403, detail="Administrator privileges required")
     return user
 
 
@@ -47,7 +47,7 @@ def _require_admin(request: Request):
 def policy_slug_status(slug: str):
     """查询某条政策当前版本与待变更信息（公开端点）。"""
     if slug not in POLICY_SLUGS:
-        raise HTTPException(status_code=404, detail=f"未知政策 slug: {slug!r}")
+        raise HTTPException(status_code=404, detail=f"Unknown policy slug: {slug!r}")
 
     with connect() as db:
         current_version = get_current_version(db, slug)
@@ -107,7 +107,7 @@ def admin_create_notice(body: CreateNoticeBody, request: Request):
     _require_admin(request)
 
     if body.slug not in POLICY_SLUGS:
-        raise HTTPException(status_code=400, detail=f"未知 slug: {body.slug!r}")
+        raise HTTPException(status_code=400, detail=f"Unknown slug: {body.slug!r}")
 
     effective_at = None
     if body.effective_at:
@@ -116,7 +116,7 @@ def admin_create_notice(body: CreateNoticeBody, request: Request):
             if effective_at.tzinfo is None:
                 effective_at = effective_at.replace(tzinfo=UTC)
         except ValueError:
-            raise HTTPException(status_code=400, detail="effective_at 格式无效,需 ISO-8601")
+            raise HTTPException(status_code=400, detail="Invalid effective_at format; ISO-8601 required")
 
     with connect() as db:
         record = schedule_policy_change(

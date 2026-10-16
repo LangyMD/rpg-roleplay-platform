@@ -114,7 +114,7 @@ def test_v2_character_book_preserved():
 def test_v2_missing_name_raises():
     v2 = minimal_v2()
     v2["data"]["name"] = ""
-    with pytest.raises(ValueError, match="缺少 name"):
+    with pytest.raises(ValueError, match="missing a name"):
         parse_card(v2)
 
 
@@ -157,7 +157,7 @@ def test_v1_char_name_fallback():
 
 
 def test_v1_missing_name_raises():
-    with pytest.raises(ValueError, match="缺少 name"):
+    with pytest.raises(ValueError, match="missing a name"):
         parse_card({"description": "no name here"})
 
 
@@ -258,7 +258,7 @@ def test_parse_png_missing_chunk_raises():
 
 def test_parse_png_too_large_raises():
     big_blob = b"\x89PNG\r\n\x1a\n" + b"\x00" * (10 * 1024 * 1024 + 1)
-    with pytest.raises(ValueError, match="大"):
+    with pytest.raises(ValueError, match="too large"):
         parse_png_card(big_blob)
 
 

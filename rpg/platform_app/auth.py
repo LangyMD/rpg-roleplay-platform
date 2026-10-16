@@ -322,28 +322,28 @@ def register(
     init_db()
     username = normalize_username(username)
     if not username:
-        raise ValueError("用户名不能为空")
+        raise ValueError("Username cannot be empty")
     if len(password or "") > 1024:
-        raise ValueError("密码超长")
+        raise ValueError("Password is too long")
     if len(password or "") < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"密码至少 {MIN_PASSWORD_LENGTH} 位")
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
 
     # ── REG-01: email 必填 ────────────────────────────────────────────────────
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("请填写有效的邮箱地址")
+        raise ValueError("Please enter a valid email address")
 
     # ── AGE-01: 18+ 校验 ──────────────────────────────────────────────────────
     if birthday is None:
-        raise ValueError("请提供出生日期")
+        raise ValueError("Please provide your date of birth")
     from datetime import date as _date
     if isinstance(birthday, str):
         try:
             birthday = _date.fromisoformat(birthday)
         except ValueError as exc:
-            raise ValueError("出生日期格式错误，请使用 YYYY-MM-DD") from exc
+            raise ValueError("Invalid date of birth format; use YYYY-MM-DD") from exc
     if calc_age(birthday) < 18:
-        raise ValueError("你必须年满 18 周岁才能注册")
+        raise ValueError("You must be at least 18 years old to register")
 
     pending_payload = {
         "username": username,
@@ -367,7 +367,7 @@ def register(
             (email_norm,),
         ).fetchone()
         if banned:
-            raise ValueError("该邮箱已被限制注册")
+            raise ValueError("This email address is not allowed to register")
 
         # 检查 email 是否已被已验证用户占用
         existing_email = db.execute(
@@ -375,7 +375,7 @@ def register(
             (email_norm,),
         ).fetchone()
         if existing_email:
-            raise ValueError("该邮箱已被注册")
+            raise ValueError("This email address is already registered")
 
         # 检查 username 是否已占用
         existing_user = db.execute(
@@ -383,7 +383,7 @@ def register(
             (username,),
         ).fetchone()
         if existing_user:
-            raise ValueError("注册失败，请检查输入后重试")
+            raise ValueError("Registration failed; please check your input and try again")
 
         # ── 注册闸(管理后台「注册与邀请」的注册模式)───────────────────────────
         pending_payload["invite_code"] = _registration_gate(db, email_norm, invite_code)
@@ -400,14 +400,14 @@ def register(
                 if _rb_reg.get_sync_client() is not None:
                     rem = _rb_reg.lock_remaining(f"reg:email:{email_norm}")
                     if rem and rem > 0:
-                        raise ValueError("请求过于频繁，请稍后再试")
+                        raise ValueError("Too many requests; please try again later")
             except ValueError:
                 raise
             except Exception:
                 pass
             # per-IP:同 IP 注册(含成功)10 次/10min
             if _ip_budget_exceeded("reg:ip", ip or "", 10, 600):
-                raise ValueError("请求过于频繁，请稍后再试")
+                raise ValueError("Too many requests; please try again later")
 
         # ── 写 email_verifications (pending) ──────────────────────────────────
         code = generate_email_code(6)
@@ -551,8 +551,8 @@ def _row_get(row, key: str, default=None):
 
 # 注册模式全集。前三个是管理后台能切的;"allowlist" 是早期 SQL 手设的别名(只认白名单,不收邀请码)。
 REGISTRATION_MODES = ("open", "invite", "closed", "allowlist")
-_ALLOWLIST_REJECT_MSG = "该邮箱不在内测白名单。本批次仅向早期预约者开放,如需加入下一批请到 play.stellatrix.icu 留邮箱。"
-_REGISTRATION_CLOSED_MSG = "当前已关闭注册，暂不接受新账号"
+_ALLOWLIST_REJECT_MSG = "This email is not on the beta allowlist. This round is open only to early sign-ups; to join the next round, leave your email at play.stellatrix.icu."
+_REGISTRATION_CLOSED_MSG = "Registration is currently closed; no new accounts are being accepted"
 
 
 def registration_mode(db) -> str:
@@ -633,7 +633,7 @@ def _registration_gate(db, email_norm: str, invite_code: str | None) -> str | No
         raise ValueError(_ALLOWLIST_REJECT_MSG)
     code = (invite_code or "").strip()
     if not code:
-        raise ValueError("当前为邀请制，注册需要填写邀请码（已预约内测的邮箱不用填）")
+        raise ValueError("Registration is invite-only; an invite code is required (not needed for emails already signed up for the beta)")
     row = db.execute(
         f"""
         select 1 from invite_codes
@@ -645,7 +645,7 @@ def _registration_gate(db, email_norm: str, invite_code: str | None) -> str | No
         (code,),
     ).fetchone()
     if not row:
-        raise ValueError("邀请码无效或已使用")
+        raise ValueError("Invite code is invalid or already used")
     return code
 
 
@@ -700,7 +700,7 @@ def confirm_email_verification(email: str, code: str) -> tuple[dict[str, Any], s
 
     # 暴破防护:同 email 验证码尝试过多则锁定一个窗口(防 6 位码被穷举)
     if _verify_locked(email_norm):
-        raise ValueError("验证尝试次数过多，请稍后重新获取验证码")
+        raise ValueError("Too many verification attempts; please request a new code later")
 
     with connect() as db:
         # 查有效 verif 记录
@@ -717,11 +717,11 @@ def confirm_email_verification(email: str, code: str) -> tuple[dict[str, Any], s
             (email_norm,),
         ).fetchone()
         if not verif:
-            raise ValueError("验证码已过期或不存在，请重新注册")
+            raise ValueError("Verification code has expired or does not exist; please register again")
 
         if not verify_email_code(code, verif["code_hash"]):
             _record_verify_fail(email_norm)  # 计失败,达上限锁定该 email 一个窗口(防暴破)
-            raise ValueError("验证码错误")
+            raise ValueError("Incorrect verification code")
         _clear_verify_fail(email_norm)  # 验证通过,清失败计数 + 解锁
 
         # 取 pending 注册参数。优先读进程缓存；若部署重启导致缓存丢失，
@@ -730,7 +730,7 @@ def confirm_email_verification(email: str, code: str) -> tuple[dict[str, Any], s
         pending_json = _pending_store_get(email_norm, consume=True)
         pending = _decode_pending_register(pending_json)
         if not pending:
-            raise ValueError("注册会话已过期，请重新注册")
+            raise ValueError("Registration session has expired; please register again")
 
         allow_admin = (
             bool(pending.get("allow_admin"))
@@ -786,7 +786,7 @@ def confirm_email_verification(email: str, code: str) -> tuple[dict[str, Any], s
                     ),
                 ).fetchone()
         except UniqueViolation as exc:
-            raise ValueError("注册失败，请检查输入后重试") from exc
+            raise ValueError("Registration failed; please check your input and try again") from exc
 
         user = dict(row)
 
@@ -802,7 +802,7 @@ def confirm_email_verification(email: str, code: str) -> tuple[dict[str, Any], s
                 (user["id"], invite_code),
             )
             if _res.rowcount == 0:
-                raise ValueError("邀请码已被使用，请联系邀请人获取新的邀请码")
+                raise ValueError("This invite code has already been used; ask the inviter for a new one")
 
         # 标记验证码已使用。放在用户创建之后，避免 pending 恢复失败时吞掉有效验证码。
         db.execute(
@@ -885,7 +885,7 @@ def verify_apple_identity_token(identity_token: str, raw_nonce: str = "") -> dic
 
     token = (identity_token or "").strip()
     if not token:
-        raise ValueError("缺 identity_token")
+        raise ValueError("Missing identity_token")
     try:
         signing_key = _get_apple_jwk_client().get_signing_key_from_jwt(token)
         claims = jwt.decode(
@@ -897,14 +897,14 @@ def verify_apple_identity_token(identity_token: str, raw_nonce: str = "") -> dic
             options={"require": ["exp", "iat", "iss", "aud", "sub"]},
         )
     except Exception:
-        raise ValueError("Apple 身份令牌校验失败")
+        raise ValueError("Apple identity token verification failed")
     if raw_nonce:
         expected = hashlib.sha256(raw_nonce.encode("utf-8")).hexdigest()
         if not secrets.compare_digest(str(claims.get("nonce") or ""), expected):
-            raise ValueError("nonce 不匹配,登录被拒绝")
+            raise ValueError("Nonce mismatch; login rejected")
     sub = str(claims.get("sub") or "").strip()
     if not sub:
-        raise ValueError("Apple 令牌缺 sub")
+        raise ValueError("Apple token is missing sub")
     email = str(claims.get("email") or "").strip().lower()
     return {"sub": sub, "email": email, "email_verified": claims.get("email_verified") in (True, "true", "1")}
 
@@ -914,7 +914,7 @@ def _assert_registration_allowed(db, email_norm: str) -> None:
     (Apple 登录没有邀请码输入);open/dev 不拦。模式读取与密码注册同源(registration_mode)。"""
     mode = _assert_new_accounts_open(db)
     if mode in ("allowlist", "invite") and not _email_allowlisted(db, email_norm):
-        raise ValueError("该邮箱不在内测白名单。本批次仅向早期预约者开放。")
+        raise ValueError("This email is not on the beta allowlist. This round is open only to early sign-ups.")
 
 
 def _apple_unique_username(db, email_norm: str, apple_sub: str) -> str:
@@ -931,7 +931,7 @@ def login_or_create_apple_user(apple_sub: str, email: str = "", name: str = "") 
     """按 Apple sub 查/建账号并发 session。返回 (user, session_token)。"""
     apple_sub = (apple_sub or "").strip()
     if not apple_sub:
-        raise ValueError("缺 apple_sub")
+        raise ValueError("Missing apple_sub")
     email_norm = (email or "").strip().lower()
     with connect() as db:
         row = db.execute("select * from users where apple_sub = %s", (apple_sub,)).fetchone()
@@ -952,7 +952,7 @@ def login_or_create_apple_user(apple_sub: str, email: str = "", name: str = "") 
                 user["apple_sub"] = apple_sub
             else:
                 _assert_registration_allowed(db, email_norm)
-                disp = (name or "").strip() or (email_norm.split("@")[0] if email_norm else "Apple 用户")
+                disp = (name or "").strip() or (email_norm.split("@")[0] if email_norm else "Apple user")
                 uname = _apple_unique_username(db, email_norm, apple_sub)
                 user = dict(db.execute(
                     """
@@ -980,7 +980,7 @@ def local_account() -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-def bootstrap_local_account(username: str = "local", display_name: str = "本地用户") -> dict[str, Any]:
+def bootstrap_local_account(username: str = "local", display_name: str = "Local user") -> dict[str, Any]:
     """本地/桌面模式首启:若库中没有任何用户,创建一个默认账户(role=admin,无密码 → 回环免登录)。
     幂等:已有用户则原样返回第一个。改用户名/密码不换 id,数据始终归同一账户。"""
     existing = local_account()
@@ -1018,14 +1018,14 @@ def update_local_account(user_id: int, *, username: str | None = None,
     if username is not None:
         uname = normalize_username(username)
         if not uname:
-            raise ValueError("用户名不能为空")
+            raise ValueError("Username cannot be empty")
         sets.append("username = %s")
         args.append(uname)
     if display_name is not None:
         sets.append("display_name = %s")
-        args.append(display_name.strip() or "本地用户")
+        args.append(display_name.strip() or "Local user")
     if not sets:
-        raise ValueError("无可更新字段")
+        raise ValueError("No fields to update")
     sets.append("updated_at = now()")
     args.append(int(user_id))
     with connect() as db:
@@ -1035,9 +1035,9 @@ def update_local_account(user_id: int, *, username: str | None = None,
                 tuple(args),
             ).fetchone()
         except UniqueViolation as exc:
-            raise ValueError("该用户名已被占用") from exc
+            raise ValueError("This username is already taken") from exc
     if not row:
-        raise ValueError("账户不存在")
+        raise ValueError("Account does not exist")
     return dict(row)
 
 
@@ -1070,7 +1070,7 @@ def create_desktop_login_token(user_id: int) -> str:
 def consume_desktop_login_token(token: str) -> tuple[dict[str, Any], str]:
     """兑换桌面登录 token → (user, session_token)。单次使用 + TTL 校验。失败 → ValueError。"""
     if not token:
-        raise ValueError("缺 token")
+        raise ValueError("Missing token")
     init_db()
     with connect() as db:
         # 原子认领:UPDATE ... WHERE used_at IS NULL RETURNING —— 行锁让第一个写者赢,
@@ -1082,13 +1082,13 @@ def consume_desktop_login_token(token: str) -> tuple[dict[str, Any], str]:
             (_hash_token(token),),
         ).fetchone()
         if not claimed:
-            raise ValueError("链接无效或已过期")
+            raise ValueError("Link is invalid or expired")
         user = db.execute(
             "select * from users where id = %s and deactivated_at is null",
             (claimed["user_id"],),
         ).fetchone()
         if not user:
-            raise ValueError("账户不存在")
+            raise ValueError("Account does not exist")
         session_token = _issue_session(db, int(user["id"]))
     return dict(user), session_token
 
@@ -1145,16 +1145,16 @@ def register_via_invite(
     """凭邀请 token 轻量注册一个普通用户(role=user,无邮箱)→ (user, session_token)。
     单写者建号 + 即时发会话(注册即登录)。用户名唯一冲突 / 弱密码 / 无效邀请 → ValueError。"""
     if not validate_desktop_invite_token(invite_token):
-        raise ValueError("邀请链接无效或已过期")
+        raise ValueError("Invite link is invalid or expired")
     if not age_confirmed:
-        raise ValueError("请确认你已年满 18 岁")
+        raise ValueError("Please confirm that you are at least 18 years old")
     username = normalize_username(username)
     if not username:
-        raise ValueError("用户名不能为空")
+        raise ValueError("Username cannot be empty")
     if len(password or "") < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"密码至少 {MIN_PASSWORD_LENGTH} 位")
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
     if len(password or "") > 1024:
-        raise ValueError("密码超长")
+        raise ValueError("Password is too long")
     init_db()
     pw_hash = hash_password(password)
     with connect() as db:
@@ -1166,7 +1166,7 @@ def register_via_invite(
                 (username, pw_hash, (display_name or "").strip() or username),
             ).fetchone()
         except UniqueViolation as exc:
-            raise ValueError("该用户名已被占用") from exc
+            raise ValueError("This username is already taken") from exc
         session_token = _issue_session(db, int(row["id"]))
     return dict(row), session_token
 
@@ -1187,7 +1187,7 @@ def request_login_code(email: str, *, ip: str = "", ua: str = "") -> dict[str, A
     """
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("请填写有效的邮箱地址")
+        raise ValueError("Please enter a valid email address")
     _check_rate_limit(ip, email_norm)
     # per-IP 发码预算:防单 IP 向任意已注册邮箱批量发登录码。静默返回 ok(防滥发)。
     # 这条**故意不报 registered** —— 到这一步已是滥用嫌疑,不给它任何探测信号。
@@ -1230,7 +1230,7 @@ def request_login_code(email: str, *, ip: str = "", ua: str = "") -> dict[str, A
                 created = created.replace(tzinfo=UTC)
             elapsed = (datetime.now(UTC) - created).total_seconds()
             if elapsed < 60:
-                raise ValueError(f"发送太频繁，请 {int(60 - elapsed) + 1} 秒后再试")
+                raise ValueError(f"Sending too often; please try again in {int(60 - elapsed) + 1} seconds")
 
         user_id = int(row["id"])
         code = generate_email_code(6)
@@ -1263,13 +1263,13 @@ def request_login_code(email: str, *, ip: str = "", ua: str = "") -> dict[str, A
 def confirm_login_code(email: str, code: str, *, ip: str = "") -> tuple[dict[str, Any], str]:
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("请填写有效的邮箱地址")
+        raise ValueError("Please enter a valid email address")
     code = (code or "").strip()
     if len(code) != 6 or not code.isdigit():
-        raise ValueError("请输入 6 位数字验证码")
+        raise ValueError("Please enter the 6-digit verification code")
     # [Fix-2] 镜像 confirm_email_verification 的 per-email 验证码暴破防护
     if _verify_locked(email_norm):
-        raise ValueError("验证尝试次数过多，请稍后重新获取验证码")
+        raise ValueError("Too many verification attempts; please request a new code later")
     _check_rate_limit(ip, email_norm)
 
     init_db()
@@ -1291,7 +1291,7 @@ def confirm_login_code(email: str, code: str, *, ip: str = "") -> tuple[dict[str
             # 错码或无记录：不消费，只计失败
             _record_verify_fail(email_norm)  # [Fix-2] per-email 验证码失败计数(达上限锁定该 email)
             _record_login_fail(ip, email_norm)
-            raise ValueError("验证码错误或已过期")
+            raise ValueError("Verification code is incorrect or expired")
 
         # Step 2: 原子消费 — WHERE 里重检 used_at IS NULL，并发第二个请求命中 0 行
         # SEC: hash 已在 Step 1 比对通过才到这里，此处只做 CAS 式消费。
@@ -1304,7 +1304,7 @@ def confirm_login_code(email: str, code: str, *, ip: str = "") -> tuple[dict[str
         if not consumed:
             # 并发重放：第一个请求已消费
             _record_login_fail(ip, email_norm)
-            raise ValueError("验证码错误或已过期")
+            raise ValueError("Verification code is incorrect or expired")
 
         row = db.execute(
             """
@@ -1319,7 +1319,7 @@ def confirm_login_code(email: str, code: str, *, ip: str = "") -> tuple[dict[str
         ).fetchone()
         if not row:
             _record_login_fail(ip, email_norm)
-            raise ValueError("验证码错误或已过期")
+            raise ValueError("Verification code is incorrect or expired")
 
         token = _issue_session(db, int(row["id"]))
         _record_login_success(ip, email_norm)
@@ -1329,7 +1329,7 @@ def confirm_login_code(email: str, code: str, *, ip: str = "") -> tuple[dict[str
 def login(username: str, password: str, *, ip: str = "") -> tuple[dict[str, Any], str]:
     """登录，带速率限制 + 失败审计 + email 登录支持 + Argon2id rehash。"""
     if len(password or "") > 1024:
-        raise ValueError("密码超长")
+        raise ValueError("Password is too long")
     init_db()
     normalized = normalize_username(username)
     _check_rate_limit(ip, normalized)  # 锁定中直接抛 RateLimited
@@ -1349,12 +1349,12 @@ def login(username: str, password: str, *, ip: str = "") -> tuple[dict[str, Any]
 
         if not row:
             _record_login_fail(ip, normalized)
-            raise ValueError("用户名或密码错误")
+            raise ValueError("Incorrect username or password")
 
         ok, needs_rehash = verify_password_with_rehash(row["password_hash"], password)
         if not ok:
             _record_login_fail(ip, normalized)
-            raise ValueError("用户名或密码错误")
+            raise ValueError("Incorrect username or password")
 
         # ENC-08: 老 PBKDF2 账号登录成功后升级为 Argon2id
         if needs_rehash:
@@ -1433,7 +1433,7 @@ def get_user(user_id: int) -> dict[str, Any]:
     with connect() as db:
         row = db.execute("select * from users where id = %s", (user_id,)).fetchone()
         if not row:
-            raise ValueError("用户不存在")
+            raise ValueError("User does not exist")
         return dict(row)
 
 
@@ -1455,25 +1455,25 @@ def resend_verification_code(email: str, ip: str = "") -> None:
     """重发验证码。限流：同一邮箱 60 秒内只能触发一次。"""
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("无效邮箱")
+        raise ValueError("Invalid email address")
 
     # per-IP 发件预算:防单 IP 跨邮箱轮询放大重发(per-email 60s 冷却挡不住换邮箱)。
     if _ip_budget_exceeded("resend:ip", ip, 10, 600):
-        raise ValueError("发送太频繁，请稍后再试")
+        raise ValueError("Sending too often; please try again later")
 
     # Redis 共享冷却(workers>1 一致;否则用户轮询不同 worker 可绕过 60s 冷却刷验证码)
     import redis_bus
     if redis_bus.get_sync_client() is not None:
         rem = redis_bus.lock_remaining(f"resend:{email_norm}")
         if rem and rem > 0:
-            raise ValueError(f"发送太频繁，请 {rem} 秒后再试")
+            raise ValueError(f"Sending too often; please try again in {rem} seconds")
         redis_bus.lock_set(f"resend:{email_norm}", 60)
     else:
         now = time.monotonic()
         last = _RESEND_LAST.get(email_norm, 0.0)
         if now - last < 60:
             wait = int(60 - (now - last)) + 1
-            raise ValueError(f"发送太频繁，请 {wait} 秒后再试")
+            raise ValueError(f"Sending too often; please try again in {wait} seconds")
         _RESEND_LAST[email_norm] = now
 
     init_db()
@@ -1481,7 +1481,7 @@ def resend_verification_code(email: str, ip: str = "") -> None:
         # SEC(H-7): pending 只从 Redis/进程内取(不再从 ua 列恢复 password_hash)。
         pending = _decode_pending_register(_pending_store_get(email_norm))
         if not pending:
-            raise ValueError("注册会话已过期，请重新注册")
+            raise ValueError("Registration session has expired; please register again")
 
         pending_json = _encode_pending_register(pending)
         _pending_store_set(email_norm, pending_json)
@@ -1604,10 +1604,10 @@ def request_password_reset(email: str, ip: str = "") -> dict:
 def consume_magic_token(token: str, email: str) -> dict:
     """校验 magic_token 与 email 匹配，30天有效。不立即消费，verify_passwordless_and_login 时再标 used。"""
     if not token or not email:
-        raise ValueError("token/email 不能为空")
+        raise ValueError("token/email cannot be empty")
     norm = normalize_email(email)
     if not norm or "@" not in norm:
-        raise ValueError("邮箱格式不正确")
+        raise ValueError("Invalid email format")
     init_db()
     with connect() as db:
         # SEC(H-6): 加 used_at is null —— magic 邀请单次使用,登录成功后即失效,杜绝 30 天内重放。
@@ -1617,14 +1617,14 @@ def consume_magic_token(token: str, email: str) -> dict:
             (token, norm),
         ).fetchone()
     if not row:
-        raise ValueError("邀请链接无效、已过期或已被使用")
+        raise ValueError("Invite link is invalid, expired or already used")
     import datetime as _dt
     created = row["created_at"]
     if created.tzinfo is None:
         created = created.replace(tzinfo=_dt.UTC)
     age = (_dt.datetime.now(_dt.UTC) - created).total_seconds()
     if age > 30 * 86400:
-        raise ValueError("邀请链接已过期 (30天)")
+        raise ValueError("Invite link has expired (30 days)")
     return {"email": norm, "batch": row["batch"]}
 
 
@@ -1632,7 +1632,7 @@ def request_passwordless_code(email: str, source: str = "magic_link") -> dict:
     """对 email 发 6位 OTP。无论用户是否已注册都生效(allowlist 已在 consume_magic_token 验过)。"""
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("邮箱格式不正确")
+        raise ValueError("Invalid email format")
     init_db()
     with connect() as db:
         # 废弃同邮箱旧 passwordless_login 记录
@@ -1664,14 +1664,14 @@ def verify_passwordless_and_login(email: str, code: str, ip: str = "") -> dict:
     """验证 OTP(purpose='passwordless_login')，若用户不存在则按白名单建 user，返回 session token。"""
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("邮箱格式不正确")
+        raise ValueError("Invalid email format")
     code = (code or "").strip()
     if len(code) != 6 or not code.isdigit():
-        raise ValueError("请输入 6 位数字验证码")
+        raise ValueError("Please enter the 6-digit verification code")
     # [Fix-2 round-3-P2] 镜像 confirm_login_code 的 per-email 验证码暴破防护:
     # 无此则 passwordless 路径可对单邮箱无限猜码(仅受 IP 速率限,换 IP 即绕过)。
     if _verify_locked(email_norm):
-        raise ValueError("验证尝试次数过多，请稍后重新获取验证码")
+        raise ValueError("Too many verification attempts; please request a new code later")
     _check_rate_limit(ip, email_norm)
     init_db()
     with connect() as db:
@@ -1692,7 +1692,7 @@ def verify_passwordless_and_login(email: str, code: str, ip: str = "") -> dict:
             # 错码或无记录：不消费，只计失败
             _record_verify_fail(email_norm)  # [Fix-2 round-3-P2] per-email 验证码失败计数(达上限锁定该 email)
             _record_login_fail(ip, email_norm)
-            raise ValueError("验证码错误或已过期")
+            raise ValueError("Verification code is incorrect or expired")
 
         # Step 2: 原子消费 — WHERE 里重检 used_at IS NULL，并发第二个请求命中 0 行
         # SEC: hash 已在 Step 1 比对通过才到这里，此处只做 CAS 式消费。
@@ -1705,7 +1705,7 @@ def verify_passwordless_and_login(email: str, code: str, ip: str = "") -> dict:
         if not consumed:
             # 并发重放：第一个请求已消费
             _record_login_fail(ip, email_norm)
-            raise ValueError("验证码错误或已过期")
+            raise ValueError("Verification code is incorrect or expired")
 
         # 查是否已有用户
         user_row = db.execute(
@@ -1728,7 +1728,7 @@ def verify_passwordless_and_login(email: str, code: str, ip: str = "") -> dict:
             ).fetchone()
             if not wl_row:
                 _record_login_fail(ip, email_norm)
-                raise ValueError("该邮箱不在注册白名单中，请确认邀请链接正确")
+                raise ValueError("This email is not on the registration allowlist; please check that the invite link is correct")
             # 建 user (password_hash = NULL — passwordless 账号)
             try:
                 user_row = db.execute(
@@ -1750,7 +1750,7 @@ def verify_passwordless_and_login(email: str, code: str, ip: str = "") -> dict:
                     (email_norm,),
                 ).fetchone()
                 if not user_row:
-                    raise ValueError("注册失败，请稍后重试")
+                    raise ValueError("Registration failed; please try again later")
             # 标记白名单 used
             db.execute(
                 "update registration_allowlist set used_by_user_id = %s, used_at = now() where email_norm = %s",
@@ -1783,7 +1783,7 @@ def login_via_magic_token(email: str, ip: str = "", *, magic_token: str = "") ->
     """
     email_norm = normalize_email(email)
     if not email_norm or "@" not in email_norm:
-        raise ValueError("邮箱格式不正确")
+        raise ValueError("Invalid email format")
     _check_rate_limit(ip, email_norm)
     init_db()
     with connect() as db:
@@ -1802,7 +1802,7 @@ def login_via_magic_token(email: str, ip: str = "", *, magic_token: str = "") ->
             ).fetchone()
             if not wl_row:
                 _record_login_fail(ip, email_norm)
-                raise ValueError("该邮箱不在注册白名单中,请确认邀请链接正确")
+                raise ValueError("This email is not on the registration allowlist; please check that the invite link is correct")
             # 建 passwordless 账号
             try:
                 user_row = db.execute(
@@ -1823,7 +1823,7 @@ def login_via_magic_token(email: str, ip: str = "", *, magic_token: str = "") ->
                     (email_norm,),
                 ).fetchone()
                 if not user_row:
-                    raise ValueError("注册失败,请稍后重试")
+                    raise ValueError("Registration failed; please try again later")
             # 注意：不在此处标记 allowlist used_at，交由下方原子 UPDATE 统一消费（避免双写）
         user = dict(user_row)
         # SEC(H-6 原子消费): 把「检查 used_at IS NULL」与「置 used_at」合到一条 UPDATE...RETURNING。
@@ -1838,7 +1838,7 @@ def login_via_magic_token(email: str, ip: str = "", *, magic_token: str = "") ->
             ).fetchone()
             if not consumed_ml:
                 # 并发重放：另一个请求已消费此 magic link
-                raise ValueError("邀请链接无效、已过期或已被使用")
+                raise ValueError("Invite link is invalid, expired or already used")
         else:
             # 兜底：无 magic_token（不应走到此分支，保守幂等写）
             db.execute(
@@ -1868,9 +1868,9 @@ def confirm_password_reset(token: str, new_password: str, ip: str = "") -> dict:
     if not token:
         raise ValueError("invalid_token")
     if len(new_password or "") < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"密码至少 {MIN_PASSWORD_LENGTH} 位")
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
     if len(new_password or "") > 1024:
-        raise ValueError("密码超长")
+        raise ValueError("Password is too long")
 
     # SEC(L-2): per-IP 软上限,防对 reset token 的零摩擦探测 / DoS 放大(每次探针触发全表扫 + HMAC)。
     # [round-4-P2] rate_incr 吞异常返 None(从不抛),原 except(Exception) 是死代码 → Redis 宕机时
@@ -1886,9 +1886,9 @@ def confirm_password_reset(token: str, new_password: str, ip: str = "") -> dict:
             _b[:] = [t for t in _b if _now - t < _PWRESET_WINDOW_SEC]
             _over = len(_b) > _PWRESET_IP_LIMIT
         if _over:
-            raise ValueError("尝试过于频繁,请稍后再试")
+            raise ValueError("Too many attempts; please try again later")
     elif _c > 30:
-        raise ValueError("尝试过于频繁,请稍后再试")
+        raise ValueError("Too many attempts; please try again later")
 
     token_hash = hash_email_code(token)
     init_db()
@@ -1905,7 +1905,7 @@ def confirm_password_reset(token: str, new_password: str, ip: str = "") -> dict:
             (token_hash,),
         ).fetchone()
         if not verif:
-            raise ValueError("重置链接无效、已过期或已使用，请重新申请")
+            raise ValueError("Reset link is invalid, expired or already used; please request a new one")
 
         # 查找对应用户
         email_norm = verif["email"]
@@ -1914,7 +1914,7 @@ def confirm_password_reset(token: str, new_password: str, ip: str = "") -> dict:
             (email_norm,),
         ).fetchone()
         if not user:
-            raise ValueError("账号不存在或已被禁用")
+            raise ValueError("Account does not exist or has been disabled")
 
         pw_hash = hash_password(new_password)
         db.execute("UPDATE users SET password_hash = %s, updated_at = NOW() WHERE id = %s",

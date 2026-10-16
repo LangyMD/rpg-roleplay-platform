@@ -45,20 +45,20 @@ async def serve_storage_file(kind: str, filename: str, request: Request) -> File
     require_user(request)
     # kind 白名单
     if kind not in _KIND_ALLOWLIST:
-        raise HTTPException(status_code=404, detail="未知 kind")
+        raise HTTPException(status_code=404, detail="Unknown kind")
 
     # 扩展名白名单（按 kind 选取）
     ext = os.path.splitext(filename)[-1].lower()
     allowed_exts = _EXT_ALLOWLIST_SCRIPTS if kind == "scripts" else _EXT_ALLOWLIST
     if ext not in allowed_exts:
-        raise HTTPException(status_code=404, detail="不支持的文件类型")
+        raise HTTPException(status_code=404, detail="Unsupported file type")
 
     # 穿越防护（resolve_path 内部校验）
     storage_key = f"{kind}/{filename}"
     try:
         path = resolve_path(storage_key)
     except ValueError:
-        raise HTTPException(status_code=404, detail="路径非法")
+        raise HTTPException(status_code=404, detail="Invalid path")
 
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404)

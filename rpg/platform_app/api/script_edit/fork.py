@@ -45,7 +45,7 @@ async def api_fork_script(request: Request, script_id: int, user=Depends(require
         ).fetchone()
         if not src:
             # 不区分"不存在"与"无权",避免私有剧本 id 枚举探测
-            return json_response({"ok": False, "error": "源剧本不存在或无权访问"}, status_code=404)
+            return json_response({"ok": False, "error": "Source script not found or not accessible"}, status_code=404)
 
         fork_title = title_override or f"[fork] {src['title']}"
         forked_at_commit = src["head_commit_id"]

@@ -42,7 +42,7 @@ async def api_worldbook_update(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     _WB_COLS = (
         "id, title, content, priority, enabled, metadata, "
@@ -63,7 +63,7 @@ async def api_worldbook_update(
             (entry_id, script_id),
         ).fetchone()
         if not before_row:
-            return json_response({"ok": False, "error": "worldbook entry 不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Worldbook entry not found"}, status_code=404)
 
         before = dict(before_row)
 
@@ -81,7 +81,7 @@ async def api_worldbook_update(
                 reveal = _reveal_chapter(body["first_revealed_chapter"])
             except (TypeError, ValueError):
                 return json_response(
-                    {"ok": False, "error": "first_revealed_chapter 必须是整数(章节号)"}, status_code=400)
+                    {"ok": False, "error": "first_revealed_chapter must be an integer (chapter number)"}, status_code=400)
             sets.append("first_revealed_chapter=%s")
             args.append(reveal)
         if "probability" in body:
@@ -110,7 +110,7 @@ async def api_worldbook_update(
             sets.append("embedded_at=NULL")
 
         if not sets:
-            return json_response({"ok": False, "error": "无可更新字段"}, status_code=400)
+            return json_response({"ok": False, "error": "No fields to update"}, status_code=400)
 
         sets.append("updated_at=now()")
         args.extend([entry_id, script_id])
@@ -130,7 +130,7 @@ async def api_worldbook_update(
             script_id=script_id,
             user_id=user["id"],
             kind="worldbook_edit",
-            message=f"编辑 worldbook: {after.get('title', entry_id)}",
+            message=f"Edit worldbook: {after.get('title', entry_id)}",
             payload={"table": "worldbook_entries", "op": "edit", "before": before, "after": after, "ids": {"entry_id": entry_id}},
         )
         db.commit()
@@ -158,17 +158,17 @@ async def api_worldbook_add(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     title = str(body.get("title") or "").strip()
     content = str(body.get("content") or "")
     if not title:
-        return json_response({"ok": False, "error": "缺少 title"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing title"}, status_code=400)
     try:
         reveal_chapter = _reveal_chapter(body.get("first_revealed_chapter"))
     except (TypeError, ValueError):
         return json_response(
-            {"ok": False, "error": "first_revealed_chapter 必须是整数(章节号)"}, status_code=400)
+            {"ok": False, "error": "first_revealed_chapter must be an integer (chapter number)"}, status_code=400)
 
     def _strlist(v: Any) -> list[str]:
         return [str(x) for x in v] if isinstance(v, list) else []
@@ -229,7 +229,7 @@ async def api_worldbook_add(
             script_id=script_id,
             user_id=user["id"],
             kind="worldbook_add",
-            message=f"新增 worldbook: {title}",
+            message=f"Add worldbook: {title}",
             payload={"table": "worldbook_entries", "op": "add", "after": after, "ids": {"entry_id": int(after["id"])}},
         )
         db.commit()
@@ -266,7 +266,7 @@ async def api_worldbook_delete(
             (entry_id, script_id),
         ).fetchone()
         if not before_row:
-            return json_response({"ok": False, "error": "worldbook entry 不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Worldbook entry not found"}, status_code=404)
 
         before = dict(before_row)
         db.execute(
@@ -279,7 +279,7 @@ async def api_worldbook_delete(
             script_id=script_id,
             user_id=user["id"],
             kind="worldbook_delete",
-            message=f"删除 worldbook: {before.get('title', entry_id)}",
+            message=f"Delete worldbook: {before.get('title', entry_id)}",
             payload={"table": "worldbook_entries", "op": "delete", "before": before, "ids": {"entry_id": entry_id}},
         )
         db.commit()
@@ -295,10 +295,10 @@ async def api_worldbook_delete(
 
 # 批量动作 → (中文标签, commit kind 后缀)。set_priority 需附带 priority。
 _WB_BATCH_ACTIONS = {
-    "delete": "删除",
-    "enable": "启用",
-    "disable": "停用",
-    "set_priority": "设置优先级",
+    "delete": "delete",
+    "enable": "enable",
+    "disable": "disable",
+    "set_priority": "set priority",
 }
 
 
@@ -317,32 +317,32 @@ async def api_worldbook_batch(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     action = str(body.get("action") or "").strip()
     if action not in _WB_BATCH_ACTIONS:
-        return json_response({"ok": False, "error": f"不支持的 action: {action}"}, status_code=400)
+        return json_response({"ok": False, "error": f"Unsupported action: {action}"}, status_code=400)
 
     raw_ids = body.get("entry_ids") or body.get("ids") or []
     if not isinstance(raw_ids, list):
-        return json_response({"ok": False, "error": "entry_ids 必须是数组"}, status_code=400)
+        return json_response({"ok": False, "error": "entry_ids must be an array"}, status_code=400)
     try:
         ids = [int(x) for x in raw_ids if x is not None]
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "entry_ids 含非法 id"}, status_code=400)
+        return json_response({"ok": False, "error": "entry_ids contains an invalid id"}, status_code=400)
     ids = list(dict.fromkeys(ids))  # 去重保序
     if not ids:
-        return json_response({"ok": False, "error": "entry_ids 不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "entry_ids cannot be empty"}, status_code=400)
     MAX_BATCH = 1000
     if len(ids) > MAX_BATCH:
-        return json_response({"ok": False, "error": f"单次批量上限 {MAX_BATCH} 条"}, status_code=400)
+        return json_response({"ok": False, "error": f"At most {MAX_BATCH} entries per batch"}, status_code=400)
 
     priority = None
     if action == "set_priority":
         try:
             priority = int(body.get("priority"))
         except (TypeError, ValueError):
-            return json_response({"ok": False, "error": "set_priority 需要整数 priority"}, status_code=400)
+            return json_response({"ok": False, "error": "set_priority requires an integer priority"}, status_code=400)
         priority = max(0, min(1000, priority))  # clamp 到合理区间
 
     with connect() as db:
@@ -381,7 +381,7 @@ async def api_worldbook_batch(
             script_id=script_id,
             user_id=user["id"],
             kind=f"worldbook_bulk_{action}",
-            message=f"批量{_WB_BATCH_ACTIONS[action]} worldbook × {affected}",
+            message=f"Batch {_WB_BATCH_ACTIONS[action]} worldbook x {affected}",
             payload=payload,
         )
         db.commit()

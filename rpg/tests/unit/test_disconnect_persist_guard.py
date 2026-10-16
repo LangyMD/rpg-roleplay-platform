@@ -18,7 +18,7 @@ def test_routes_disconnect_persist_clause():
     ge = src.index("except (GeneratorExit, asyncio.CancelledError):")
     exc = src.index("except Exception as exc:", ge)
     clause = src[ge:exc]
-    assert "网络中断,已保留部分内容" in clause
+    assert "Connection lost; partial content kept" in clause
     assert "_done_streamed" in clause
     assert "_persist_chat_turn(" in clause
     assert "raise" in clause  # 落库后必须继续向上抛,不吞取消

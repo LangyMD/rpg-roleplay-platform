@@ -387,7 +387,7 @@ class SsrfGuardTransportContract(unittest.TestCase):
         self.assertIsInstance(cm.exception.__cause__, OutboundBlocked)
         known = classify_provider_error(cm.exception)
         self.assertEqual((known or [None])[0], "network")
-        self.assertIn("保留地址", known[1])  # 底层报错带上闸门的真实原因,而不是只有 "Connection error."
+        self.assertIn("reserved address", known[1])  # 底层报错带上闸门的真实原因,而不是只有 "Connection error."
 
 
 class ConsolidationSourceGuards(unittest.TestCase):

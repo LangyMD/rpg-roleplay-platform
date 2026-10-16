@@ -52,7 +52,7 @@ async def admin_set_registration(
         mode = str(update["mode"] or "").strip().lower()
         if mode not in REGISTRATION_MODES:
             raise HTTPException(400, detail={"error_key": "admin.registration.bad_mode",
-                                             "message": "注册模式只能是开放、仅邀请或关闭"})
+                                             "message": "Registration mode must be open, invite-only or closed"})
         update["mode"] = mode
 
     with connect() as db:
@@ -186,7 +186,7 @@ async def admin_delete_invite_code(
             (code,),
         ).fetchone()
         if not result:
-            raise HTTPException(status_code=404, detail="邀请码不存在或已被使用")
+            raise HTTPException(status_code=404, detail="Invite code not found or already used")
         _write_audit(db, admin, "invite.delete",
                      target_type="invite_code", target_id=code,
                      details={}, ip=ip)

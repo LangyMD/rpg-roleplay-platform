@@ -95,7 +95,7 @@ async def api_state_events(
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
         return StreamingResponse(
-            iter([f"event: error\ndata: {json.dumps({'message':'需要登录'}, ensure_ascii=False)}\n\n"]),
+            iter([f"event: error\ndata: {json.dumps({'message':'Login required'}, ensure_ascii=False)}\n\n"]),
             media_type="text/event-stream",
             status_code=401,
         )

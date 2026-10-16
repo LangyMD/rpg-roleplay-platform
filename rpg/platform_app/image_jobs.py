@@ -14,7 +14,7 @@ worker 集成：在 scripts/run_postproc_worker.py 的 TASK_HANDLERS 里加：
 Phase 3 增量：
   - enqueue_image_generation 加 save_id 参数，透传 create_image_record + payload。
   - 每日配额(确定性)：起点查该 user 近 24h ai_images 行数(非 failed)，
-    ≥ RPG_IMAGE_DAILY_CAP(env,默认 50) 则不入队，返回 quota_exceeded。
+    ≥ RPG_IMAGE_DAILY_CAP(env;未设置时服务器模式默认 50、local 模式不设上限) 则不入队，返回 quota_exceeded。
 """
 from __future__ import annotations
 
@@ -38,6 +38,25 @@ VALUES
 
 # image 任务没有 game save 归属；用固定占位符满足 NOT NULL 约束。
 _IMAGE_SAVE_PLACEHOLDER = "image_job"
+
+
+
+def _image_daily_cap() -> int | None:
+    """每日生图上限。env RPG_IMAGE_DAILY_CAP 显式设置时恒用它;
+    未设置:local 模式(单用户本机)不设上限(None),服务器模式默认 50。"""
+    raw = (os.getenv("RPG_IMAGE_DAILY_CAP") or "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    try:
+        from core.config import is_local_mode
+        if is_local_mode():
+            return None
+    except Exception:
+        pass
+    return 50
 
 
 def enqueue_image_generation(
@@ -70,25 +89,27 @@ def enqueue_image_generation(
     from platform_app.db import connect
 
     # ── 每日配额检查（确定性）─────────────────────────────────────────────
-    daily_cap: int = int(os.getenv("RPG_IMAGE_DAILY_CAP", "50"))
-    try:
-        with connect() as _db:
-            row = _db.execute(
-                """
-                select count(*) as cnt from ai_images
-                 where user_id = %s
-                   and status <> 'failed'
-                   and created_at > now() - interval '24 hours'
-                """,
-                (int(user_id),),
-            ).fetchone()
-        count_24h: int = int(row["cnt"]) if row else 0
-    except Exception as _quota_exc:
-        # 配额查询失败时宽松放行（避免 DB 故障导致所有生图被拦截）
-        log.warning("[image_jobs] quota check failed (allowing): %s", _quota_exc)
-        count_24h = 0
+    daily_cap = _image_daily_cap()
+    count_24h: int = 0
+    if daily_cap is not None:
+        try:
+            with connect() as _db:
+                row = _db.execute(
+                    """
+                    select count(*) as cnt from ai_images
+                     where user_id = %s
+                       and status <> 'failed'
+                       and created_at > now() - interval '24 hours'
+                    """,
+                    (int(user_id),),
+                ).fetchone()
+            count_24h = int(row["cnt"]) if row else 0
+        except Exception as _quota_exc:
+            # 配额查询失败时宽松放行（避免 DB 故障导致所有生图被拦截）
+            log.warning("[image_jobs] quota check failed (allowing): %s", _quota_exc)
+            count_24h = 0
 
-    if count_24h >= daily_cap:
+    if daily_cap is not None and count_24h >= daily_cap:
         log.warning(
             "[image_jobs] quota_exceeded user=%s count_24h=%d cap=%d",
             user_id, count_24h, daily_cap,
@@ -344,7 +365,7 @@ async def handle_image_gen(payload: dict[str, Any]) -> None:
         # 把 prompt 注入 attach，供 persona_image 分支写入 prompt_snapshot
         attach_with_prompt = {**attach, "prompt_snapshot": attach.get("prompt_snapshot") or prompt}
         if not _attach_image_to_target(user_id=user_id, url=url, attach=attach_with_prompt):
-            _fail(image_id, "attach_failed: 生成成功但目标写回失败(无权限或目标不存在);图片已存入图库")
+            _fail(image_id, "attach_failed: generated successfully but writing back to the target failed (no permission or target missing); the image was saved to the gallery")
 
 
 def _attach_image_to_target(
@@ -534,7 +555,7 @@ def list_persona_images(user_id: int, card_id: int) -> list[dict[str, Any]]:
             (int(card_id), user_id),
         ).fetchone()
         if not owned:
-            raise ValueError("card 不存在或无权访问")
+            raise ValueError("Card not found or not accessible")
         rows = db.execute(
             """
             select id, image_url, persona_hash, card_row_version,
@@ -578,14 +599,14 @@ def set_current_persona_image(user_id: int, card_id: int, image_id: int) -> dict
             (int(card_id), user_id),
         ).fetchone()
         if not card_row:
-            raise ValueError("card 不存在或无权访问")
+            raise ValueError("Card not found or not accessible")
         # 校验 image 归属该卡
         img_row = db.execute(
             "select image_url from card_persona_images where id = %s and card_id = %s",
             (int(image_id), int(card_id)),
         ).fetchone()
         if not img_row:
-            raise ValueError("人设图不存在或不属于该卡")
+            raise ValueError("Persona image not found or does not belong to this card")
         target_url: str = str(img_row["image_url"])
 
         # 翻转 is_current

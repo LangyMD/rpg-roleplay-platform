@@ -108,8 +108,8 @@ def _schedule_knowledge_sync(user_id: int, script_id: int) -> str:
         ).fetchone()
         if int(active_count_row["n"]) >= MAX_ACTIVE_JOBS_PER_USER:
             raise ValueError(
-                f"已有 {active_count_row['n']} 个同步任务在跑，"
-                f"请等已有任务完成（每用户最多 {MAX_ACTIVE_JOBS_PER_USER} 个并发）"
+                f"{active_count_row['n']} sync jobs already running; "
+                f"wait for them to finish (at most {MAX_ACTIVE_JOBS_PER_USER} concurrent jobs per user)"
             )
 
         # 原子去重：唯一索引 uq_import_jobs_active_per_script（partial unique index）
@@ -155,7 +155,7 @@ def _schedule_knowledge_sync(user_id: int, script_id: int) -> str:
                     (job_id, user_id, script_id),
                 ).fetchone()
                 if not inserted:
-                    raise RuntimeError("无法插入 sync job 也无法读取已存在 job_id（请重试）")
+                    raise RuntimeError("Could neither insert the sync job nor read the existing job_id (please retry)")
                 actual_job_id = inserted["job_id"]
             else:
                 actual_job_id = row["job_id"]

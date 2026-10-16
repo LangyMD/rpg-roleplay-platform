@@ -60,7 +60,7 @@ DEFAULT_MODEL_CATALOG: dict[str, Any] = {
                 {"id": "gemini-2.5-pro",   "real_name": "gemini-2.5-pro",   "display_name": "Gemini 2.5 Pro", "enabled": True,
                  "capabilities": ["text", "streaming", "image_input", "audio_input", "video_input", "file_input", "tools", "json_mode", "reasoning", "code_exec"]},
                 # 向量嵌入(RAG)— 768 维,与 DB 向量列原生一致。text-embedding-004 是系统默认。
-                {"id": "text-embedding-004", "real_name": "text-embedding-004", "display_name": "Text Embedding 004 · 默认", "enabled": True,
+                {"id": "text-embedding-004", "real_name": "text-embedding-004", "display_name": "Text Embedding 004 · Default", "enabled": True,
                  "capabilities": ["embedding"]},
                 {"id": "text-multilingual-embedding-002", "real_name": "text-multilingual-embedding-002", "display_name": "Multilingual Embedding 002", "enabled": True,
                  "capabilities": ["embedding"]},
@@ -156,7 +156,7 @@ DEFAULT_MODEL_CATALOG: dict[str, Any] = {
             "id": "doubao",
             # 显示名带上「火山方舟 / Volcengine Ark」:用户是按平台名找的(群反馈原话「火山的」),
             # 只写 "Doubao" 在列表里搜不到、也认不出来。
-            "display_name": "火山方舟 Doubao (Volcengine Ark)",
+            "display_name": "Volcengine Ark Doubao (火山方舟)",
             "kind": "openai_compat",
             "enabled": True,
             "credential_env": "ARK_API_KEY",
@@ -169,7 +169,7 @@ DEFAULT_MODEL_CATALOG: dict[str, Any] = {
             # ⚠️ 这个端点**没有 /models 接口**(实测 404),模型 ID 必须手动填 —— 别为此在 base_url
             # 后面加 /v1,加了连 chat/completions 也会 404(反馈者实测踩过)。
             "id": "ark_agent_plan",
-            "display_name": "火山方舟 Agent Plan (订阅套餐)",
+            "display_name": "Volcengine Ark Agent Plan (火山方舟 subscription)",
             "kind": "openai_compat",
             "enabled": True,
             "credential_env": "ARK_API_KEY",
@@ -197,7 +197,7 @@ DEFAULT_MODEL_CATALOG: dict[str, Any] = {
             "enabled": False,
             "credential_env": "MIMO_API_KEY",
             "base_url": "",
-            "metadata": {"status": "preview", "note": "MiMo 公共 API 暂未开放，base_url 待小米发布后填入"},
+            "metadata": {"status": "preview", "note": "The MiMo public API is not open yet; base_url will be filled in once Xiaomi releases it"},
             "models": [],
         },
         {
@@ -430,10 +430,10 @@ def select_model(api_id: str, model_id: str) -> dict[str, Any]:
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
     if not api:
-        raise ValueError(f"未知 API：{api_id}")
+        raise ValueError(f"Unknown API: {api_id}")
     model = find_model(api, model_id)
     if not model:
-        raise ValueError(f"API {api_id} 不支持模型：{model_id}")
+        raise ValueError(f"API {api_id} does not support model: {model_id}")
     catalog["selected"] = {"api_id": api_id, "model_id": model_id}
     save_model_catalog(catalog)
     return load_model_catalog()
@@ -464,7 +464,7 @@ def upsert_api(api_data: dict[str, Any]) -> dict[str, Any]:
     catalog = load_model_catalog()
     api_id = normalize_api_id(api_data.get("api_id") or api_data.get("id"))
     if not api_id:
-        raise ValueError("API id 不能为空")
+        raise ValueError("API id cannot be empty")
     # 写入前校验用户提供的 base_url(SSRF 写时闸,非法地址直接拒绝)。
     incoming_base_url = str(api_data.get("base_url") or "").strip()
     if "base_url" in api_data and incoming_base_url:
@@ -507,10 +507,10 @@ def upsert_model(api_id: str, model_data: dict[str, Any]) -> dict[str, Any]:
     api_id = normalize_api_id(api_id)
     api = find_api(catalog, api_id)
     if not api:
-        raise ValueError(f"未知 API：{api_id}")
+        raise ValueError(f"Unknown API: {api_id}")
     model_id = str(model_data.get("id") or model_data.get("real_name") or "").strip()
     if not model_id:
-        raise ValueError("模型 id 不能为空")
+        raise ValueError("Model id cannot be empty")
     model = find_model(api, model_id)
     prev = model or {}
     # 补丁语义:请求里没给的字段沿用已有条目(新条目才用默认值)。以前 display_name / enabled
@@ -537,19 +537,19 @@ def delete_model(api_id: str, model_id: str) -> dict[str, Any]:
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
     if not api:
-        raise ValueError(f"未知 API：{api_id}")
+        raise ValueError(f"Unknown API: {api_id}")
     model_id = str(model_id or "").strip()
     if not model_id:
-        raise ValueError("模型 id 不能为空")
+        raise ValueError("Model id cannot be empty")
     models = list(api.get("models") or [])
     remaining = [
         model for model in models
         if model.get("id") != model_id and model.get("real_name") != model_id
     ]
     if len(remaining) == len(models):
-        raise ValueError(f"模型不存在：{model_id}")
+        raise ValueError(f"Model not found: {model_id}")
     if not remaining:
-        raise ValueError("每个 API 至少保留一个模型")
+        raise ValueError("Each API must keep at least one model")
     api["models"] = remaining
     selected = catalog.get("selected") or {}
     if selected.get("api_id") == api_id:

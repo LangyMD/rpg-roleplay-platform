@@ -40,7 +40,7 @@ class _ProseLLM:
 def test_extract_chapter_keeps_classified_reason():
     ex = extract_chapter(_DeadLLM(), 3, "正文", era="")
     assert ex.raw_ok is False
-    assert "下线" in ex.error
+    assert "retired" in ex.error
 
 
 def test_extract_chapter_non_object_output_has_reason():

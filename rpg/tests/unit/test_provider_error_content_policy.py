@@ -59,8 +59,8 @@ _POLICY_IDS = ["anthropic-200-filtering", "qwen-input", "qwen-output", "deepseek
 def test_in_stream_moderation_is_content_policy(exc):
     cat, msg = classify_provider_error(exc)
     assert cat == "content_policy"
-    assert "内容策略拦下了" in msg and "换个说法" in msg
-    assert "稍等片刻重试" not in msg
+    assert "blocked by the content policy" in msg and "rephrase" in msg
+    assert "Wait a moment and try again" not in msg
     assert _retryable_category(exc) is None
 
 

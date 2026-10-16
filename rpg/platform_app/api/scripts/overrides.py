@@ -24,7 +24,7 @@ async def api_get_script_overrides(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     from platform_app.knowledge.script_overrides import get_overrides_by_script_id
     data = get_overrides_by_script_id(script_id)
     return json_response({"ok": True, "data": data})
@@ -40,11 +40,11 @@ async def api_update_script_overrides(request: Request, script_id: int, user=Dep
         from ...perms import script_owned
         owned = script_owned(db, script_id, user["id"])
     if not owned:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "请求 body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     # 支持两种格式: {"data": {...}} 或直接 {...}
     overrides_data = body.get("data") if isinstance(body.get("data"), dict) else body
     from platform_app.knowledge.script_overrides import upsert_overrides
@@ -71,7 +71,7 @@ async def api_get_script_gm_style(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
     if not access:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     from agents.gm.style_config import _read_user_gm_style
     from agents.gm.style_harness import resolve_profile
     from platform_app.knowledge.script_overrides import get_overrides_by_script_id
@@ -92,7 +92,7 @@ async def api_set_script_gm_style(request: Request, script_id: int, user=Depends
         from ...perms import script_owned
         owned = script_owned(db, script_id, user["id"])
     if not owned:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     from agents.gm.style_harness import validate_patch
     from platform_app.knowledge.script_overrides import get_overrides_by_script_id, upsert_overrides
     body = await request.json()

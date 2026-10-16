@@ -40,19 +40,19 @@ def store_doc(user_id: int, script_id: int | None, filename: str, *,
         try:
             raw = base64.b64decode(content_b64, validate=False)
         except Exception as exc:  # noqa: BLE001
-            raise ValueError(f"文档 base64 解码失败: {exc}") from exc
+            raise ValueError(f"Document base64 decode failed: {exc}") from exc
         if len(raw) > AGENT_DOC_MAX_BYTES:
-            raise ValueError(f"文档过大(>{AGENT_DOC_MAX_BYTES // (1024 * 1024)}MB)")
+            raise ValueError(f"Document is too large (>{AGENT_DOC_MAX_BYTES // (1024 * 1024)}MB)")
         # 用 chapter_splitter 的编码探测,兼容 GBK/UTF-8 等中文小说常见编码。
         import chapter_splitter
         text, _enc = chapter_splitter.ChapterSplitter().decode_bytes(raw)
     else:
         text = content_text or ""
         if len(text.encode("utf-8", "ignore")) > AGENT_DOC_MAX_BYTES:
-            raise ValueError(f"文档过大(>{AGENT_DOC_MAX_BYTES // (1024 * 1024)}MB)")
+            raise ValueError(f"Document is too large (>{AGENT_DOC_MAX_BYTES // (1024 * 1024)}MB)")
     text = (text or "").replace("\x00", "")
     if not text.strip():
-        raise ValueError("文档为空")
+        raise ValueError("Document is empty")
     doc_id = _new_doc_id()
     fname = (filename or "").strip()[:200]
     with connect() as db:

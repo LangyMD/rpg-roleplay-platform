@@ -19,7 +19,7 @@ def list_chapters(user_id: int, script_id: int, limit: int | str | None = None, 
         # 仍走 script_owned,不受影响。
         script = script_readable(db, script_id, user_id)
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         rows = db.execute(
             """
             select id, public_id, chapter_index, title, word_count, volume_title,
@@ -50,7 +50,7 @@ def create_blank_script(user_id: int, title: str = "") -> dict[str, Any]:
     """作者优先:从零创建空白剧本 —— 建 scripts 行 + 第 1 章空章,供作者直接写、用选区提取边写边建 KB。
     不跑批量提取器(那是导入已完结小说的路径)。"""
     init_db()
-    t = (str(title or "").strip() or "新剧本")[:200]
+    t = (str(title or "").strip() or "New script")[:200]
     with connect() as db:
         row = db.execute(
             "insert into scripts(owner_id, title, description) values (%s, %s, '') returning id",
@@ -60,7 +60,7 @@ def create_blank_script(user_id: int, title: str = "") -> dict[str, Any]:
         db.execute(
             "insert into script_chapters(script_id, chapter_index, title, content, word_count, "
             "volume_title, source_marker, confidence) values (%s, 1, %s, '', 0, '', 'manual', 1.0)",
-            (sid, "第1章"),
+            (sid, "Chapter 1"),
         )
         db.execute("update scripts set chapter_count = 1, word_count = 0, updated_at = now() where id = %s", (sid,))
         db.commit()
@@ -72,13 +72,13 @@ def create_chapter(user_id: int, script_id: int, title: str = "") -> dict[str, A
     init_db()
     with connect() as db:
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权编辑该剧本")
+            raise ValueError("Not allowed to edit this script")
         mx = db.execute(
             "select coalesce(max(chapter_index),0) as m from script_chapters where script_id = %s",
             (int(script_id),),
         ).fetchone()
         ci = int(mx["m"]) + 1
-        t = (str(title or "").strip() or f"第{ci}章")[:200]
+        t = (str(title or "").strip() or f"Chapter {ci}")[:200]
         db.execute(
             "insert into script_chapters(script_id, chapter_index, title, content, word_count, "
             "volume_title, source_marker, confidence) values (%s, %s, %s, '', 0, '', 'manual', 1.0)",
@@ -114,7 +114,7 @@ def update_chapter(user_id: int, script_id: int, chapter_index: int, *,
     init_db()
     with connect() as db:
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         if base_updated_at:
             cur = db.execute(
                 "select id, public_id, chapter_index, title, volume_title, word_count, "
@@ -123,7 +123,7 @@ def update_chapter(user_id: int, script_id: int, chapter_index: int, *,
                 (script_id, chapter_index),
             ).fetchone()
             if not cur:
-                raise ValueError(f"章节 {chapter_index} 不存在")
+                raise ValueError(f"Chapter {chapter_index} not found")
             # 秒级比对+分隔符归一(DB datetime str 是空格分隔,前端拿到的 expose 值是
             # ISO 'T' 分隔):保存节奏远大于 1 秒,秒级足够判「被他方改过」,微秒/时区
             # 尾缀差异不误伤。
@@ -145,7 +145,7 @@ def update_chapter(user_id: int, script_id: int, chapter_index: int, *,
             sets.append("volume_title = %s")
             params.append(str(volume_title)[:200])
         if not sets:
-            raise ValueError("没有要更新的字段")
+            raise ValueError("No fields to update")
         sets.append("updated_at = now()")
         params.extend([script_id, chapter_index])
         row = db.execute(
@@ -154,7 +154,7 @@ def update_chapter(user_id: int, script_id: int, chapter_index: int, *,
             tuple(params),
         ).fetchone()
         if not row:
-            raise ValueError(f"章节 {chapter_index} 不存在")
+            raise ValueError(f"Chapter {chapter_index} not found")
         # 同步刷新 scripts.word_count
         total = db.execute(
             "select coalesce(sum(word_count),0) as n from script_chapters where script_id = %s",
@@ -243,13 +243,13 @@ def merge_chapters(user_id: int, script_id: int, first_index: int,
     with connect() as db:
         _lock_chapter_struct(db, script_id)
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         a = db.execute(
             "select * from script_chapters where script_id = %s and chapter_index = %s",
             (script_id, first_index),
         ).fetchone()
         if not a:
-            raise ValueError(f"章节 {first_index} 不存在")
+            raise ValueError(f"Chapter {first_index} not found")
         if second_index is not None:
             b = db.execute(
                 "select * from script_chapters where script_id = %s and chapter_index = %s",
@@ -262,7 +262,7 @@ def merge_chapters(user_id: int, script_id: int, first_index: int,
                 (script_id, first_index),
             ).fetchone()
         if not b or b["id"] == a["id"]:
-            raise ValueError("要合并的相邻章节不存在")
+            raise ValueError("The adjacent chapter to merge does not exist")
         # 始终把序号小的当作留存章(内容在前),删除序号大的
         if int(b["chapter_index"]) < int(a["chapter_index"]):
             a, b = b, a
@@ -302,11 +302,11 @@ def delete_chapters(user_id: int, script_id: int, chapter_indexes: list[int]) ->
     init_db()
     idxs = sorted({int(i) for i in (chapter_indexes or [])})
     if not idxs:
-        raise ValueError("未指定要删除的章节")
+        raise ValueError("No chapters specified for deletion")
     with connect() as db:
         _lock_chapter_struct(db, script_id)
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         total = int(db.execute(
             "select count(*) as n from script_chapters where script_id = %s", (script_id,),
         ).fetchone()["n"])
@@ -316,9 +316,9 @@ def delete_chapters(user_id: int, script_id: int, chapter_indexes: list[int]) ->
         ).fetchall()
         hit = [int(r["chapter_index"]) for r in rows]
         if not hit:
-            raise ValueError("要删除的章节都不存在")
+            raise ValueError("None of the chapters to delete exist")
         if len(hit) >= total:
-            raise ValueError("不能删除全部章节(会清空剧本);如需清空请删除整个剧本")
+            raise ValueError("Cannot delete all chapters (that would empty the script); delete the whole script instead")
         db.execute(
             "delete from script_chapters where script_id = %s and chapter_index = any(%s)",
             (script_id, hit),
@@ -340,20 +340,20 @@ def split_chapter(user_id: int, script_id: int, chapter_index: int,
     """按字符位置 split_at 把一章拆成两章。后续 index 全部 +1。"""
     init_db()
     if split_at <= 0:
-        raise ValueError("split_at 必须 > 0")
+        raise ValueError("split_at must be > 0")
     with connect() as db:
         _lock_chapter_struct(db, script_id)
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         ch = db.execute(
             "select * from script_chapters where script_id = %s and chapter_index = %s",
             (script_id, chapter_index),
         ).fetchone()
         if not ch:
-            raise ValueError(f"章节 {chapter_index} 不存在")
+            raise ValueError(f"Chapter {chapter_index} not found")
         content = ch["content"] or ""
         if split_at >= len(content):
-            raise ValueError(f"split_at ({split_at}) 超过章节长度 ({len(content)})")
+            raise ValueError(f"split_at ({split_at}) exceeds the chapter length ({len(content)})")
         left_text = content[:split_at]
         right_text = content[split_at:]
         # 后续章节 index 全部 +1 腾位置(负区两段式:先挪负区,插入后再翻正,
@@ -373,7 +373,7 @@ def split_chapter(user_id: int, script_id: int, chapter_index: int,
             ) values (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (script_id, chapter_index + 1,
-             str(new_title or (str(ch.get("title") or "") + "（下）"))[:200],
+             str(new_title or (str(ch.get("title") or "") + " (part 2)"))[:200],
              right_text, len(right_text),
              ch.get("volume_title") or "", "manual_split",
              float(ch.get("confidence") or 0)),

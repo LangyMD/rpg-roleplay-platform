@@ -68,7 +68,7 @@ def test_stage_error_hints_are_per_job_and_first_wins():
 # ── _provider_error_hint ─────────────────────────────────────────────────
 def test_hint_for_retired_model_is_classified_names_the_extractor_and_is_fatal():
     hint, fatal = stages_llm._provider_error_hint(_gone(), api_id="relay", model="gpt-oss-120b")
-    assert "下线" in hint and "提取模型 relay/gpt-oss-120b" in hint
+    assert "retired" in hint and "提取模型 relay/gpt-oss-120b" in hint
     assert fatal is True
 
 
@@ -107,9 +107,9 @@ def test_stage_cards_stops_after_fatal_error_and_records_reason():
     assert len(calls) == 1, "模型已下线还在对剩下的候选挨个调用"
     assert ctl.stage_aborted["cards"] == len(names) - 1
     assert stages_llm._stage_cards._last_llm_failures == len(names)
-    assert "下线" in ctl.stage_error_hints["cards"]
+    assert "retired" in ctl.stage_error_hints["cards"]
     warn = [u["warnings"] for u in ctl.updates if "warnings" in u][-1]
-    assert warn["aborted"] == len(names) - 1 and "下线" in warn["reason"]
+    assert warn["aborted"] == len(names) - 1 and "retired" in warn["reason"]
 
 
 def test_stage_cards_keeps_going_after_non_fatal_error():
@@ -138,7 +138,7 @@ def test_stage_worldbook_records_classified_reason():
          mock.patch.object(stages_llm, "_resolve_extractor_llm", return_value=("relay", "gpt-oss-120b")), \
          mock.patch("agents._harness.call_agent_json_guarded", side_effect=_gone()):
         assert stages_llm._stage_worldbook(ctl, 1, 12) == 0
-    assert "下线" in ctl.stage_error_hints["worldbook"]
+    assert "retired" in ctl.stage_error_hints["worldbook"]
     err = [u["error"] for u in ctl.updates if "error" in u][-1]
     assert "HTTP Error" not in err and "世界书" in err
 

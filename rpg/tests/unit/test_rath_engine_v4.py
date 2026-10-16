@@ -166,7 +166,7 @@ def test_game_py_pauses_on_player_turn():
     assert "status='running'" in GAME_ROUTES.replace(" ", "")
     assert "paused_at=now()" in GAME_ROUTES.replace(" ", "")
     assert "last_tick_at=now()" in GAME_ROUTES.replace(" ", "")
-    assert '"玩家回归,世界暂停"' in GAME_ROUTES
+    assert '"Player returned; world paused"' in GAME_ROUTES
     # 非致命:必须包在 try/except 里,绝不能让 RATH 钩子挂掉聊天主流程
     i = GAME_ROUTES.find("pause_reason='player_active'")
     surrounding = GAME_ROUTES[max(0, i - 1600):i]

@@ -29,7 +29,7 @@ class TestMissingCredentials(unittest.TestCase):
         known = classify_provider_error(cm.exception)
         self.assertIsNotNone(known, "空 key 构造异常仍落进泛化兜底(玩家只见随机错误码)")
         self.assertEqual(known[0], "auth")
-        self.assertIn("API Key", known[1])
+        self.assertIn("API key", known[1])
 
 
 class TestConnectionFailure(unittest.TestCase):

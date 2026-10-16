@@ -21,14 +21,14 @@ async def admin_suspend_user(
     duration_days = body.get("duration_days")  # None = 无限期
 
     if not reason:
-        raise HTTPException(status_code=400, detail="reason 不能为空")
+        raise HTTPException(status_code=400, detail="reason cannot be empty")
 
     suspend_until = None
     if duration_days is not None:
         try:
             duration_days = int(duration_days)
         except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="duration_days 须为整数")
+            raise HTTPException(status_code=400, detail="duration_days must be an integer")
 
     with connect() as db:
         if duration_days is not None:
@@ -96,11 +96,11 @@ async def admin_terminate_user(
     reason = body.get("reason", "")
 
     if not reason:
-        raise HTTPException(status_code=400, detail="reason 不能为空")
+        raise HTTPException(status_code=400, detail="reason cannot be empty")
 
     # 管理员不能终止自己
     if admin.get("id") == user_id:
-        raise HTTPException(status_code=400, detail="不允许终止自己的账户")
+        raise HTTPException(status_code=400, detail="You cannot terminate your own account")
 
     with connect() as db:
         queue_account_termination(db, user_id, reason)

@@ -77,9 +77,9 @@ def set_setting(user_id: int, key: str, value: Any) -> dict[str, Any]:
     init_db()
     key = (key or "").strip()
     if not key:
-        raise ValueError("setting key 不能为空")
+        raise ValueError("setting key cannot be empty")
     if not _VALID_KEY_RE.match(key):
-        raise ValueError("setting key 必须以字母开头，仅含字母数字 _ . - 且 ≤64 字符")
+        raise ValueError("setting key must start with a letter, contain only letters, digits, _ . - and be at most 64 characters")
     with connect() as db:
         db.execute(
             """

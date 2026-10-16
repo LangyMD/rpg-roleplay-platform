@@ -256,5 +256,5 @@ def test_build_email_en():
     assert "v2.0" in subject
     assert "major update" in body
     assert "stellatrix.icu/legal/terms-of-service" in body
-    # 双语:body 末尾应含中文段落
-    assert "服务条款" in body
+    # English emails are English-only (no Chinese section appended)
+    assert "服务条款" not in body

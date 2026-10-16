@@ -20,7 +20,7 @@ _ALLOWED_SCRIPT_EXTS = (".txt", ".md")
 def _check_script_ext(filename: str) -> None:
     name = (filename or "").lower()
     if not name.endswith(_ALLOWED_SCRIPT_EXTS):
-        raise ValueError("仅支持 .txt / .md 剧本文件 — 测试期已禁用其他文件类型")
+        raise ValueError("Only .txt / .md script files are supported - other file types are disabled during testing")
 
 
 def _safe_zip_read(zf, name: str, max_bytes: int) -> bytes:
@@ -100,7 +100,7 @@ async def api_scripts_batch_import(request: Request, user=Depends(require_user))
     body = await request.json()
     file_item = body.get("file") or {}
     if not file_item:
-        return json_response({"ok": False, "error": "缺 file"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing file"}, status_code=400)
     from ...library import decode_upload
     try:
         raw = decode_upload(file_item)
@@ -110,7 +110,7 @@ async def api_scripts_batch_import(request: Request, user=Depends(require_user))
     import io
     import zipfile
     if not zipfile.is_zipfile(io.BytesIO(raw)):
-        return json_response({"ok": False, "error": "不是合法 ZIP 文件"}, status_code=400)
+        return json_response({"ok": False, "error": "Not a valid ZIP file"}, status_code=400)
 
     imported = []
     failed = []
@@ -119,12 +119,12 @@ async def api_scripts_batch_import(request: Request, user=Depends(require_user))
     with zipfile.ZipFile(io.BytesIO(raw)) as zf:
         names = [n for n in zf.namelist() if n.lower().endswith((".txt", ".md"))]
         if len(names) > 50:
-            return json_response({"ok": False, "error": "ZIP 最多包含 50 个文件"}, status_code=400)
+            return json_response({"ok": False, "error": "A ZIP may contain at most 50 files"}, status_code=400)
         # 解压前用 ZipInfo.file_size 预检总量(CWE-409),超限直接拒,不进读取循环
         declared_total = sum(zf.getinfo(n).file_size for n in names)
         if declared_total > max_total:
             return json_response(
-                {"ok": False, "error": f"ZIP 解压后总大小超限(max {max_total // 1024 // 1024}MB)"},
+                {"ok": False, "error": f"ZIP uncompressed size exceeds the limit (max {max_total // 1024 // 1024}MB)"},
                 status_code=400,
             )
         read_total = 0
@@ -134,7 +134,7 @@ async def api_scripts_batch_import(request: Request, user=Depends(require_user))
                 read_total += len(content)
                 if read_total > max_total:
                     return json_response(
-                        {"ok": False, "error": "ZIP 实际解压总量超限"}, status_code=400
+                        {"ok": False, "error": "ZIP actual uncompressed size exceeds the limit"}, status_code=400
                     )
                 import base64 as _b64
                 result = script_import.import_script(
@@ -214,7 +214,7 @@ async def api_export_script_pack(
     try:
         zip_bytes, filename = export_script_pack(script_id, user["id"], include_chunks=include_chunks)
     except PermissionError:
-        raise HTTPException(status_code=403, detail="无权访问该剧本")
+        raise HTTPException(status_code=403, detail="No access to this script")
     # 文件名含中文时按 RFC 5987 编码,否则 latin-1 header 报 codec 错
     from urllib.parse import quote as _quote
     ascii_fallback = filename.encode("ascii", "ignore").decode("ascii") or "script_pack.zip"

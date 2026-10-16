@@ -62,11 +62,21 @@ async def admin_restart(
     admin=Depends(_require_admin),
 ):
     ip = _client_ip(request)
+    # Windows 没有 SIGHUP:不能靠信号热重载,明确告诉调用方手动重启进程。
+    sighup = getattr(signal, "SIGHUP", None)
+    if sighup is None:
+        return json_response({
+            "ok": False,
+            "error": "Restart is not supported on this platform (no SIGHUP, e.g. Windows). "
+                     "Please restart the server process manually.",
+            "code": "restart_unsupported",
+        }, status_code=501)
+
     with connect() as db:
         _write_audit(db, admin, "system.restart", details={}, ip=ip)
 
-    os.kill(os.getpid(), signal.SIGHUP)
+    os.kill(os.getpid(), sighup)
     return json_response({
         "ok": True,
-        "message": "重启信号已发送，服务将在当前请求完成后重载",
+        "message": "Restart signal sent; the service will reload after the current request completes.",
     })

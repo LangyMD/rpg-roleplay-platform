@@ -36,19 +36,19 @@ def parse_chat_jsonl(text: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
                    title, message, metadata:{tavern_name, is_user, send_date, extra}
     """
     if len(text.encode("utf-8")) > _MAX_JSONL_BYTES:
-        raise ValueError(f"JSONL 文件过大（上限 {_MAX_JSONL_BYTES // (1024*1024)} MB）")
+        raise ValueError(f"JSONL file is too large (limit {_MAX_JSONL_BYTES // (1024*1024)} MB)")
 
     lines = [l for l in text.splitlines() if l.strip()]
     if not lines:
-        raise ValueError("JSONL 为空")
+        raise ValueError("JSONL is empty")
     if len(lines) > _MAX_LINES:
-        raise ValueError(f"消息数量超过上限 {_MAX_LINES}")
+        raise ValueError(f"Message count exceeds the limit of {_MAX_LINES}")
 
     # ── 解析 header（第一行）────────────────────────────────────────────
     try:
         header_raw = json.loads(lines[0])
     except json.JSONDecodeError as exc:
-        raise ValueError(f"第 1 行 JSON 解析失败：{exc}") from exc
+        raise ValueError(f"Line 1 JSON parse failed: {exc}") from exc
 
     header: dict[str, Any] = {
         "user_name":      str(header_raw.get("user_name") or "User"),
@@ -85,7 +85,7 @@ def parse_chat_jsonl(text: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         try:
             msg = json.loads(raw_line)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"第 {i} 行 JSON 解析失败：{exc}") from exc
+            raise ValueError(f"Line {i} JSON parse failed: {exc}") from exc
 
         name     = str(msg.get("name") or "")
         is_user  = bool(msg.get("is_user", False))
@@ -120,7 +120,7 @@ def parse_chat_jsonl(text: str) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     flush_player()
 
     if not commits:
-        raise ValueError("JSONL 不含有效消息（mes 均为空）")
+        raise ValueError("JSONL contains no valid messages (all mes fields are empty)")
 
     return header, commits
 
@@ -173,7 +173,7 @@ def chat_to_save_payload(
     并透传 tavern_character_card_id 让导入的存档绑定到对应角色卡。
     """
     char_name = header.get("character_name") or "Tavern Chat"
-    save_title = title or f"[酒馆导入] {char_name}"
+    save_title = title or f"[Tavern import] {char_name}"
     save: dict[str, Any] = {
         "title": save_title,
         "script_id": script_id,
@@ -227,7 +227,7 @@ def save_to_chat_jsonl(save_id: int, user_id: int | None = None) -> str:
                 (int(save_id),),
             ).fetchone()
         if not save:
-            raise ValueError("存档不存在")
+            raise ValueError("Save not found")
     # 完整导出从 state_snapshot.history 取(权威全量转录:含 create_tavern_save seed 的开场
     # first_mes + 后续每轮)。旧实现从 branch_commits 取会漏掉 seed 开场(它只进 history、不是
     # commit)→ 仅有开场、未发言的对话导出只剩 header → parse_chat_jsonl 报「不含有效消息」→

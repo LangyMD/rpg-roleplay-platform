@@ -593,7 +593,7 @@ async def api_contract_middleware(request: Request, call_next):
         if not _origin_allowed(origin):
             from platform_app.api._deps import json_response
             return json_response(
-                {"ok": False, "error": "Origin 不在允许列表", "request_id": request_id},
+                {"ok": False, "error": "Origin is not in the allowed list", "request_id": request_id},
                 status_code=403,
                 headers={"X-API-Version": API_VERSION, "X-Request-ID": request_id, "Cache-Control": "no-store"},
             )

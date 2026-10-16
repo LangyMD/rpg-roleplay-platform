@@ -93,7 +93,7 @@ class MultipleKindsPerTurn(unittest.TestCase):
         results = _apply_chat_rule_candidates(self.g, actions)
         self.assertEqual(len(results), 1, "失败 action 也要被记录传给 GM")
         self.assertFalse(results[0]["out"].get("ok"), "应是失败")
-        self.assertIn("无法前往", results[0]["out"].get("error") or "")
+        self.assertIn("Cannot move to", results[0]["out"].get("error") or "")
 
 
 class GmPromptSurfacesFailedMove(unittest.TestCase):
@@ -109,7 +109,7 @@ class GmPromptSurfacesFailedMove(unittest.TestCase):
         ])
         prompt = _rule_results_prompt(results, self.g)
         self.assertIn("❌", prompt, f"失败 prompt 应含明显失败标记；prompt={prompt}")
-        self.assertIn("不要把玩家描述成已经移动", prompt,
+        self.assertIn("do not describe the player as having moved", prompt,
             "GM 必须被告知不要叙事成已移动")
 
     def test_llm_hallucinated_id_is_canonicalized_not_failed(self):
@@ -131,7 +131,7 @@ class GmPromptSurfacesFailedMove(unittest.TestCase):
         ])
         prompt = _rule_results_prompt(results, self.g)
         # canonicalize 后 prompt 应该提及"系统规范化"
-        self.assertIn("规范化", prompt, f"prompt 应记录规范化过程；prompt={prompt}")
+        self.assertIn("normalized", prompt, f"prompt 应记录规范化过程；prompt={prompt}")
 
 
 class DirectionToExitHelper(unittest.TestCase):
