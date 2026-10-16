@@ -124,7 +124,7 @@ def test_note_exception_classifies_unsupported_proxy_as_config():
     with _breaker.attempt() as att:
         _breaker.note_exception(outbound.UnsupportedProxy(_SOCKS_MSG), "relay.example")
     assert att.kind == _breaker.KIND_CONFIG
-    assert att.friendly.startswith("向量嵌入请求没有发出去")
+    assert att.friendly.startswith("The embedding request was not sent")
     assert "SOCKS" in att.friendly and "embeddings 格式" not in att.friendly
 
 
@@ -155,7 +155,7 @@ def test_openai_channel_socks_proxy_same_judgement(monkeypatch):
                                           proxy="socks5://127.0.0.1:1080")
     assert out is None
     assert att.kind == _breaker.KIND_CONFIG
-    assert att.friendly.startswith("向量嵌入请求没有发出去") and "SOCKS" in att.friendly
+    assert att.friendly.startswith("The embedding request was not sent") and "SOCKS" in att.friendly
 
 
 def test_gemini_proxy_that_works_just_goes_through(monkeypatch, geo_cache):
@@ -191,12 +191,12 @@ def test_geo_ban_behind_proxy_does_not_mark_process_cache(monkeypatch, geo_cache
                                            proxy="http://127.0.0.1:7890") is None
     assert _gemini._GEO_BAN_CHANNEL_GEMINI_NATIVE not in geo_cache
     assert att.kind == _breaker.KIND_CONFIG
-    assert "代理" in att.friendly and "服务器" not in att.friendly
+    assert "proxy" in att.friendly and "server" not in att.friendly
 
 
 @pytest.mark.parametrize("local,must,must_not", [
-    (True, "当前网络出口", "服务器"),
-    (False, "服务器", "当前网络出口"),
+    (True, "current network", "server"),
+    (False, "server", "current network"),
 ])
 def test_geo_ban_hint_names_the_right_exit(monkeypatch, geo_cache, local, must, must_not):
     _local_mode(monkeypatch, local)
@@ -207,7 +207,7 @@ def test_geo_ban_hint_names_the_right_exit(monkeypatch, geo_cache, local, must, 
     assert net.calls == [], "没配凭据代理:仍按进程级封禁跳过直连"
     assert att.kind == _breaker.KIND_CONFIG
     assert must in att.friendly and must_not not in att.friendly
-    assert "地区" in att.friendly
+    assert "region" in att.friendly
 
 
 def test_direct_geo_ban_first_hit_opens_config_cooldown(monkeypatch, clock, geo_cache):

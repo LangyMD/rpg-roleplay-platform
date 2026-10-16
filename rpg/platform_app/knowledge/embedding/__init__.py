@@ -307,9 +307,9 @@ def _embed_via_openai(model: str, api_key: str, texts: list[str], base_url: str 
         # 用户「RAG 完全失效」却查不出原因。这里维度不符即「响亮失败」+ 写人话错误供前端引导换模型。
         if vecs and EMBED_DIM and len(vecs[0]) != EMBED_DIM:
             _breaker.note(_breaker.KIND_CONFIG, friendly=(
-                f"向量嵌入模型「{model}」输出 {len(vecs[0])} 维,但系统统一用 {EMBED_DIM} 维"
-                f"(该模型不支持降到 {EMBED_DIM})。请到「设置 → RAG / 向量模型」改用支持 {EMBED_DIM} 维的模型"
-                f"(如 Qwen/Qwen3-Embedding-* 带降维、OpenAI text-embedding-3-*、Gemini text-embedding-004),并重新拆书。"
+                f"The embedding model \"{model}\" outputs {len(vecs[0])} dimensions, but the system uses {EMBED_DIM} "
+                f"(this model cannot reduce to {EMBED_DIM}). Under Settings → RAG / Embedding model, switch to a model that supports {EMBED_DIM} dimensions "
+                f"(e.g. Qwen/Qwen3-Embedding-* with reduction, OpenAI text-embedding-3-*, Gemini text-embedding-004), then re-import the book."
             ))
             log.warning("[embedding] dim mismatch: model=%s got=%d want=%d → 拒绝异维向量", model, len(vecs[0]), EMBED_DIM)
             return None
@@ -337,16 +337,16 @@ def _embed_via_openai(model: str, api_key: str, texts: list[str], base_url: str 
         # 供 embedding_preflight 读取以便前端引导用户去 RAG 设置。
         if code == 405:
             friendly = (
-                f"你配置的 embedding 中转站地址不支持 /embeddings 接口（HTTP 405 Method Not Allowed）。"
-                f" 请确认 base_url 填的是支持 OpenAI embeddings API 的地址，而不是仅支持 /chat/completions 的地址。"
-                f" 原始响应：{body[:120]}"
+                f"The embedding relay address you configured does not support the /embeddings endpoint (HTTP 405 Method Not Allowed)."
+                f" Make sure base_url points to an address that supports the OpenAI embeddings API, not one that only supports /chat/completions."
+                f" Raw response: {body[:120]}"
             )
         elif code == 401:
             friendly = (
-                f"向量嵌入 API Key 被 {_host} 拒绝（HTTP 401 Unauthorized）:key 无效或已过期,"
-                f"或者这把 key 本来就不是 {_host} 的。"
-                f" 请在「设置 → RAG / 向量模型」检查 API Key 和接口地址。"
-                f" 原始响应：{body[:120]}"
+                f"The embedding API key was rejected by {_host} (HTTP 401 Unauthorized): the key is invalid or expired, "
+                f"or it was never a {_host} key."
+                f" Check the API key and endpoint under Settings → RAG / Embedding model."
+                f" Raw response: {body[:120]}"
             )
         elif code == 404:
             # 区分「模型不存在/无权访问」(模型名问题)与「路径不对」(base_url 问题)——
@@ -359,21 +359,21 @@ def _embed_via_openai(model: str, api_key: str, texts: list[str], base_url: str 
             ))
             if _model_404:
                 friendly = (
-                    f"向量嵌入模型「{model}」不存在或你的账号无权访问(HTTP 404)。"
-                    f"这是模型名/权限问题,不是地址问题——请勿改 base_url;到「设置 → RAG / 向量模型」"
-                    f"换成该提供商真实开通的嵌入模型(火山方舟 doubao-embedding-* / OpenAI text-embedding-3-* / "
-                    f"Gemini text-embedding-004),或到提供商控制台为该模型开通权限。"
-                    f" 原始响应：{body[:160]}"
+                    f"The embedding model \"{model}\" does not exist or your account cannot access it (HTTP 404). "
+                    f"This is a model-name/permission problem, not an address problem, so do not change base_url. Under Settings → RAG / Embedding model, "
+                    f"switch to an embedding model the provider actually offers you (Volcengine Ark doubao-embedding-* / OpenAI text-embedding-3-* / "
+                    f"Gemini text-embedding-004), or enable the model in the provider's console."
+                    f" Raw response: {body[:160]}"
                 )
             else:
                 friendly = (
-                    f"向量嵌入接口地址(base_url)错误(HTTP 404 Not Found,请求的是 {_host})。"
-                    f"请确认路径与提供商匹配:OpenAI/中转站通常以 /v1 结尾、火山方舟(豆包)以 /api/v3 结尾、"
-                    f"Gemini 兼容以 /v1beta/openai 结尾。"
-                    f" 原始响应：{body[:120]}"
+                    f"The embedding endpoint address (base_url) is wrong (HTTP 404 Not Found, requested {_host}). "
+                    f"Make sure the path matches the provider: OpenAI/relays usually end in /v1, Volcengine Ark (Doubao) in /api/v3, "
+                    f"Gemini-compatible in /v1beta/openai."
+                    f" Raw response: {body[:120]}"
                 )
         else:
-            friendly = f"向量嵌入请求失败（HTTP {code}，{_host}）：{body[:200]}"
+            friendly = f"Embedding request failed (HTTP {code}, {_host}): {body[:200]}"
         log.warning("[embedding] openai embed failed: %s %s | friendly: %s", code, body[:200], friendly)
         # 401/402/403/404/405 → 配置类冷却;429 → 限流冷却(读 Retry-After);400/413/422 只记不熔断
         _breaker.note_http(code, body=body, headers=headers, friendly=friendly)
@@ -458,9 +458,9 @@ def _embed_provider_dispatch_inner(
             # 空 base_url 在 _embed_via_openai 里等于 api.openai.com。那只对 OpenAI 自己成立;
             # 别家的 key 发过去必然 401,等于把用户的 key 交给了第三方(反馈 #104)。
             _breaker.note(_breaker.KIND_CONFIG, friendly=(
-                f"找不到向量嵌入供应商「{api_id}」的接口地址,已停止发送请求。"
-                f"请在「设置 → API & 模型」给这个供应商填上接口地址(base_url),"
-                f"或在「设置 → RAG / 向量模型」换一个内置的供应商。"
+                f"No endpoint address found for embedding provider \"{api_id}\", so no request was sent. "
+                f"Fill in this provider's endpoint (base_url) under Settings → API & Models, "
+                f"or pick a built-in provider under Settings → RAG / Embedding model."
             ))
             log.warning("[embedding] api_id=%r resolved to empty base_url; refusing to send its key to api.openai.com", api_id)
             return None
@@ -571,13 +571,13 @@ def embedding_preflight(user_id: int | None) -> dict[str, Any]:
             base["settings_hash"] = "settings-models"
         return base
     if api_id in _VERTEX_API_IDS:
-        error = "未配置 Agent Platform / Vertex SA JSON,无法建立向量索引"
-        hint = "请在「设置 → API 设置」上传 Agent Platform 的 Service Account JSON。"
+        error = "No Agent Platform / Vertex SA JSON configured, so the vector index cannot be built"
+        hint = "Upload the Agent Platform Service Account JSON under Settings → API & Models."
     else:
-        error = f"未配置 {api_id} embedding API Key,无法建立向量索引"
+        error = f"No {api_id} embedding API key configured, so the vector index cannot be built"
         hint = (
-            "请在「设置 → RAG / 向量模型」添加向量嵌入模型对应的 API Key。"
-            " 注意：向量嵌入需要独立配置，与主 LLM Key 无关。"
+            "Add the API key for your embedding model under Settings → RAG / Embedding model."
+            " Note: embeddings are configured separately from the main LLM key."
         )
     return {
         "ok": False,

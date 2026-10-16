@@ -71,11 +71,11 @@ _MAX_ENTRIES = 4096
 _MAX_LAST_ERRORS = 2048
 
 _KIND_LABEL = {
-    KIND_CONFIG: "配置错误",
-    KIND_NO_CRED: "没有可用凭据",
-    KIND_RATE: "被限流",
-    KIND_TIMEOUT: "超时或连不上",
-    KIND_SERVER: "服务端出错",
+    KIND_CONFIG: "configuration error",
+    KIND_NO_CRED: "no usable credential",
+    KIND_RATE: "rate limited",
+    KIND_TIMEOUT: "timed out or unreachable",
+    KIND_SERVER: "server error",
 }
 
 # 可注入时钟(测试替换,免真 sleep)
@@ -202,7 +202,7 @@ def note_http(status: int, *, body: str = "", headers: Any = None, friendly: str
 def note_exception(exc: BaseException, host: str = "") -> None:
     """非 HTTP 状态码类的失败:代理用不了 / SSRF 拒连=配置;超时/连不上=timeout;
     其余(多为 200 但响应体坏)=server。所有 urllib 通道的异常都经这里分类,别在通道里各判各的。"""
-    where = host or "嵌入接口"
+    where = host or "the embedding endpoint"
     try:
         from core.outbound import OutboundBlocked, UnsupportedProxy, redact_proxy_url
     except Exception:  # pragma: no cover - core 总在
@@ -210,17 +210,17 @@ def note_exception(exc: BaseException, host: str = "") -> None:
         redact_proxy_url = str  # type: ignore[assignment]
     if UnsupportedProxy and isinstance(exc, UnsupportedProxy):  # 同为 ValueError 子类,须在兜底 server 之前判
         # 凭据里的代理这条出站用不了(urllib 不支持 SOCKS 等):请求根本没发出去,改代理之前不会好。
-        note(KIND_CONFIG, friendly=f"向量嵌入请求没有发出去:{redact_proxy_url(exc)}")
+        note(KIND_CONFIG, friendly=f"The embedding request was not sent: {redact_proxy_url(exc)}")
     elif OutboundBlocked and isinstance(exc, OutboundBlocked):  # 注意它是 ValueError 子类,须先判
         note(KIND_CONFIG, friendly=(
-            f"向量嵌入接口地址({where})解析到内网或保留地址,出于安全已拒绝连接。"
-            f"请在「设置 → API & 模型」检查接口地址。"
+            f"The embedding endpoint ({where}) resolves to a private or reserved address, so the connection was refused for safety. "
+            f"Check the endpoint address under Settings → API & Models."
         ))
     elif isinstance(exc, (TimeoutError, OSError)):  # URLError / 连接被拒 / 断连 都是 OSError 子类
-        note(KIND_TIMEOUT, friendly=f"向量嵌入接口 {where} 超时或连不上,请确认地址可以访问。")
+        note(KIND_TIMEOUT, friendly=f"The embedding endpoint {where} timed out or is unreachable. Make sure the address is reachable.")
     else:
         note(KIND_SERVER, friendly=(
-            f"向量嵌入接口 {where} 返回的内容不是 embeddings 格式,请确认这个地址支持 /embeddings 接口。"
+            f"The embedding endpoint {where} did not return embeddings. Make sure this address supports the /embeddings endpoint."
         ))
 
 

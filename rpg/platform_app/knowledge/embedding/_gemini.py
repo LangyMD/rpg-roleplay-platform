@@ -92,8 +92,8 @@ def _geo_ban_friendly(proxy: str | None) -> str:
     (或他给 Gemini 凭据配的代理),解决办法也不一样。"""
     if proxy:
         return (
-            "Gemini 凭据里配置的代理,出口所在地区被 Google 拒绝访问向量接口。"
-            "请换一个其它地区的代理,或在「设置 → RAG / 向量模型」换一个供应商。"
+            "Google refuses the embedding endpoint from the region of the proxy configured in your Gemini credential. "
+            "Use a proxy in another region, or choose another provider under Settings → RAG / Embedding model."
         )
     try:
         from core.outbound import _ssrf_enforced
@@ -102,13 +102,13 @@ def _geo_ban_friendly(proxy: str | None) -> str:
         server_mode = True
     if server_mode:
         return (
-            "服务器目前连不上 Gemini 的向量接口(Google 按服务器所在地区拒绝访问),"
-            "系统会过一段时间自动再试;也可以在「设置 → RAG / 向量模型」换一个供应商。"
+            "The server cannot reach Gemini's embedding endpoint right now (Google blocks the server's region). "
+            "The system will retry automatically after a while; you can also choose another provider under Settings → RAG / Embedding model."
         )
     return (
-        "当前网络出口所在地区被 Google 拒绝访问 Gemini 的向量接口。"
-        "可以在「设置 → API & 模型」给 Gemini 配置代理,或在「设置 → RAG / 向量模型」换一个供应商;"
-        "系统也会过一段时间自动再试。"
+        "Google refuses Gemini's embedding endpoint from your current network region. "
+        "You can configure a proxy for Gemini under Settings → API & Models, or choose another provider under Settings → RAG / Embedding model; "
+        "the system will also retry automatically after a while."
     )
 
 
@@ -144,7 +144,7 @@ def _embed_via_gemini(model: str, api_key: str, texts: list[str], task_type: str
     if not api_key:
         log.warning("[embedding] gemini api_id but no api_key")
         _breaker.note(_breaker.KIND_NO_CRED, overwrite=False,
-                      friendly="没有配置 Gemini 的 API Key,向量嵌入不可用。请在「设置 → API & 模型」填上 Key。")
+                      friendly="No Gemini API key is configured, so embeddings are unavailable. Add the key under Settings → API & Models.")
         return None
 
     # 进程级封禁表只管「不走凭据代理」的出口
@@ -188,8 +188,8 @@ def _embed_via_gemini(model: str, api_key: str, texts: list[str], task_type: str
                 log.warning("[embedding] gemini embed returned dim=%s expected=%s", len(values), EMBED_DIM)
                 # 维度不符是模型选错了,改配置前不会好(与 OpenAI 通道的维度卫士同一分类)
                 _breaker.note(_breaker.KIND_CONFIG, friendly=(
-                    f"Gemini 向量嵌入模型「{effective_model}」输出 {len(values)} 维,但系统统一用 {EMBED_DIM} 维。"
-                    f"请到「设置 → RAG / 向量模型」换一个支持 {EMBED_DIM} 维的模型。"
+                    f"The Gemini embedding model \"{effective_model}\" outputs {len(values)} dimensions, but the system uses {EMBED_DIM}. "
+                    f"Under Settings → RAG / Embedding model, switch to a model that supports {EMBED_DIM} dimensions."
                 ))
                 return None
             out.append(list(values))
@@ -201,7 +201,7 @@ def _embed_via_gemini(model: str, api_key: str, texts: list[str], task_type: str
             return None
         # 记入熔断(_vertex 里的可选优先通道撞上地区封禁时仍按 400 请求级记,由 SDK 那一路定)
         _breaker.note_http(e.code, body=body, headers=e.headers,
-                           friendly=f"Gemini 向量嵌入请求失败(HTTP {e.code}):{body[:160]}")
+                           friendly=f"Gemini embedding request failed (HTTP {e.code}): {body[:160]}")
         return None
     except Exception as e:
         log.warning("[embedding] gemini embed failed: %s", e)

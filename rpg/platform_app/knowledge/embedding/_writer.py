@@ -188,9 +188,9 @@ def _embed_chunks_loop_inner(script_id: int, user_id: int) -> None:
     # 不绑坏 meta、不进 5 次 404 重试(~2.5 分钟)。这是各层校验(picker/preflight)漏掉的兜底。
     if provider_lacks_embedding(_bind_api_id, _bind_base):
         raise RuntimeError(
-            f"嵌入器 provider「{_bind_api_id}」没有向量嵌入(embedding)接口,无法为 script {script_id} 建向量索引。"
-            f"请在「设置 → API & 模型 → RAG 模型」改选支持 embedding 的 provider"
-            f"(如 OpenAI text-embedding-3 / 阿里 dashscope / siliconflow / Vertex,或本地 bge/nomic),再重新导入。"
+            f"The embedder provider \"{_bind_api_id}\" has no embedding endpoint, so no vector index can be built for script {script_id}. "
+            f"Under Settings → RAG / Embedding model, pick a provider that supports embeddings "
+            f"(e.g. OpenAI text-embedding-3 / Alibaba DashScope / SiliconFlow / Vertex, or a local bge/nomic), then import again."
         )
     try:
         with connect() as db:
@@ -232,7 +232,7 @@ def _embed_chunks_loop_inner(script_id: int, user_id: int) -> None:
                 # key 无效 / 欠费 / 模型不存在 / 没凭据:再等 5×30s 也不会好,直接放弃并说清原因。
                 _why = _breaker.last_error_for(user_id, _bkey)
                 raise RuntimeError(
-                    f"嵌入供应商配置有问题,放弃 script {script_id}(剩余 chunk 留 null,改好后重新建向量即可)"
+                    f"The embedding provider is misconfigured; gave up on script {script_id} (remaining chunks stay null; rebuild the vectors once it is fixed)"
                     + (f":{_why}" if _why else "")
                 )
             _consecutive_fails += 1
@@ -240,8 +240,8 @@ def _embed_chunks_loop_inner(script_id: int, user_id: int) -> None:
                 # 连续失败达上限:大概率 provider 永久故障(坏 key/配额/模型下线)。
                 # 抛出 → _embed_chunks_loop 优雅收尾(清 flag、线程退出),不再无限 spin。
                 raise RuntimeError(
-                    f"embedding batch 连续失败 {_consecutive_fails} 次,放弃 script {script_id}"
-                    f"(剩余 chunk 留 null 待修复 provider 后重试)"
+                    f"Embedding batch failed {_consecutive_fails} times in a row; gave up on script {script_id} "
+                    f"(remaining chunks stay null; retry after fixing the provider)"
                 )
             # 被限流:按冷却剩余时间退避(至少 30s,最多 120s),别在冷却期里接着撞
             _wait = 30.0
@@ -350,7 +350,7 @@ def embed_script(user_id: int, script_id: int) -> dict[str, Any]:
             (script_id, user_id),
         ).fetchone()
     if not row:
-        raise ValueError("无权访问该剧本")
+        raise ValueError("You do not have access to this script")
     if _embed_is_running(script_id):
         return {"ok": True, "already_running": True, "status": embed_status(script_id)}
     # 检查 embedding provider 是否可用：生产鉴权模式必须有用户 BYOK/API key。
