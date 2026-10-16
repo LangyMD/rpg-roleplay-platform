@@ -53,7 +53,7 @@ def test_rewrite_candidate_does_not_continue_from_first_draft():
     helper = SRC.split("def _rewrite_candidate_text", 1)[1].split("async def _gen_candidate_bg", 1)[0]
     assert "gm._backend.stream" in helper, "改写候选应文本直调 backend(不进工具循环、不追加到实时历史)"
     assert "_pre_hist" in helper, "改写候选必须用首稿时的历史快照重建上下文"
-    assert ("不是续写" in helper) or ("不要接着往下写" in helper), "改写指令必须明确『不是续写』"
+    assert ("not a continuation" in helper) or ("Do not keep writing" in helper), "改写指令必须明确『不是续写』"
     # 两处调用点都把【历史快照 + 玩家行动】传进去(而非让 GM 读被 record_turn 污染的实时历史)
     gate = _gate_body()
     assert "list(state.history_messages())" in gate and "ctx.message_for_model" in gate

@@ -271,7 +271,8 @@ class CombatGateIntegration(unittest.TestCase):
                 f"GM 不应写未经裁定的战斗结果 '{word}',实际文本: {text[:200]}")
         # 应有问询标记
         self.assertTrue(
-            "规则要求先确认" in text or "需要先确认" in text or "确认" in text,
+            "规则要求先确认" in text or "需要先确认" in text or "确认" in text
+            or "confirm first" in text,
             f"应有确认标记,实际:{text[:200]}",
         )
 
@@ -338,16 +339,16 @@ class RulesProviderInjectsFactsNotDirectives(unittest.TestCase):
     def test_prompt_contains_scene_fact_snapshot(self):
         """场景快照应在 — 客观陈述,不带指令。"""
         text = self._collect_text(self._state(enemies=[], encounter_active=False))
-        self.assertIn("场景事实快照", text)
+        self.assertIn("Scene fact snapshot", text)
         self.assertIn("enemies", text)
         self.assertIn("encounter.active", text)
 
     def test_prompt_contains_data_layering_block(self):
         """数据来源 (state vs retrieval) 应在 — 路由说明,不是行为约束。"""
         text = self._collect_text(self._state())
-        self.assertIn("数据层级", text)
-        self.assertIn("真相源", text)
-        self.assertIn("参考", text)
+        self.assertIn("Data hierarchy", text)
+        self.assertIn("source of truth", text)
+        self.assertIn("reference", text)
 
     def test_prompt_does_not_contain_5e_behavior_directives(self):
         """5E 规则行为指令一律不在 prompt 里出现。

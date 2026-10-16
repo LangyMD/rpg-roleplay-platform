@@ -163,6 +163,16 @@ class ImmersiveRequestDetector(unittest.TestCase):
         for s in ("我递给她一壶水", "你好", "", "/set x", None):
             self.assertIsNone(f(s), repr(s))
 
+    def test_on_off_none_english(self):
+        from chat_pipeline import _immersive_request as f
+        for s in ("Switch to immersive mode please", "Talk to me like a real person",
+                  "Don't write it like a novel", "Don’t speak for me", "Reply in first person"):
+            self.assertIs(f(s), True, s)
+        for s in ("Turn off immersive mode", "exit immersive", "Back to normal narration please"):
+            self.assertIs(f(s), False, s)
+        for s in ("I hand her a flask of water", "Hello", "The immersive smell of rain"):
+            self.assertIsNone(f(s), repr(s))
+
 
 if __name__ == "__main__":
     unittest.main()

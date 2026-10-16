@@ -122,12 +122,12 @@ class GamePolicyClassUnit(unittest.TestCase):
         text = "\n".join(policy.gm_prompt_constraints(g))
 
         # 应当含事实快照 + 数据来源
-        self.assertIn("场景事实快照", text)
+        self.assertIn("Scene fact snapshot", text)
         self.assertIn("enemies", text)
         self.assertIn("encounter.active", text)
-        self.assertIn("数据层级", text)
-        self.assertIn("真相源", text)
-        self.assertIn("参考", text)
+        self.assertIn("Data hierarchy", text)
+        self.assertIn("source of truth", text)
+        self.assertIn("reference", text)
 
         # 不得含 5E 规则行为指令 — 这些都改由 deterministic 后端管
         forbidden_directives = (
@@ -166,8 +166,8 @@ class GamePolicyClassUnit(unittest.TestCase):
         from game_policy import NovelAdaptationPolicy
         policy = NovelAdaptationPolicy()
         text = "\n".join(policy.gm_prompt_constraints({}))
-        self.assertIn("真相源", text)
-        self.assertIn("参考", text)
+        self.assertIn("source of truth", text)
+        self.assertIn("reference", text)
 
 
 # ────────────────────────────────────────────────────────────
@@ -239,7 +239,7 @@ class KnowledgeIsReferenceOnly(unittest.TestCase):
         # 不需要真 state — constraint 文本本身就有那段
         p = ModuleAdventurePolicy()
         text = "\n".join(p.gm_prompt_constraints({}))
-        self.assertIn("数据层级", text)
+        self.assertIn("Data hierarchy", text)
         self.assertIn("state", text)
         self.assertIn("retrieval", text.lower())
 

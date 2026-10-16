@@ -167,8 +167,8 @@ def test_wording_matches_empty_turn_content_filter():
     )
     reason, diag, _facts = _empty_turn_diagnosis(ctx, 0)
     assert reason == "content_filter"
-    shared = "被所用模型的内容策略拦下了"
-    advice = diag[diag.index("可以换个说法"):]
+    # 建议文案单一真相源 = provider_errors._CONTENT_POLICY_ADVICE,分诊结构性复用它(不靠复制粘贴)。
+    from agents.provider_errors import _CONTENT_POLICY_ADVICE as advice
+    assert "content policy" in diag
     _cat, msg = classify_provider_error(_POLICY_CASES[0])
-    assert shared in diag and shared in msg
-    assert advice in msg, f"建议要和空回合分诊逐字一致:{advice}"
+    assert advice in diag and advice in msg, f"建议要和空回合分诊逐字一致:{advice}"

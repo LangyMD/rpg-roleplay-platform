@@ -44,16 +44,17 @@ def test_content_filter_explains_it_was_a_policy_block():
     assert len(out) == 1
     phase, msg = out[0]
     assert phase == "stop_reason"
-    assert "内容策略" in msg
-    assert "不是剧情" in msg, "得说清那句回绝不是剧情,否则玩家仍以为 GM 出戏"
-    assert "换" in msg, "得给可行动的下一步"
+    assert "content policy" in msg
+    assert "not part of the story" in msg, "得说清那句回绝不是剧情,否则玩家仍以为 GM 出戏"
+    from agents.provider_errors import _CONTENT_POLICY_ADVICE
+    assert _CONTENT_POLICY_ADVICE in msg, "得给可行动的下一步"
 
 
 def test_length_explains_truncation():
     out = _stop_reason_notice(_ctx("length"))
     assert len(out) == 1
-    assert "截断" in out[0][1]
-    assert "继续" in out[0][1], "得告诉玩家怎么接着写"
+    assert "cut off" in out[0][1]
+    assert "continue" in out[0][1], "得告诉玩家怎么接着写"
 
 
 def test_no_backend_is_silent_not_crashing():

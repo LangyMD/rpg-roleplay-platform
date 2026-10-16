@@ -226,7 +226,7 @@ async def _run_post_gm_parallel(
                     "ts": _dt.now().isoformat(timespec="seconds"),
                     "kind": "extractor_error",
                     "source": "extractor",
-                    "hint": f"GM 第二步失败:{type(exc).__name__}: {str(exc)[:200]}",
+                    "hint": f"GM second step failed: {type(exc).__name__}: {str(exc)[:200]}",
                     "turn": state.data.get("turn", 0),
                 })
                 if len(audit) > 200:

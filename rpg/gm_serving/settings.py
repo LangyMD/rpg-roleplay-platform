@@ -9,21 +9,21 @@ from typing import Any
 
 # 设置 schema:locked_after_create=True 的项建档后锁死(改了会损坏世界树)。
 SETTINGS_SCHEMA: list[dict] = [
-    {"key": "starting_worldline", "label": "起始世界线", "type": "string", "default": "main",
+    {"key": "starting_worldline", "label": "Starting worldline", "type": "string", "default": "main",
      "locked_after_create": True, "step": 1,
-     "help": "从哪条规范世界线开局。建档后锁死(改动破坏已积累世界树)。"},
-    {"key": "foreknowledge_mode", "label": "穿越者先知程度", "type": "enum", "default": "none",
+     "help": "Which canonical worldline the game starts on. Locked once the save is created (changing it would break the accumulated world tree)."},
+    {"key": "foreknowledge_mode", "label": "Transmigrator foreknowledge", "type": "enum", "default": "none",
      "options": ["none", "partial", "omniscient"], "locked_after_create": False, "step": 3,
-     "help": "none=与角色同步无先知;partial=模糊知道著名未来大事;omniscient=全知原著。调节防剧透集合宽度。"},
+     "help": "none = no foreknowledge, in step with the character; partial = vaguely knows famous future events; omniscient = knows the whole source. Adjusts how wide the spoiler-protection set is."},
     # 注:npc_awareness / spoiler_guard 已下架(2026-07-18)—— 全库零读取点(schema/持久化/移动
     # 向导俱全,但 context 注入/GM prompt/rails 从未消费),属「UI 存在≠生效」的死设置。诚实优于
     # 装饰:从 schema/表单下架;持久化列(save_io / _session_repo)保留不动库,存量值静默失效。
     # 若日后要真做防剧透强度:接 clamp_reveal_progress 的 lookahead;NPC 起疑属叙事层,另设计。
-    {"key": "steering_strength", "label": "剧情引导强度", "type": "enum", "default": "guided",
+    {"key": "steering_strength", "label": "Story guidance strength", "type": "enum", "default": "guided",
      "options": ["rail", "guided", "free"], "locked_after_create": False, "step": 4,
-     "help": "rail=贴原著(强力锚点):把下一个待发生锚点当成必须推进的下一拍,GM 主动收束、"
-             "偏离 1-3 轮内拉回(仍允许合理变体);guided=软引导(默认温和):软目标朝锚点自然推进;"
-             "free=自由:不注入引导。"},
+     "help": "rail = follow the source (strong anchors): the next pending anchor becomes a beat the GM must drive toward, actively converging "
+             "and pulling back within 1-3 turns of any deviation (reasonable variants still allowed); guided = soft guidance (gentle default): a soft goal nudges the story toward anchors naturally; "
+             "free = free play: no guidance injected."},
 ]
 
 _DEFAULTS = {s["key"]: s["default"] for s in SETTINGS_SCHEMA}
@@ -95,7 +95,7 @@ def apply_settings(db, save_id: int, updates: dict[str, Any], *, is_create: bool
     from psycopg.types.json import Jsonb
     sess = _ensure_session(db, save_id)
     if not sess:
-        return {"error": "存档无 session"}
+        return {"error": "The save has no session"}
     wl_existing = sess.get("worldline") if isinstance(sess.get("worldline"), dict) else {}
     # is_create 不信客户端:客户端传 is_create=true 即可在后续 PATCH 改锁死项(starting_worldline)。
     # 改由服务端判定——仅当锁死项尚未落库(worldline 不含任何 _LOCKED 键=未初始化)才放行。
@@ -105,13 +105,13 @@ def apply_settings(db, save_id: int, updates: dict[str, Any], *, is_create: bool
     applied, rejected = {}, {}
     for k, v in (updates or {}).items():
         if k not in _DEFAULTS and k != "progress_chapter":
-            rejected[k] = "未知设置"
+            rejected[k] = "unknown setting"
             continue
         if k in _LOCKED and not effective_is_create:
-            rejected[k] = "建档后锁死"
+            rejected[k] = "locked after the save was created"
             continue
         if k in _VALID and v not in _VALID[k]:
-            rejected[k] = f"非法值(允许:{sorted(_VALID[k])})"
+            rejected[k] = f"invalid value (allowed: {sorted(_VALID[k])})"
             continue
         applied[k] = v
     # 原子按键合并(jsonb ||):只覆盖本次改的键,不整列读改写 → 避免 workers=2 并发丢更新/抹掉对方键。

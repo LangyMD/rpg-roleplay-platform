@@ -243,7 +243,7 @@ class ChatHandlerWritesAnchorAfterSet(unittest.TestCase):
 
     def test_chat_surfaces_anchor_in_directive_updates(self):
         # directive_updates 应附加"时间线锚点 → 第X-Y章"提示
-        self.assertIn("时间线锚点", self.app_text)
+        self.assertIn("Timeline anchor", self.app_text)
 
 
 class GenericAlgorithmNoHardcoding(unittest.TestCase):

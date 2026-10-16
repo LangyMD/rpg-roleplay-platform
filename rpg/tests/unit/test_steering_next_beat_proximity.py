@@ -57,7 +57,7 @@ def test_rail_opening_targets_nearest_not_most_important(monkeypatch):
     assert "圣女蕾穆丽娜" not in out["soft_goal"]
     assert out["pending_anchors"] == ["a_ch1"]
     # 仍是 rail 强措辞
-    assert "强制收束" in out["soft_goal"]
+    assert "forced convergence" in out["soft_goal"]
 
 
 def test_guided_opening_targets_nearest(monkeypatch):

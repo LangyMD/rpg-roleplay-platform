@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
@@ -11,6 +12,7 @@ from ._common import (
     _TOOL_MARKUP_FINISH_REASONS,
     PipelineContext,
     SSEEvent,
+    _content_policy_advice,
     _gm_mode_of,
     _is_content_filter_reason,
     _last_usage_of,
@@ -19,7 +21,69 @@ from ._common import (
 )
 
 # 空回合兜底文案:分诊本身出异常时才用(分诊是纯函数,正常走不到)。
-_EMPTY_FALLBACK_MESSAGE = "这一轮模型没有写出正文,请重试。"
+_EMPTY_FALLBACK_MESSAGE = "The model didn't write any story text this turn. Please try again."
+
+# 沉浸感确定性兜底(用户头号反馈):结尾"旁白向玩家显式提问下一步"的句子。中英两套,各自只命中
+# 明确的决策反问,且必须是旁白行(不在引号内,绝不动角色台词)。
+_TRAILING_Q_ZH = re.compile(
+    r"(你|您)[^。！？\n]{0,16}(接下来|下一步|打算|准备|会|想|要不要|是否|如何|怎么)"
+    r"[^。\n]{0,18}(做|办|应对|行动|选择|决定|应付)?[?？]\s*$"
+)
+_TRAILING_PLEAD_ZH = re.compile(r"(请|轮到|该)\s*(你|玩家)[^。\n]{0,10}(决定|选择|定夺|行动|出招)")
+_TRAILING_Q_EN = re.compile(
+    r"^(?:\W*)(?:(?:so|now|then|well)\s*,?\s*)?"
+    r"(?:(?:what|how)\s+(?:do|will|would|should|shall|are)\s+you\s+(?:going\s+to\s+)?"
+    r"(?:do|respond|react|proceed|handle|choose|decide|reply|answer|play)\b"
+    r"|what(?:'s|\s+is)\s+your\s+(?:next\s+)?(?:move|call|choice|decision|plan)\b)"
+    r"[^?\n]{0,40}\?\W*$",
+    re.IGNORECASE,
+)
+_TRAILING_PLEAD_EN = re.compile(   # 整行即这句话才算(锚定首尾),避免误伤叙述句
+    r"^\W*(?:(?:so|now|then|well)\s*,?\s*)?"
+    r"(?:(?:it'?s|it\s+is)\s+(?:now\s+)?your\s+(?:move|turn|call|choice)"
+    r"|the\s+(?:choice|decision|next\s+move)\s+is\s+(?:now\s+)?yours"
+    r"|(?:the\s+rest\s+is\s+)?(?:over|up)\s+to\s+you)\W*$",
+    re.IGNORECASE,
+)
+_QUOTE_CHARS_ZH = ("「", "」", "“", "”", "‘", "’", "\"", "『", "』")
+# 英文行里 ’ 常是撇号(What’s),不能当引号;只认双引号类。
+_QUOTE_CHARS_EN = ("「", "」", "“", "”", "\"", "『", "』")
+
+
+def _is_trailing_decision_prompt(line: str) -> bool:
+    """一行是否为旁白向玩家显式提问下一步(中/英)。纯函数。"""
+    s = (line or "").strip()
+    if not s:
+        return False
+    if (not any(c in s for c in _QUOTE_CHARS_ZH)) and len(s) <= 60 and (
+            _TRAILING_Q_ZH.search(s) or _TRAILING_PLEAD_ZH.search(s)):
+        return True
+    norm = s.replace("\u2019", "'")
+    if (not any(c in s for c in _QUOTE_CHARS_EN)) and len(s) <= 120 and (
+            _TRAILING_Q_EN.search(norm) or _TRAILING_PLEAD_EN.search(norm)):
+        return True
+    return False
+
+
+def _strip_trailing_decision_prompts(text: str) -> str:
+    """剥掉结尾连续的「你接下来想怎么做?」/ "What do you do?" 类旁白问句;不会把整段删空。"""
+    lines = (text or "").rstrip().split("\n")
+    changed = False
+    while lines:
+        last = lines[-1].strip()
+        if not last:
+            lines.pop()
+            continue
+        if _is_trailing_decision_prompt(last):
+            lines.pop()
+            changed = True
+            continue
+        break
+    if changed:
+        new = "\n".join(lines).rstrip()
+        if new:  # 不要把整段删空(防极端情况)
+            return new
+    return text
 
 
 def _as_int(v: Any) -> int:
@@ -79,45 +143,50 @@ def _empty_turn_diagnosis(
         "raw_len": int(raw_len or 0),
     }
     has_reasoning = reasoning_tokens > 0 or reasoning_chars > 0
-    cap = f"(上限 {max_tokens} tokens)" if max_tokens else ""
+    cap = f" (limit {max_tokens} tokens)" if max_tokens else ""
     # 不引用具体控件名:设置页叫「最大生成 token」、酒馆参数抽屉叫「最大输出 Tokens」,两处都在「模型参数」下。
-    raise_cap = "可以在「模型参数」里调高最大输出 token 数,或把推理强度调低、换一个不带思考的模型,然后重试。"
+    raise_cap = (" You can raise the maximum output tokens under Model parameters, or lower the reasoning effort / "
+                 "switch to a model without thinking, then try again.")
 
     if raw_len > 0 and regex_emptied:
         return ("output_regex_emptied",
-                "模型写了正文,但被你启用的输出正则脚本整段替换成了空内容。重试也会这样,"
-                "请检查一下正则脚本的查找和替换规则。", facts)
+                "The model wrote story text, but an output regex script you enabled replaced all of it with nothing. "
+                "Retrying will do the same; please check that script's find and replace rules.", facts)
     if raw_len > 0:
         return ("stripped_to_empty",
-                "模型这一轮只输出了状态指令或内部标记,没有写正文。直接重试一般就好。", facts)
+                "This turn the model only output state instructions or internal markers, with no story text. "
+                "Simply trying again usually works.", facts)
     if fr == "length" and has_reasoning:
-        used = f"(思考约 {reasoning_tokens} tokens)" if reasoning_tokens else ""
+        used = f" (about {reasoning_tokens} tokens of thinking)" if reasoning_tokens else ""
         return ("reasoning_exhausted",
-                f"模型把这一轮的输出额度{cap}全用在了思考上{used},正文还没开始写就到顶了。" + raise_cap,
+                f"The model spent this turn's whole output budget{cap} on thinking{used} and hit the limit "
+                "before it started writing the story." + raise_cap,
                 facts)
     if fr == "length":
         return ("length",
-                f"模型用满了这一轮的输出额度{cap},却一个字的正文都没写出来,多半是思考过程占满了额度"
-                "(有些服务不回传思考内容,所以这里看不到)。" + raise_cap,
+                f"The model used up this turn's output budget{cap} without writing a single word of story text; "
+                "most likely its thinking filled the budget (some services don't send the thinking back, so it isn't shown here)."
+                + raise_cap,
                 facts)
     if _is_content_filter_reason(fr):
         return ("content_filter",
-                "这一轮被所用模型的内容策略拦下了,没有生成正文。可以换个说法重述,"
-                "或在设置的「模型」页换一个对该题材更宽松的模型。", facts)
+                "This turn was blocked by the model's content policy, so no story text was generated. "
+                + _content_policy_advice(), facts)
     if tool_errors > 0 or fr in _TOOL_MARKUP_FINISH_REASONS:
         return ("tool_markup_unparsed",
-                "模型想调用工具,但写出来的调用格式解析不了,这一轮没能写出正文。"
-                "可以直接重试;经常这样的话,换个模型或渠道试试。", facts)
+                "The model tried to call a tool, but the call it wrote could not be parsed, so no story text was written this turn. "
+                "You can just retry; if it keeps happening, try another model or provider.", facts)
     if tool_count > 0:
         return ("tool_only",
-                f"模型这一轮只调用了工具({tool_count} 次),没有接着写正文。可以直接重试。", facts)
+                f"This turn the model only called tools ({tool_count} times) and didn't go on to write the story. "
+                "You can just retry.", facts)
     if has_reasoning:
         return ("reasoning_only",
-                "模型这一轮只输出了思考过程,没有写正文。可以直接重试;经常这样的话,"
-                "在设置的「模型参数」里把推理强度调低,或换个模型。", facts)
+                "This turn the model only output its thinking, with no story text. You can just retry; if it keeps happening, "
+                "lower the reasoning effort under Model parameters in Settings, or switch models.", facts)
     return ("upstream_empty",
-            "模型服务这一轮返回了空内容:没有正文,没有思考,也没有调用工具。多半是中转站或服务端"
-            "临时出了问题,请重试;反复出现的话换个渠道。", facts)
+            "The model service returned nothing this turn: no story text, no thinking and no tool calls. Most likely the relay "
+            "or the provider had a temporary problem; please try again, and switch providers if it keeps happening.", facts)
 
 
 async def persist_turn_phase(
@@ -166,27 +235,7 @@ async def persist_turn_phase(
     # ——只命中明确的决策反问(你接下来想怎么做 / 你打算如何应对 / 请玩家决定 等),
     # 且必须是旁白行(不在引号内,绝不动角色台词)。不依赖 GM 听提示词。
     try:
-        import re as _re_imm
-        _q_pat = _re_imm.compile(
-            r"(你|您)[^。！？\n]{0,16}(接下来|下一步|打算|准备|会|想|要不要|是否|如何|怎么)"
-            r"[^。\n]{0,18}(做|办|应对|行动|选择|决定|应付)?[?？]\s*$"
-        )
-        _plead_pat = _re_imm.compile(r"(请|轮到|该)\s*(你|玩家)[^。\n]{0,10}(决定|选择|定夺|行动|出招)")
-        _quote_chars = ("「", "」", "“", "”", "‘", "’", "\"", "『", "』")
-        _ll = visible_response.rstrip().split("\n")
-        _changed = False
-        while _ll:
-            _last = _ll[-1].strip()
-            if not _last:
-                _ll.pop(); continue
-            _in_quote = any(c in _last for c in _quote_chars)
-            if (not _in_quote) and (_q_pat.search(_last) or _plead_pat.search(_last)) and len(_last) <= 60:
-                _ll.pop(); _changed = True; continue
-            break
-        if _changed:
-            _new = "\n".join(_ll).rstrip()
-            if _new:  # 不要把整段删空(防极端情况)
-                visible_response = _new
+        visible_response = _strip_trailing_decision_prompts(visible_response)
     except Exception:
         pass
 
@@ -195,7 +244,7 @@ async def persist_turn_phase(
     # (system_sources 含 "gm";"auto" 不在其中会导致 chips 永不过期变残留)。
     if _auto_choice_opts:
         try:
-            state.add_pending_question("你想怎么做?", source="gm:auto_choice", options=_auto_choice_opts)
+            state.add_pending_question("What do you do?", source="gm:auto_choice", options=_auto_choice_opts)
         except Exception:
             pass
 
