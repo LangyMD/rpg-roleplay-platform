@@ -20,6 +20,8 @@ import logging
 import re
 from typing import Any
 
+from core.token_estimate import cjk_chars_to_budget, is_cjk_text
+
 log = logging.getLogger(__name__)
 
 MAX_CONTENT_CHARS = 9000   # 每章喂给 LLM 的正文上限(超长章截断,足够写 150 字摘要)
@@ -27,15 +29,15 @@ MIN_SUMMARY_CHARS = 20
 MAX_SUMMARY_CHARS = 200
 MAX_TIME_CHARS = 40
 
-_SYSTEM = """你是小说章节归纳器。读一章正文,输出严格 JSON(不要代码围栏):
-{"chapter_summary": "本章主线的第三人称浓缩,30-150字。写清谁做了什么、局势有何变化。**绝不照抄原文句子**,必须是归纳复述。不要评价不要剧透后文。",
- "in_world_time": "本章故事内时间的简短归纳,如「穿越当日下午」「三个月后的冬天」「紧接上章当夜」;正文无法判断则给空字符串"}
-只输出这一个 JSON 对象。"""
+_SYSTEM = """You summarize novel chapters. Read one chapter and output strict JSON (no code fences):
+{"chapter_summary": "A third-person condensation of this chapter's main thread, 20-100 words. Say clearly who did what and how the situation changed. **Never copy sentences from the source**; it must be a paraphrased summary. No commentary and no spoilers for later chapters.",
+ "in_world_time": "A short description of the in-story time of this chapter, e.g. \"the afternoon of the arrival\", \"winter, three months later\", \"the same night as the previous chapter\"; use an empty string if the text does not say"}
+Output only this one JSON object."""
 
 
 def build_refine_prompts(title: str, content: str) -> tuple[str, str]:
-    body = (content or "")[:MAX_CONTENT_CHARS]
-    user = f"【章节标题】{(title or '').strip() or '(无题)'}\n【正文】\n{body}"
+    body = (content or "")[:cjk_chars_to_budget(content or "", MAX_CONTENT_CHARS)]
+    user = f"[Chapter title] {(title or '').strip() or '(untitled)'}\n[Text]\n{body}"
     return _SYSTEM, user
 
 
@@ -57,10 +59,17 @@ def validate_refined(raw_text: str, content: str) -> dict | None:
     if not isinstance(data, dict):
         return None
     summary = re.sub(r"\s+", " ", str(data.get("chapter_summary") or "").strip())
-    itime = str(data.get("in_world_time") or "").strip()[:MAX_TIME_CHARS]
-    if not (MIN_SUMMARY_CHARS <= len(summary) <= MAX_SUMMARY_CHARS + 60):
+    # 长度上限按中文字数定;英文摘要同样信息量字符约 2.5 倍,按语言换算(词界截断)
+    _min_c = cjk_chars_to_budget(summary, MIN_SUMMARY_CHARS)
+    _max_c = cjk_chars_to_budget(summary, MAX_SUMMARY_CHARS)
+    itime = str(data.get("in_world_time") or "").strip()
+    itime = itime[:cjk_chars_to_budget(itime, MAX_TIME_CHARS)]
+    if not (_min_c <= len(summary) <= _max_c + cjk_chars_to_budget(summary, 60)):
         return None
-    summary = summary[:MAX_SUMMARY_CHARS]
+    if len(summary) > _max_c:
+        cut = summary[:_max_c]
+        sp = cut.rfind(" ")
+        summary = cut[:sp] if (not is_cjk_text(summary) and sp > _max_c // 2) else cut
     # 照抄检测:摘要里任一 25 字连续片段逐字出现在正文 → 拒(要求归纳复述)
     body = re.sub(r"\s+", "", content or "")
     probe = re.sub(r"\s+", "", summary)
@@ -127,7 +136,7 @@ def refine_script(script_id: int, user_id: int, *, ch_from: int = 1, ch_to: int 
     from agents.recorder import _resolve_recorder_api_and_model
     rapi, rmodel = _resolve_recorder_api_and_model(user_id, api_id, model)
     if not rapi or not rmodel:
-        return {"ok": False, "error": "无可用 api/model(BYOK 未配置)"}
+        return {"ok": False, "error": "No usable api/model (BYOK not configured)"}
     with connect() as db:
         row = db.execute(
             "select coalesce(max(chapter_index),0) m from script_chapters where script_id=%s",

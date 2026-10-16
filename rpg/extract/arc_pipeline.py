@@ -26,6 +26,7 @@ from collections.abc import Callable
 from typing import Any
 
 from agents.provider_errors import plain_error_summary
+from core.token_estimate import cjk_chars_to_budget
 from extract import resolve as R
 from extract.embed import embed_canon_entities
 from extract.llm import ExtractLLM
@@ -96,12 +97,14 @@ def extract_arc(llm: ExtractLLM, arc: list[dict], *, era: str,
     parts = []
     for ch in picks:
         title = (ch.get("title") or "").strip()
-        body = (ch.get("content") or "").strip()[:per_chapter_chars]
-        parts.append(f"【第{ch['chapter_index']}章 {title}】\n{body}")
+        body = (ch.get("content") or "").strip()
+        body = body[:cjk_chars_to_budget(body, per_chapter_chars)]
+        parts.append(f"[Chapter {ch['chapter_index']} {title}]\n{body}")
     combined = "\n\n----\n\n".join(parts)
     descriptor = (
-        f"本片段含弧段(第 {arc[0]['chapter_index']}-{arc[-1]['chapter_index']} 章,共 {len(arc)} 章)"
-        f"的 {len(picks)} 个代表章节,请把 chapter_summary 写成本弧整体主线浓缩(120-200 字)"
+        f"This excerpt holds {len(picks)} representative chapters of an arc (chapters "
+        f"{arc[0]['chapter_index']}-{arc[-1]['chapter_index']}, {len(arc)} chapters in all). Write "
+        f"chapter_summary as a condensation of the whole arc's main thread (80-130 words)"
     )
     return extract_chapter(
         llm, arc[0]["chapter_index"], combined, era=era,
