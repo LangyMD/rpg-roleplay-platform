@@ -136,8 +136,8 @@ def test_tier_degraded_when_river_falls_back_to_anchors(monkeypatch):
     out = engine._compute_preflight(db, 9, 1)
     assert out["tier"] == "degraded"
     assert out["river"] == {"beats": 2, "source": "anchors"}
-    assert any("回退为时间线锚点" in w and "2条" in w for w in out["warnings"])
-    assert any("无独立地点条目" in w for w in out["warnings"])
+    assert any("falls back to timeline anchors" in w and "(2)" in w for w in out["warnings"])
+    assert any("No separate location entries" in w for w in out["warnings"])
 
 
 def test_tier_degraded_when_river_and_anchors_both_empty(monkeypatch):
@@ -149,9 +149,9 @@ def test_tier_degraded_when_river_and_anchors_both_empty(monkeypatch):
     out = engine._compute_preflight(db, 9, 1)
     assert out["tier"] == "degraded"
     assert out["river"] == {"beats": 0, "source": "none"}
-    assert any("完全依赖自由演化" in w for w in out["warnings"])
-    assert any("角色卡不足" in w for w in out["warnings"])
-    assert any("世界书条目不足" in w for w in out["warnings"])
+    assert any("rely entirely on free evolution" in w for w in out["warnings"])
+    assert any("Not enough character cards" in w for w in out["warnings"])
+    assert any("Not enough worldbook entries" in w for w in out["warnings"])
 
 
 def test_tier_degraded_when_cast_ranked_below_three(monkeypatch):
@@ -167,7 +167,7 @@ def test_tier_degraded_when_cast_ranked_below_three(monkeypatch):
     out = engine._compute_preflight(db, 9, 1)
     assert out["cast"]["count"] == 2, "旧绝对阈值(>=100)会把两人都清零成0,这里必须是排名后的2"
     assert out["tier"] == "degraded"  # 卡司<3
-    assert any("角色卡不足" in w and "仅2人" in w for w in out["warnings"])
+    assert any("Not enough character cards" in w and "only 2" in w for w in out["warnings"])
 
 
 def test_tier_free_when_no_script_id(monkeypatch):
@@ -196,7 +196,7 @@ def test_tavern_save_forces_can_create_false_regardless_of_tier(monkeypatch):
     )
     out = engine._compute_preflight(db, 9, 1)
     assert out["can_create"] is False
-    assert out["reason"] == "酒馆存档暂不支持离线世界"
+    assert out["reason"] == "Tavern saves do not support the offline world yet"
 
 
 # ── D4: IDOR ─────────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ def test_create_experiment_rejects_tavern_save_with_400_shape(monkeypatch):
     monkeypatch.setattr("platform_app.db.init_db", lambda: None)
     out = engine.create_experiment(9, 1)
     assert out["ok"] is False
-    assert out["error"] == "酒馆存档暂不支持离线世界"
+    assert out["error"] == "Tavern saves do not support the offline world yet"
     # 拒建必须发生在任何写操作之前——不能出现 insert
     assert not any(sql.strip().lower().startswith("insert into rath_experiments")
                    for sql, _ in db.calls)
@@ -266,7 +266,7 @@ def test_create_experiment_rejects_idor_before_touching_experiment_table(monkeyp
     monkeypatch.setattr("platform_app.db.init_db", lambda: None)
     out = engine.create_experiment(9, 1)
     assert out["ok"] is False
-    assert "不属于你" in out["error"]
+    assert "does not belong to you" in out["error"]
 
 
 def test_create_experiment_succeeds_and_attaches_preflight_warnings(monkeypatch):
@@ -299,7 +299,7 @@ def test_create_experiment_still_enforces_running_cap_after_preflight_passes(mon
     monkeypatch.setattr("platform_app.db.init_db", lambda: None)
     out = engine.create_experiment(9, 1)
     assert out["ok"] is False
-    assert "同时最多" in out["error"]
+    assert "At most" in out["error"]
 
 
 # ── D1: 排名化纯函数 ──────────────────────────────────────────────────────
