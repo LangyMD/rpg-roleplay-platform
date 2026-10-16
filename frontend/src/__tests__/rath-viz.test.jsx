@@ -16,6 +16,11 @@ describe('_parseWorldDayLabel', () => {
     expect(_parseWorldDayLabel('第1日')).toBe('第1日');
   });
 
+  it('extracts the English "Day N" prefix (current backend format)', () => {
+    expect(_parseWorldDayLabel('Day 14 19:40')).toBe('Day 14');
+    expect(_parseWorldDayLabel('Day 1')).toBe('Day 1');
+  });
+
   it('无法解析时返回空串', () => {
     expect(_parseWorldDayLabel('19:40')).toBe('');
     expect(_parseWorldDayLabel('')).toBe('');

@@ -108,7 +108,8 @@ async def api_pending_write(
             result = state.reject_pending_write(index=index, id=item_id)
     else:
         result = d_result.result
-    if isinstance(result, str) and result.startswith(("失败", "ERROR", "待审", "拒绝")):
+    from tools_dsl.command_dispatcher import is_failure_result_text
+    if is_failure_result_text(result) or (isinstance(result, str) and result.startswith("待审")):
         return json_response({"ok": False, "error": result}, status_code=400)
     state.data["memory"]["last_structured_updates"] = [result] + state.data["memory"].get("last_structured_updates", [])[:11]
     state.save()

@@ -256,9 +256,9 @@ def test_clock_label_pure_function():
     import sys
     sys.path.insert(0, str(ROOT))
     from rath.engine import _clock_label
-    assert _clock_label(0) == "第1日 00:00"
-    assert _clock_label(61) == "第1日 01:01"
-    assert _clock_label(1441) == "第2日 00:01"
+    assert _clock_label(0) == "Day 1 00:00"
+    assert _clock_label(61) == "Day 1 01:01"
+    assert _clock_label(1441) == "Day 2 00:01"
 
 
 def test_create_experiment_starts_at_morning():

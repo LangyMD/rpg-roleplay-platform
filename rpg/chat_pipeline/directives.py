@@ -241,7 +241,7 @@ async def apply_player_directives_phase(
                         _err_txt = str(_res.error or _res.result or "unknown reason")
                         directive_updates.append(
                             _err_txt if _err_txt.startswith(_env.tool)
-                            else f"{_env.tool} 未生效: {_err_txt}"
+                            else f"{_env.tool} not applied: {_err_txt}"
                         )
                 command_tools_handled = True
         except Exception as _cmd_exc:

@@ -57,7 +57,7 @@ function isReviewGateError(err) {
   if (!err) return false;
   if (err.payload && err.payload.needs_review) return true;
   const msg = String((err && err.message) || '');
-  return /KB 复核|review_status|尚未复核|尚未通过/.test(msg);
+  return /KB 复核|KB review|review_status|尚未复核|尚未通过/i.test(msg);
 }
 
 /**

@@ -50,7 +50,7 @@ class PendingMixin:
     def approve_pending_write(self, index: int | None = None, *, id: str | None = None) -> str:
         item = self._pop_pending_write(id=id, index=index)
         if item is None:
-            return "待审写入不存在"
+            return "Failed: pending write not found"
         path = str(item.get("path", ""))
 
         # ── Phase 1 生图门控：generate_image pending 不走 _set_path，而是入队生图 ──
@@ -85,7 +85,7 @@ class PendingMixin:
     def reject_pending_write(self, index: int | None = None, *, id: str | None = None) -> str:
         item = self._pop_pending_write(id=id, index=index)
         if item is None:
-            return "待审写入不存在"
+            return "Failed: pending write not found"
         permissions = self.data.setdefault("permissions", {})
         permissions.setdefault("audit_log", []).append({
             "ts": now_iso(),
@@ -170,7 +170,7 @@ class PendingMixin:
             if hid and self.reject_hypothesis(hid):
                 return f"推测拒绝：{hid}"
             return f"推测拒绝失败（id 不存在）：{hid}"
-        return f"未知待审 op：{op}"
+        return f"Failed: unknown pending op: {op}"
 
     def add_pending_question(self, text: str, source: str = "gm", options: list | None = None) -> bool:
         if options is None:
@@ -301,12 +301,12 @@ def _approve_image_pending(item: dict) -> str:
         from platform_app.image_jobs import enqueue_image_generation
     except ImportError as exc:
         _log.warning("[pending] _approve_image_pending: import failed: %s", exc)
-        return f"失败：生图模块未就绪 ({exc})"
+        return f"Failed: image generation module is not ready ({exc})"
 
     value: dict = item.get("value") or {}
     prompt: str = str(value.get("prompt") or "").strip()
     if not prompt:
-        return "失败：pending 生图 prompt 为空，无法入队"
+        return "Failed: the pending image prompt is empty; cannot queue it"
 
     kind: str = str(value.get("kind") or "chat")
     api_id: str | None = value.get("api_id") or None
@@ -322,7 +322,7 @@ def _approve_image_pending(item: dict) -> str:
             pass
 
     if not user_id:
-        return "失败：pending 生图缺 user_id，无法入队"
+        return "Failed: the pending image request has no user_id; cannot queue it"
 
     try:
         result = enqueue_image_generation(
@@ -340,9 +340,9 @@ def _approve_image_pending(item: dict) -> str:
             image_id, user_id, kind,
         )
         return (
-            f"生图审批通过：image_id={image_id} 已入队（status=pending）。"
-            f"生成完成后通过 SSE 推送 URL。prompt={prompt!r}"
+            f"Image generation approved: image_id={image_id} queued (status=pending). "
+            f"The URL is pushed over SSE when it finishes. prompt={prompt!r}"
         )
     except Exception as exc:
         _log.exception("[pending] _approve_image_pending enqueue failed")
-        return f"失败：生图入队出错 — {exc}"
+        return f"Failed: could not queue image generation - {exc}"

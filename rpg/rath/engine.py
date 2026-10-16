@@ -106,7 +106,7 @@ def _trace(exp_id: int, msg: str, *, clock: int = 0) -> None:
 def _clock_label(total_min: int) -> str:
     d, rem = divmod(max(0, int(total_min)), 1440)
     h, m = divmod(rem, 60)
-    return f"第{d + 1}日 {h:02d}:{m:02d}"
+    return f"Day {d + 1} {h:02d}:{m:02d}"
 
 
 def _read_snapshot(db, save_id: int) -> tuple[dict, int]:

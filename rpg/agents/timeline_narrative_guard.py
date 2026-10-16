@@ -209,6 +209,18 @@ def _wd_name(idx: int) -> str:
     return _WD_NAME[idx % 7]
 
 
+# 玩家可见的 weekday_notice 用英文(检测本身只认中文正文;rel/星期名给 toast 时译出)。
+_WD_NAME_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+_REL_EN_BY_DELTA = {
+    0: "today", 1: "tomorrow", 2: "the day after tomorrow", 3: "three days from now",
+    -1: "yesterday", -2: "the day before yesterday", -3: "three days ago",
+}
+
+
+def _rel_en(rel: str) -> str:
+    return _REL_EN_BY_DELTA.get(_REL_DAY_DELTA.get(rel, 99), rel)
+
+
 def parse_today_weekday(text: str) -> int | None:
     """从文本里抓「今天=周X」的确切基准星期(0..6),没有返回 None。"""
     m = _TODAY_WD_RE.search(text or "")
@@ -312,9 +324,11 @@ def run_narrative_guards(response: str, player_message: str, state: Any) -> list
     try:
         wd = detect_weekday_violations((player_message or "") + "\n" + text)
         if wd:
-            errs = [{"rel": v["rel"], "claimed": v["claimed_name"], "expected": v["expected_name"]} for v in wd[:5]]
+            errs = [{"rel": _rel_en(v["rel"]), "claimed": _WD_NAME_EN[v["claimed"] % 7],
+                     "expected": _WD_NAME_EN[v["expected"] % 7]} for v in wd[:5]]
             _record_weekday_audit(state, errs)
-            events.append(("weekday_notice", {"base": wd[0]["base_name"], "errors": errs}))
+            base_idx = (wd[0]["expected"] - _REL_DAY_DELTA.get(wd[0]["rel"], 0)) % 7
+            events.append(("weekday_notice", {"base": _WD_NAME_EN[base_idx], "errors": errs}))
     except Exception as exc:
         _log.warning(f"[guards] weekday 跳过: {exc}")
     return events

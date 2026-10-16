@@ -31,7 +31,7 @@ const ME_ACTIVITY = [
   { ts: "Last month",     icon: "user",   text: "Signed up · became the first administrator", tag: "Account" },
 ];
 // 旧后端只给中文 tag 不给 type:兜底映射。
-const _ACT_TAG_TYPE = { "回合": "turn", "分支": "branch", "剧本": "script" };
+const _ACT_TAG_TYPE = { "回合": "turn", "分支": "branch", "剧本": "script", Turn: "turn", Branch: "branch", Script: "script" };
 const activityType = (a) => (a && (a.type || _ACT_TAG_TYPE[a.tag])) || "";
 
 function MeOverview() {

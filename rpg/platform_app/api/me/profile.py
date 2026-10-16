@@ -201,7 +201,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
         ).fetchall():
             save_title = r["save_title"] or "Untitled save"
             events.append({
-                "type": "turn", "tag": "回合", "icon": "play",
+                "type": "turn", "tag": "Turn", "icon": "play",
                 "text": f"Reached turn {int(r['turn_index'])} in \"{save_title}\"",
                 "sub": (r["summary"] or "")[:60],
                 "ts": r["created_at"].isoformat() if r["created_at"] else None,
@@ -226,7 +226,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
         ).fetchall():
             save_title = r["save_title"] or "Untitled save"
             events.append({
-                "type": "branch", "tag": "分支", "icon": "branch",
+                "type": "branch", "tag": "Branch", "icon": "branch",
                 "text": f"Opened a new branch at turn {int(r['turn_index'])} in \"{save_title}\"",
                 "sub": "",
                 "ts": r["created_at"].isoformat() if r["created_at"] else None,
@@ -249,7 +249,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
             if wc:
                 parts.append(f"{wc / 1000:.1f}k characters" if wc >= 10000 else f"{wc} characters")
             events.append({
-                "type": "script", "tag": "剧本", "icon": "book",
+                "type": "script", "tag": "Script", "icon": "book",
                 "text": f"Imported script \"{r['title'] or 'Untitled'}\"",
                 "sub": " · ".join(parts),
                 "ts": r["created_at"].isoformat() if r["created_at"] else None,

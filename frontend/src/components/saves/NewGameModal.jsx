@@ -326,7 +326,7 @@ function NewGameModal({ open, onClose, onConfirm, defaultScriptId = null }) {
       const msg = (e && (e.message || (e.payload && (e.payload.error || e.payload.detail)))) || t('saves.new_game.create_fail');
       setSubmitErr(msg);
       // 自动检测 KB 复核 gate, 翻出 inline fast-path 按钮("一键标记并重试")
-      if (msg && /KB 复核|review_status|尚未复核|尚未通过/.test(String(msg))) {
+      if ((e && e.payload && e.payload.needs_review) || (msg && /KB 复核|KB review|review_status|尚未复核|尚未通过/i.test(String(msg)))) {
         setReviewGateBlocked(true);
       }
     } finally {
