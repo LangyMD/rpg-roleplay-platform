@@ -106,9 +106,9 @@ class ClassifyCombatIntentUnit(unittest.TestCase):
         # 4 个选项必须覆盖:Disengage / 直接后退 / 切近战 / 原地不利
         opts_text = " ".join(block["options"])
         self.assertIn("Disengage", opts_text)
-        self.assertIn("借机", opts_text)
-        self.assertIn("近战", opts_text)
-        self.assertIn("不利", opts_text)
+        self.assertIn("opportunity attack", opts_text)
+        self.assertIn("melee", opts_text)
+        self.assertIn("disadvantage", opts_text)
 
     def test_clear_single_attack_in_encounter_not_gated(self):
         """单一明确的攻击不应被拦截,让 suggest_rule_actions 走 attack。"""

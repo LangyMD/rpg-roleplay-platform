@@ -79,7 +79,7 @@ class ExplicitAssignmentWinsOverAutoPhase(unittest.TestCase):
             "/set 时间改为三日后的子夜，地点改为雾港灯塔"
         )
         # "三日后的子夜" 不含 _phase_for_time 关键字 → 自动落『玩家分支』
-        self.assertEqual(s.data["world"]["timeline"]["current_phase"], "玩家分支",
+        self.assertEqual(s.data["world"]["timeline"]["current_phase"], "Player branch",
             "无显式 current_phase 时仍应走 _phase_for_time 自动推断")
 
     def test_set_explicit_phase_with_柏林_keyword_still_explicit_wins(self):

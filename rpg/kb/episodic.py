@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 import re
 
+from kb.en_terms import english_term_set, english_terms, find_english_term, is_english_term
+
 log = logging.getLogger(__name__)
 
 _EMBED_BATCH = 16  # 每次后处理最多补嵌入多少条(防一回合事件过多拖慢)
@@ -62,15 +64,26 @@ _KEYWORD_CORPUS_CAP = 3000  # 每次最多拉多少条事件参与打分(防超�
 
 def _query_grams(text: str) -> set[str]:
     """从查询文本提取 2/3 字 CJK gram(滑窗),去停用。中文无空格,滑窗 gram 是
-    无分词依赖的确定性折衷;常见 gram 靠停用表+语料 df 过滤双重压制。"""
-    grams: set[str] = set()
+    无分词依赖的确定性折衷;常见 gram 靠停用表+语料 df 过滤双重压制。
+    English words are tokenised alongside (see kb/en_terms.py): lowercased, stopword-filtered,
+    naively de-pluralised stems."""
+    return set(_query_terms(text))
+
+
+def _query_terms(text: str) -> dict[str, int]:
+    """{term: weight}. CJK gram weight = its length (2 or 3). English term weight = 3 when it
+    looks like a proper noun (capitalised mid-sentence, the analogue of a 3-char CJK name),
+    else 2 -- so, like a lone CJK bigram, a lone common English word never recalls on its own."""
+    terms: dict[str, int] = {}
     for run in _CJK_RUN.findall(text or ""):
         for n in (2, 3):
             for i in range(len(run) - n + 1):
                 g = run[i:i + n]
                 if g not in _STOP_GRAMS:
-                    grams.add(g)
-    return grams
+                    terms[g] = n
+    for stem, proper in english_terms(text).items():
+        terms[stem] = 3 if proper else 2
+    return terms
 
 
 def _score_events(query_text: str, events: list[dict]) -> list[tuple[int, dict]]:
@@ -79,9 +92,10 @@ def _score_events(query_text: str, events: list[dict]) -> list[tuple[int, dict]]
     df 过滤(穷人版 IDF):gram 在语料 >25% 事件中出现 → 太常见不计分(该档全程都在
     沼泽,「沼泽」不携带区分信息;真正稀有的人名/物名才是召回信号)。
     阈值宁漏勿误:单个二字 gram 永不足以召回(太弱),单个三字 gram(人名典型长度)可以。
+    English terms match on whole-word stems (not substrings) with the weights from _query_terms.
     """
-    grams = _query_grams(query_text)
-    if not grams or not events:
+    terms = _query_terms(query_text)
+    if not terms or not events:
         return []
     texts: list[str] = []
     for e in events:
@@ -95,27 +109,33 @@ def _score_events(query_text: str, events: list[dict]) -> list[tuple[int, dict]]
         elif p:
             parts.append(str(p))
         texts.append(" ".join(parts))
+    has_en = any(is_english_term(g) for g in terms)
+    en_sets = [english_term_set(t) for t in texts] if has_en else [set()] * len(texts)
+
+    def _hit(g: str, i: int) -> bool:
+        return g in en_sets[i] if is_english_term(g) else g in texts[i]
+
     n = len(texts)
     df_cap = max(2, int(n * 0.25))
     rare: dict[str, int] = {}
-    for g in grams:
-        df = sum(1 for t in texts if g in t)
+    for g in terms:
+        df = sum(1 for i in range(n) if _hit(g, i))
         if 0 < df <= df_cap:
             rare[g] = df
     if not rare:
         return []
     scored: list[tuple[int, dict]] = []
-    for t, e in zip(texts, events):
-        hit = [g for g in rare if g in t]
+    for i, e in enumerate(events):
+        hit = [g for g in rare if _hit(g, i)]
         if not hit:
             continue
         # 三字 gram 内嵌的二字 gram 不重复计分(「康拉德」命中则「康拉」「拉德」不再加)
         hit.sort(key=len, reverse=True)
         kept: list[str] = []
         for g in hit:
-            if not any(g in k for k in kept):
+            if is_english_term(g) or not any(g in k for k in kept if not is_english_term(k)):
                 kept.append(g)
-        score = sum(len(g) for g in kept)
+        score = sum(terms[g] for g in kept)
         if score >= _KEYWORD_SCORE_FLOOR:
             scored.append((score, e))
     scored.sort(key=lambda se: (-se[0], -int(se[1].get("id") or 0)))
@@ -189,7 +209,7 @@ def _excerpt_around_match(text: str, query_text: str, *, window: int = 120) -> s
     grams = sorted(_query_grams(query_text), key=lambda g: (-len(g), g))
     pos = -1
     for g in grams:
-        pos = text.find(g)
+        pos = find_english_term(text, g) if is_english_term(g) else text.find(g)
         if pos >= 0:
             break
     if pos < 0:
