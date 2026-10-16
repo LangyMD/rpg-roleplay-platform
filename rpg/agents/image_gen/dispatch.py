@@ -83,7 +83,7 @@ def generate_image_bytes(
 
     if normalized == "anthropic":
         # Anthropic 无生图能力,显式拒绝(比打到 OpenAI 兼容端点报 404 更清楚)。
-        raise ImageGenError("anthropic 不支持图像生成,请改用 OpenAI 兼容 / 豆包 / 通义万相 / Vertex 的生图模型")
+        raise ImageGenError("anthropic does not support image generation. Use an image model from an OpenAI-compatible provider, Doubao, Tongyi Wanxiang or Vertex instead")
 
     # 其余一律按 **OpenAI 兼容** 处理:OpenAI 官方 / 各类中转站 / OpenRouter / 硅基(guiji)/
     # deepseek 等。这是平台的统一假设(非 vertex/anthropic 的 provider 都走 openai_compat),

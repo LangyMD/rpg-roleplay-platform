@@ -56,7 +56,7 @@ def extend_extraction(
     # 已覆盖 → 幂等跳过
     if want_to <= through:
         return {"ok": True, "skipped": True, "extracted_through": through,
-                "reason": "已覆盖目标进度"}
+                "reason": "target progress already covered"}
 
     frm = through + 1
     result = run_llm_extraction(

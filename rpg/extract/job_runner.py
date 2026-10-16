@@ -21,10 +21,10 @@ from platform_app.import_pipeline import JobController
 
 # 阶段定义(stages JSONB 初始化用)。前端按 id 显示 label
 _STAGES = [
-    {"id": "seed", "label": "种子词表 (Pass 0)", "status": "pending"},
-    {"id": "arc_extract", "label": "弧段提取 (Pass 1)", "status": "pending"},
-    {"id": "resolve", "label": "实体消歧聚合 (Pass 2)", "status": "pending"},
-    {"id": "embed", "label": "嵌入入库 (Pass 3)", "status": "pending"},
+    {"id": "seed", "label": "Seed vocabulary (Pass 0)", "status": "pending"},
+    {"id": "arc_extract", "label": "Arc extraction (Pass 1)", "status": "pending"},
+    {"id": "resolve", "label": "Entity resolution (Pass 2)", "status": "pending"},
+    {"id": "embed", "label": "Embedding (Pass 3)", "status": "pending"},
 ]
 
 
@@ -93,7 +93,7 @@ def schedule_llm_extraction(user_id: int, script_id: int,
             ).fetchone()
             if dup:
                 return {"ok": True, "job_id": dup["job_id"], "reused": True}
-            raise RuntimeError("无法创建也无法找到活跃的 llm_extract 任务")
+            raise RuntimeError("Could not create or find an active llm_extract job")
 
     th = threading.Thread(
         target=_run, args=(job_id, user_id, script_id, options), daemon=True,
@@ -195,9 +195,9 @@ def _run(job_id: str, user_id: int, script_id: int, options: dict[str, Any]) -> 
         #   anchors_only    → rebuild_timeline_from_db(chapter_facts → anchors 重算)
         # 前端面板逻辑:把 seed/arc_extract/resolve 标 done(用户看着像跳过),只点亮 resolve/embed
         REBUILD_SCOPES = {
-            "embed_only":     ("embed",   "向量重新嵌入"),
-            "worldbook_only": ("resolve", "世界书重建"),
-            "anchors_only":   ("resolve", "时间线重建"),
+            "embed_only":     ("embed",   "Re-embedding vectors"),
+            "worldbook_only": ("resolve", "Worldbook rebuild"),
+            "anchors_only":   ("resolve", "Timeline rebuild"),
         }
         if scope in REBUILD_SCOPES:
             target_stage, action_label = REBUILD_SCOPES[scope]
@@ -250,7 +250,7 @@ def _run(job_id: str, user_id: int, script_id: int, options: dict[str, Any]) -> 
             if not res.get("ok"):
                 _set_stage_status(target_stage, "error")
                 ctl.update(status="failed",
-                           error=f"{action_label}失败: {res.get('error', '未知错误')}",
+                           error=f"{action_label} failed: {res.get('error', 'unknown error')}",
                            stages=_stages_state,
                            before_count=before_count,
                            after_count=after_count,
@@ -323,7 +323,7 @@ def _run(job_id: str, user_id: int, script_id: int, options: dict[str, Any]) -> 
                 db.execute("update import_jobs set finished_at=now() where job_id=%s", (job_id,))
         else:
             # needs_confirm / quota_exceeded / error
-            err_msg = str(result.get("message") or result.get("error") or "未知错误")
+            err_msg = str(result.get("message") or result.get("error") or "unknown error")
             ctl.update(status="failed", error=err_msg)
             with connect() as db:
                 db.execute("update import_jobs set finished_at=now() where job_id=%s", (job_id,))

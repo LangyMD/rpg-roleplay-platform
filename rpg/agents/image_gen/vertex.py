@@ -37,8 +37,8 @@ def generate(
     credentials, project_id = load_sa_credentials(user_id)
     if credentials is None or project_id is None:
         raise ImageGenError(
-            "vertex SA unavailable — 该用户无可用 Service Account"
-            "（生产模式需在 设置 → API & 模型 上传 SA）"
+            "vertex SA unavailable: this user has no usable Service Account"
+            " (in production, upload the SA under Settings → API & Models)"
         )
 
     client = genai.Client(

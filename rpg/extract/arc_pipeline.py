@@ -160,7 +160,7 @@ def run_arc_extraction(
         sql += " order by chapter_index"
         chapters = [dict(r) for r in db.execute(sql, tuple(args)).fetchall()]
     if not chapters:
-        return {"ok": False, "error": "无可提取章节"}
+        return {"ok": False, "error": "No chapters to extract"}
 
     # 2) 切弧
     arcs = split_arcs(chapters, target_arcs=target_arcs)
@@ -223,7 +223,7 @@ def run_arc_extraction(
                 _t.sleep(0.5 * (2 ** attempt))
                 continue
             if not getattr(ex, "raw_ok", True):
-                _record_failure(idx, arc, getattr(ex, "error", "") or "模型输出不可用")
+                _record_failure(idx, arc, getattr(ex, "error", "") or "model output unusable")
                 return idx, None
             return idx, ex
         return idx, None
@@ -260,10 +260,10 @@ def run_arc_extraction(
     # 第一条失败原因(已分类、已脱敏),带上是哪个提取模型 —— 给阶段条目 / job.error 看
     first_error = ""
     if failed_arcs:
-        first_error = f"{min(failed_arcs)[1].split(': ', 1)[-1]}(提取模型 {api_id}/{model})"
+        first_error = f"{min(failed_arcs)[1].split(': ', 1)[-1]} (extraction model {api_id}/{model})"
     if not extracts:
         return {"ok": False,
-                "error": "全部弧段 LLM 提取失败" + (f":{first_error}" if first_error else ""),
+                "error": "LLM extraction failed for every arc" + (f": {first_error}" if first_error else ""),
                 "first_error": first_error}
 
     # 4.5) era fallback:Pass 0 共识门严会返空,从 N 弧 Pass 1 二次共识(要求 ≥ 25% 弧投同票)

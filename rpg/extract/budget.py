@@ -66,7 +66,7 @@ def estimate(db, script_id: int, *, model: str = "gemini-3.5-flash",
     row = db.execute(sql, tuple(args)).fetchone()
     total = int(row["c"]) if row else 0
     if total <= 0:
-        return {"ok": False, "error": "无可提取章节", "chapters": 0}
+        return {"ok": False, "error": "No chapters to extract", "chapters": 0}
 
     price = _model_price(model)
 
@@ -76,14 +76,14 @@ def estimate(db, script_id: int, *, model: str = "gemini-3.5-flash",
         seed_calls = min(_SEED_SAMPLE, total)
         in_tok = n_arcs * _PER_ARC_INPUT + seed_calls * _SEED_PER_CALL_INPUT
         out_tok = n_arcs * _PER_ARC_OUTPUT + seed_calls * _SEED_PER_CALL_OUTPUT
-        unit_label = f"{n_arcs} 弧"
+        unit_label = f"{n_arcs} arcs"
         chapters = total
     else:
         chapters = min(total, sample_chapters) if sample_chapters else total
         seed_calls = min(_SEED_SAMPLE, chapters)
         in_tok = chapters * _PER_CH_INPUT + seed_calls * _SEED_PER_CALL_INPUT
         out_tok = chapters * _PER_CH_OUTPUT + seed_calls * _SEED_PER_CALL_OUTPUT
-        unit_label = f"{chapters} 章"
+        unit_label = f"{chapters} chapters"
         n_arcs = 0
 
     usd = (in_tok / 1_000_000) * price["in"] + (out_tok / 1_000_000) * price["out"]
@@ -104,8 +104,8 @@ def estimate(db, script_id: int, *, model: str = "gemini-3.5-flash",
         "est_usd": round(usd, 3),
         "batch_discount": batch_discount,
         "note": (
-            f"约 ${round(usd,2)}({unit_label} × {model})。"
-            + ("⚠️ frontier 档,建议换 flash/haiku" if price["tier"] == "frontier" else "")
+            f"About ${round(usd,2)} ({unit_label} × {model})."
+            + (" ⚠️ frontier tier; consider a flash/haiku model" if price["tier"] == "frontier" else "")
         ),
     }
 

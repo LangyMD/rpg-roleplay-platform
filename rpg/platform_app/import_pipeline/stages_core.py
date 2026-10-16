@@ -11,6 +11,7 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from agents.provider_errors import plain_error_summary
+from core.token_estimate import cjk_chars_to_budget
 
 from ..db import connect
 from ..perms import script_owned
@@ -105,7 +106,7 @@ def _stage_phase_digests(script_id: int) -> int:
 
         by_phase: dict[str, list[dict]] = {}
         for r in rows:
-            phase = (r["story_phase"] or "").strip() or "未分组"
+            phase = (r["story_phase"] or "").strip() or "Ungrouped"
             by_phase.setdefault(phase, []).append(dict(r))
 
         # 重跑前清表(避免重复 import 时残留旧 phase_label)
@@ -119,7 +120,7 @@ def _stage_phase_digests(script_id: int) -> int:
             for c in chapters[:50]:
                 s = (c.get("summary") or "").strip()
                 if s:
-                    summary_parts.append(f"第{c['chapter']}章 · {s[:120]}")
+                    summary_parts.append(f"Ch.{c['chapter']} · {s[:cjk_chars_to_budget(s, 120)]}")
             summary = "\n".join(summary_parts)[:3000]
             tls = [c.get("story_time_label") or "" for c in chapters if c.get("story_time_label")]
             tl_start = tls[0] if tls else ""
@@ -381,7 +382,7 @@ def _stage_canon_extract(
                 ctl.update(warnings={
                     "stage": "canon_extract",
                     "exception": "MissingBook",
-                    "message": "无 book 记录,canon/anchors/worldbook 跳过",
+                    "message": "No book record; skipped canon/anchors/worldbook",
                 })
             except Exception:
                 pass
@@ -412,7 +413,7 @@ def _stage_canon_extract(
         _log.warning("[canon_extract] run_arc_extraction raised: %s", exc, exc_info=True)
         # 模型调用的异常都被 extract_chapter 吞成 raw_ok=False(原因走 result["error"]),能冒到这里的
         # 是本地异常(读章节 / 消歧写库 / 嵌入):不进服务商分类器,也不挂提取模型名。
-        _note_stage_error(ctl, "canon_extract", f"规范实体提取中途出错:{plain_error_summary(exc)}")
+        _note_stage_error(ctl, "canon_extract", f"Canon entity extraction failed partway: {plain_error_summary(exc)}")
         try:
             ctl.update(warnings={
                 "stage": "canon_extract",
@@ -568,7 +569,7 @@ def _backfill_chapter_facts_events_from_canon(script_id: int) -> int:
                 elif background:
                     hint_parts.append(background[:120])
                 if aliases[:3]:
-                    hint_parts.append(f"别名: {', '.join(aliases[:3])}")
+                    hint_parts.append(f"aliases: {', '.join(aliases[:3])}")
                 hint = " / ".join(hint_parts)
 
                 # 事件文本:type 不同模板不同
