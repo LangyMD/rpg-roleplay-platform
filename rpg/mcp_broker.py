@@ -86,10 +86,10 @@ class MCPServerConn:
                 text=False,  # 自己解码，避免行边界问题
             )
         except FileNotFoundError:
-            self._init_error = f"找不到可执行文件: {self.command}"
+            self._init_error = f"executable not found: {self.command}"
             return False
         except Exception as e:
-            self._init_error = f"启动失败: {e}"
+            self._init_error = f"failed to start: {e}"
             return False
 
         # 启动读线程
@@ -112,7 +112,7 @@ class MCPServerConn:
             self.server_info = init_result.get("serverInfo", {})
             self._notify("notifications/initialized", {})
         except Exception as e:
-            self._init_error = f"initialize 失败: {e}"
+            self._init_error = f"initialize failed: {e}"
             self.stop()
             return False
 
@@ -150,7 +150,7 @@ class MCPServerConn:
     # ── JSON-RPC 调用 ─────────────────────────────────────────────
     def call_tool(self, name: str, arguments: dict[str, Any], timeout: int = DEFAULT_CALL_TIMEOUT) -> dict[str, Any]:
         if not self.is_alive():
-            raise RuntimeError(f"MCP server {self.server_id} 未启动")
+            raise RuntimeError(f"MCP server {self.server_id} is not running")
         return self._request("tools/call", {"name": name, "arguments": arguments}, timeout=timeout)
 
     def list_tools(self, refresh: bool = False, timeout: int = DEFAULT_INIT_TIMEOUT) -> list[dict[str, Any]]:
@@ -174,7 +174,7 @@ class MCPServerConn:
         # 在等的请求数;_pending 仅瞬时存放已到达待 pop 的响应)
         with self._pending_lock:
             if len(self._waiting) >= _MAX_PENDING:
-                raise RuntimeError(f"MCP server {self.server_id} 待处理请求已达上限 {_MAX_PENDING}，拒绝新请求")
+                raise RuntimeError(f"MCP server {self.server_id} has reached the pending-request limit {_MAX_PENDING}; new requests are refused")
         payload = {"jsonrpc": "2.0", "id": req_id, "method": method, "params": params}
         # 登记为"仍在等待":reader 只为在此集合中的 req_id 存响应
         with self._pending_lock:
@@ -186,9 +186,9 @@ class MCPServerConn:
                 while req_id not in self._pending:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
-                        raise TimeoutError(f"等待 {method} 响应超时")
+                        raise TimeoutError(f"timed out waiting for the {method} response")
                     if self._closed or not self.is_alive():
-                        raise RuntimeError("MCP server 进程退出")
+                        raise RuntimeError("MCP server process exited")
                     self._pending_lock.wait(timeout=min(remaining, 1.0))
                 resp = self._pending.pop(req_id)
         finally:
@@ -282,14 +282,14 @@ def start_server(server_id: str) -> dict[str, Any]:
             server_config = s
             break
     if not server_config:
-        return {"ok": False, "error": f"server_id 不存在: {server_id}"}
+        return {"ok": False, "error": f"server_id does not exist: {server_id}"}
     if not server_config.get("enabled"):
-        return {"ok": False, "error": "server 未启用"}
+        return {"ok": False, "error": "server is not enabled"}
 
     # ── 命令白名单校验（server 模式防命令注入）───────────────────
     command = server_config.get("command", "")
     if not command or not isinstance(command, str):
-        return {"ok": False, "error": "command 不能为空"}
+        return {"ok": False, "error": "command must not be empty"}
     from core.config import require_auth
     if require_auth():
         cmd_base = command.strip().split()[0] if command else ""
@@ -299,8 +299,8 @@ def start_server(server_id: str) -> dict[str, Any]:
         if cmd_name not in _SAFE_MCP_COMMANDS:
             return {
                 "ok": False,
-                "error": f"MCP command 不在白名单中: {cmd_name}。"
-                         f"允许的命令: {', '.join(sorted(_SAFE_MCP_COMMANDS))}",
+                "error": f"MCP command is not on the allowlist: {cmd_name}. "
+                         f"Allowed commands: {', '.join(sorted(_SAFE_MCP_COMMANDS))}",
             }
     # ──────────────────────────────────────────────────────────────
 
@@ -325,7 +325,7 @@ def start_server(server_id: str) -> dict[str, Any]:
         )
         ok = conn.start()
         if not ok:
-            return {"ok": False, "error": conn._init_error or "启动失败", "stderr": conn.last_stderr[-10:]}
+            return {"ok": False, "error": conn._init_error or "failed to start", "stderr": conn.last_stderr[-10:]}
         _RUNNING[server_id] = conn
         return {
             "ok": True,
@@ -505,12 +505,12 @@ def call_tool(server_id: str, tool_name: str, arguments: dict[str, Any], timeout
         start_result = start_server(server_id)  # start_server 内部已持 _LOCK，不能在锁内调用
         if not start_result["ok"]:
             _audit_call(server_id, tool_name, user_id, False, start_result.get("error", "start failed"))
-            return {"ok": False, "error": start_result.get("error", "无法启动 server")}
+            return {"ok": False, "error": start_result.get("error", "could not start the server")}
         with _LOCK:
             conn = _RUNNING.get(server_id)
         if not conn:
             _audit_call(server_id, tool_name, user_id, False, "start_server 未写入 _RUNNING")
-            return {"ok": False, "error": "无法获取 server 连接"}
+            return {"ok": False, "error": "could not get a server connection"}
     try:
         result = conn.call_tool(tool_name, arguments or {}, timeout=timeout)
         _audit_call(server_id, tool_name, user_id, True)

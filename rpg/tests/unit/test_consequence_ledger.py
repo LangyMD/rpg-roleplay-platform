@@ -365,7 +365,7 @@ class ScheduleConsequenceToolTests(unittest.TestCase):
     def test_missing_due_rejected_by_executor_no_crash(self):
         r = self._call({"text": "没有期限"})
         self.assertFalse(r.ok)
-        self.assertIn("失败", r.result or r.error or "")
+        self.assertIn("Failed", r.result or r.error or "")
 
     def test_blocked_from_mcp_call_origin(self):
         """origin 白名单:mcp_call 不在合法值里,应被 dispatcher 拦截。"""

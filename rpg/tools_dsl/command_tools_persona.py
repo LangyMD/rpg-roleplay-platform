@@ -32,7 +32,7 @@ def _t_create_persona(user_id: int, args: dict) -> str:
     name = (args.get("name") or "").strip()
     summary = (args.get("summary") or "").strip()
     if not name:
-        return "失败: name 为空"
+        return "Failed: name is empty"
     payload = {
         "name": name,
         "personality": summary,
@@ -44,9 +44,9 @@ def _t_create_persona(user_id: int, args: dict) -> str:
     try:
         from platform_app.user_cards import upsert_persona
         row = upsert_persona(user_id, payload)
-        return f"persona 创建: id={row.get('id')} name={name} slug={row.get('slug')}"
+        return f"Persona created: id={row.get('id')} name={name} slug={row.get('slug')}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_delete_persona(user_id: int, args: dict) -> str:
@@ -63,17 +63,17 @@ def _t_delete_persona(user_id: int, args: dict) -> str:
                 (int(pid), user_id),
             ).fetchone()
             if not row:
-                return f"失败: persona {pid} 不属于当前用户或不存在"
-        return f"persona {pid} 已删除"
+                return f"Failed: persona {pid} does not belong to the current user or does not exist"
+        return f"Persona {pid} deleted"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_create_character_card(user_id: int, args: dict) -> str:
     name = (args.get("name") or "").strip()
     summary = (args.get("summary") or "").strip()
     if not name:
-        return "失败: name 为空"
+        return "Failed: name is empty"
     payload = {
         "name": name,
         "personality": summary,
@@ -89,9 +89,9 @@ def _t_create_character_card(user_id: int, args: dict) -> str:
     try:
         from platform_app.user_cards import upsert_user_card
         row = upsert_user_card(user_id, payload)
-        return f"角色卡创建: id={row.get('id')} name={name} slug={row.get('slug')}"
+        return f"Character card created: id={row.get('id')} name={name} slug={row.get('slug')}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_delete_character_card(user_id: int, args: dict) -> str:
@@ -108,10 +108,10 @@ def _t_delete_character_card(user_id: int, args: dict) -> str:
                 (int(cid), user_id),
             ).fetchone()
             if not row:
-                return f"失败: card {cid} 不属于当前用户或不存在"
-        return f"角色卡 {cid} 已删除"
+                return f"Failed: card {cid} does not belong to the current user or does not exist"
+        return f"Character card {cid} deleted"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_clone_npc_to_user_card(user_id: int, args: dict) -> str:
@@ -126,16 +126,16 @@ def _t_clone_npc_to_user_card(user_id: int, args: dict) -> str:
     sid = args.get("script_id")
     card_id = args.get("card_id")
     if not sid:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     if not card_id:
-        return "失败: card_id 必填(先用 list_script_npcs 拿到 NPC 角色卡 id)"
+        return "Failed: card_id is required (get the NPC character card id with list_script_npcs first)"
     try:
         from platform_app import knowledge as _know
         from platform_app.user_cards import upsert_user_card
         npc = _know.get_character_card(user_id, int(sid), int(card_id))  # owner-or-subscriber 鉴权
         if not npc:
-            return f"失败: 剧本 #{int(sid)} 内找不到 NPC 角色卡 #{int(card_id)}"
-        name = (npc.get("name") or npc.get("full_name") or "").strip() or "未命名角色"
+            return f"Failed: NPC character card #{int(card_id)} not found in script #{int(sid)}"
+        name = (npc.get("name") or npc.get("full_name") or "").strip() or "Unnamed character"
         tags = list(npc.get("tags") or [])
         if "源自 NPC" not in tags:
             tags.append("源自 NPC")
@@ -162,12 +162,12 @@ def _t_clone_npc_to_user_card(user_id: int, args: dict) -> str:
             "enabled": True,
         }
         row = upsert_user_card(user_id, payload)
-        return (f"已克隆为用户角色卡: id={row.get('id')} name={name} "
-                f"slug={row.get('slug')}(独立副本,可在「角色卡」页编辑/换头像)")
+        return (f"Cloned into a user character card: id={row.get('id')} name={name} "
+                f"slug={row.get('slug')} (an independent copy; edit it or change its avatar on the 'Character cards' page)")
     except ValueError as exc:
-        return f"失败 (权限): {exc}"
+        return f"Failed (permission): {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def register_persona_tools() -> None:
@@ -175,11 +175,11 @@ def register_persona_tools() -> None:
 
     user_specs = [
         # task 87 Phase 7 安全审查 — user 级 mutate (跨 save 影响) 全部禁 LLM:
-        ("create_persona", "新建一个用户 persona (玩家身份模板)。summary 写入 personality 字段。",
+        ("create_persona", "Create a user persona (a player identity template). summary is written to the personality field.",
          {"type": "object",
           "properties": {
               "name": {"type": "string"},
-              "summary": {"type": "string", "description": "性格简介,写入 personality 字段"},
+              "summary": {"type": "string", "description": "Short personality summary, written to the personality field"},
               "role": {"type": "string"},
               "background": {"type": "string"},
               "appearance": {"type": "string"},
@@ -187,21 +187,21 @@ def register_persona_tools() -> None:
           },
           "required": []},  # handler 自行校验并返回"name 为空"友好消息
          _t_create_persona, _USER_MUTATE, False),  # 跨 save 持久资源;控制台助手退役后放开酒馆/游戏 agent
-        ("delete_persona", "永久删除 persona",
+        ("delete_persona", "Permanently delete a persona",
          {"type": "object", "properties": {"persona_id": {"type": "integer"}}, "required": ["persona_id"]},
          _t_delete_persona, _USER_DEST, True),
         ("create_character_card",
-         "新建一张可复用角色卡片 (跨 save 共享)。summary 写入 personality 字段。\n"
-         "**不是** 改剧情内玩家名 (那是 set_player_name, 助手不管)。",
+         "Create a reusable character card (shared across saves). summary is written to the personality field.\n"
+         "This is **not** for renaming the player inside the story (that is set_player_name, which the assistant does not handle).",
          {"type": "object",
           "properties": {
-              "name": {"type": "string", "description": "角色名 (例: 晓星 / 阿狸)"},
-              "summary": {"type": "string", "description": "性格简介 (例: 开朗元气 / 冷静腹黑)"},
-              "identity": {"type": "string", "description": "身份背景 1 句话 (例: 女高中生穿越者)"},
-              "appearance": {"type": "string", "description": "外貌特征"},
-              "speech_style": {"type": "string", "description": "说话方式"},
-              "current_status": {"type": "string", "description": "当前状态"},
-              "secrets": {"type": "string", "description": "未公开秘密"},
+              "name": {"type": "string", "description": "Character name (e.g. Stella / Ari)"},
+              "summary": {"type": "string", "description": "Short personality summary (e.g. cheerful and energetic / calm and scheming)"},
+              "identity": {"type": "string", "description": "One-sentence identity/background (e.g. a high-school girl transmigrator)"},
+              "appearance": {"type": "string", "description": "Appearance"},
+              "speech_style": {"type": "string", "description": "Way of speaking"},
+              "current_status": {"type": "string", "description": "Current status"},
+              "secrets": {"type": "string", "description": "Undisclosed secrets"},
               "aliases": {"type": "array", "items": {"type": "string"}},
               "sample_dialogue": {"type": "array", "items": {"type": "string"}},
               "tags": {"type": "array", "items": {"type": "string"}},
@@ -209,17 +209,17 @@ def register_persona_tools() -> None:
           # handler 自行校验 name 为空,返回"name 为空"友好消息
           "required": []},
          _t_create_character_card, _USER_MUTATE, False),  # 跨 save;控制台助手退役后放开酒馆/游戏 agent
-        ("delete_character_card", "永久删除角色卡",
+        ("delete_character_card", "Permanently delete a character card",
          {"type": "object", "properties": {"card_id": {"type": "integer"}}, "required": ["card_id"]},
          _t_delete_character_card, _USER_DEST, True),
         ("clone_npc_to_user_card",
-         "把(自有或已订阅共享的)剧本里的 NPC 角色卡完整复制成当前用户的角色卡(独立副本,"
-         "含全名/背景/外貌/性格/语气/范例对白/头像)。共享剧本无编辑权限也能克隆。"
-         "先用 list_scripts 拿 script_id、list_script_npcs 拿 card_id。",
+         "Copy an NPC character card from a script (owned, or shared and subscribed) into a character card of the current user (an independent copy "
+         "including full name / background / appearance / personality / tone / sample dialogue / avatar). Shared scripts can be cloned even without edit permission. "
+         "First get script_id with list_scripts and card_id with list_script_npcs.",
          {"type": "object",
           "properties": {
-              "script_id": {"type": "integer", "description": "NPC 所在剧本 id"},
-              "card_id": {"type": "integer", "description": "NPC 角色卡 id(来自 list_script_npcs)"},
+              "script_id": {"type": "integer", "description": "Id of the script the NPC belongs to"},
+              "card_id": {"type": "integer", "description": "NPC character card id (from list_script_npcs)"},
           },
           "required": ["script_id", "card_id"]},
          _t_clone_npc_to_user_card, _USER_MUTATE, False),  # 与 create_character_card 同策略;控制台助手退役后放开酒馆/游戏 agent
@@ -250,14 +250,14 @@ def register_persona_tools() -> None:
             )
             return json.dumps(result, ensure_ascii=False, default=str)
         except Exception as exc:
-            return f"失败: {type(exc).__name__}: {exc}"
+            return f"Failed: {type(exc).__name__}: {exc}"
 
     def _t_refine_card_draft(user_id: int, args: dict) -> str:
         try:
             import character_card_generator as ccg
             prev = args.get("previous_draft")
             if not isinstance(prev, dict):
-                return "失败: previous_draft 必须是对象"
+                return "Failed: previous_draft must be an object"
             result = ccg.refine_character_card_draft(
                 previous_draft=prev,
                 feedback=str(args.get("feedback") or ""),
@@ -267,27 +267,27 @@ def register_persona_tools() -> None:
             )
             return json.dumps(result, ensure_ascii=False, default=str)
         except Exception as exc:
-            return f"失败: {type(exc).__name__}: {exc}"
+            return f"Failed: {type(exc).__name__}: {exc}"
 
     creative_specs = [
         ("generate_character_card_draft",
-         "把简短人设描述扩展为符合当前剧本规范的角色卡 candidate (不写 DB,只返回 draft+validations)",
+         "Expand a short persona description into a character card candidate that fits the current script's conventions (does not write to the DB; returns only draft+validations)",
          {"type": "object",
           "properties": {
-              "brief": {"type": "string", "description": "用户简短描述,如 '20 岁女法师,流亡贵族'"},
-              "script_id": {"type": "integer", "description": "目标剧本 id (用于查重/phase/风格)"},
+              "brief": {"type": "string", "description": "The user's short description, e.g. '20-year-old female mage, exiled noble'"},
+              "script_id": {"type": "integer", "description": "Target script id (for duplicate checks / phase / style)"},
               "kind": {"type": "string", "enum": ["user", "script"], "default": "user"},
-              "phase": {"type": "string", "description": "目标 phase 标签,空则由 DB 推断"},
+              "phase": {"type": "string", "description": "Target phase label; inferred from the DB when empty"},
               "timeout_sec": {"type": "integer", "default": 30},
           },
           "required": ["brief"]},
          _t_generate_card_draft),
         ("refine_character_card_draft",
-         "用 previous_draft + 用户反馈重新生成卡片 candidate (走同一 5 层 validator)",
+         "Regenerate the card candidate from previous_draft + user feedback (goes through the same 5-layer validator)",
          {"type": "object",
           "properties": {
-              "previous_draft": {"type": "object", "description": "上一版 draft (generate 返回的 draft 字段)"},
-              "feedback": {"type": "string", "description": "用户反馈,如 '把性格改得更内向'"},
+              "previous_draft": {"type": "object", "description": "The previous draft (the draft field returned by generate)"},
+              "feedback": {"type": "string", "description": "User feedback, e.g. 'make the personality more introverted'"},
               "script_id": {"type": "integer"},
               "timeout_sec": {"type": "integer", "default": 30},
           },

@@ -41,7 +41,7 @@ def test_bind_endpoint_uses_shared_layer_and_memory_sync():
 
 def test_tool_registered_with_anti_hallucination_hint():
     assert 'name="switch_tavern_persona_card"' in TT
-    assert "只在叙事里描写切换而不调用它" in TT, "描述必须点破幻觉切换(本 bug 的直接病灶)"
+    assert "describing the switch in narration without calling it changes nothing" in TT, "描述必须点破幻觉切换(本 bug 的直接病灶)"
     assert "apply_persona_card_to_chat" in TT, "工具与 UI 同一写穿层"
 
 
@@ -80,9 +80,9 @@ def test_tool_ambiguity_refuses_to_guess():
         out = m._t_switch_tavern_persona_card(_S(), {"card": "杭雁菱(旧"})
         # 子串命中唯一 → 直接切;换个真歧义查询
         out2 = m._t_switch_tavern_persona_card(_S(), {"card": "杭"})
-        assert "歧义" in out2 and "#1" in out2 and "#2" in out2
+        assert "Ambiguous" in out2 and "#1" in out2 and "#2" in out2
         # 精确名命中唯一
         with mock.patch("platform_app.tavern_persona.apply_persona_card_to_chat",
                         lambda db, u, c, card: {"name": card["name"], "role": "", "background": "", "appearance": ""}):
             out3 = m._t_switch_tavern_persona_card(_S(), {"card": "杭雁菱"})
-            assert "已切换玩家角色卡" in out3 and "杭雁菱" in out3
+            assert "Switched the player character card" in out3 and "杭雁菱" in out3

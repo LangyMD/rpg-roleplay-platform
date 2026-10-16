@@ -83,14 +83,14 @@ def _t_query_memory(state: Any, args: dict) -> str:
         if len(out) >= limit:
             break
     if not out:
-        return "(无匹配)"
+        return "(no matches)"
     return json.dumps(out, ensure_ascii=False, indent=2)
 
 
 def _t_get_user_variables(state: Any, args: dict) -> str:
     variables = (state.data.get("worldline") or {}).get("user_variables") or {}
     if not variables:
-        return "(无 user_variables)"
+        return "(no user_variables)"
     out = {k: v.get("value") for k, v in variables.items()}
     return json.dumps(out, ensure_ascii=False, indent=2)
 
@@ -152,9 +152,9 @@ def _t_list_my_personas(user_id: int, args: dict) -> str:
                 "order by updated_at desc limit 30",
                 (user_id,),
             ).fetchall() or []
-        return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2) if rows else "(无 persona)"
+        return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2) if rows else "(no personas)"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_list_my_character_cards(user_id: int, args: dict) -> str:
@@ -168,9 +168,9 @@ def _t_list_my_character_cards(user_id: int, args: dict) -> str:
                 "order by updated_at desc limit 50",
                 (user_id,),
             ).fetchall() or []
-        return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2) if rows else "(无 card)"
+        return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2) if rows else "(no cards)"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_get_my_usage(user_id: int, args: dict) -> str:
@@ -188,7 +188,7 @@ def _t_get_my_usage(user_id: int, args: dict) -> str:
             ).fetchall() or []
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ── script 级 (读剧本数据) ──────────────────────────────
@@ -205,9 +205,9 @@ def _t_list_scripts(user_id: int, args: dict) -> str:
                 "order by updated_at desc limit 50",
                 (user_id,),
             ).fetchall() or []
-        return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2) if rows else "(无 script)"
+        return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2) if rows else "(no scripts)"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _user_can_read_script(db, sid: int, user_id: int) -> bool:
@@ -223,13 +223,13 @@ def _user_can_read_script(db, sid: int, user_id: int) -> bool:
 def _t_get_script_chapters(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
     sid = script_id or args.get("script_id")
     if not sid:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, int(sid), user_id):
-                return f"失败 (权限): 剧本 #{int(sid)} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{int(sid)} does not belong to the current user or is not subscribed"
             # summary 权威源是 chapter_facts(提取流程写入,列名 chapter);script_chapters
             # 从无 summary 列(旧查询 100% UndefinedColumn)。LEFT JOIN 保留全量章节(标题/序
             # 来自权威的 script_chapters,未提取的章节不丢),summary 有则补、无则空串。
@@ -243,7 +243,7 @@ def _t_get_script_chapters(user_id: int, script_id: int | None, args: dict, stat
             ).fetchall() or []
         return json.dumps([dict(r) for r in rows[:50]], ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_list_script_npcs(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
@@ -256,13 +256,13 @@ def _t_list_script_npcs(user_id: int, script_id: int | None, args: dict, state: 
     """
     sid = script_id or args.get("script_id")
     if not sid:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, int(sid), user_id):
-                return f"失败 (权限): 剧本 #{int(sid)} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{int(sid)} does not belong to the current user or is not subscribed"
             rows = db.execute(
                 "select id, name, full_name, identity, importance, "
                 "       first_revealed_chapter, "
@@ -275,12 +275,12 @@ def _t_list_script_npcs(user_id: int, script_id: int | None, args: dict, state: 
             ).fetchall() or []
         if not rows:
             return (
-                f"(剧本 #{int(sid)} 暂无 NPC 角色卡。可能该剧本尚未提取/生成角色卡——"
-                "可让用户在剧本编辑器里生成,或用 get_script_chapters / get_chapter_facts 看剧情自行勾勒。)"
+                f"(Script #{int(sid)} has no NPC character cards yet. The script may not have extracted/generated character cards - "
+                "ask the user to generate them in the script editor, or sketch them yourself from the plot via get_script_chapters / get_chapter_facts.)"
             )
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2, default=str)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_get_script_character_card(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
@@ -288,19 +288,19 @@ def _t_get_script_character_card(user_id: int, script_id: int | None, args: dict
     sid = script_id or args.get("script_id")
     card_id = args.get("card_id")
     if not sid:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     if not card_id:
-        return "失败: card_id 必填(先调 list_script_npcs 拿到角色卡 id)"
+        return "Failed: card_id is required (call list_script_npcs first to get the character card id)"
     try:
         from platform_app import knowledge as _know
         card = _know.get_character_card(user_id, int(sid), int(card_id))
         if not card:
-            return f"失败: 剧本 #{int(sid)} 内找不到角色卡 #{int(card_id)}"
+            return f"Failed: character card #{int(card_id)} not found in script #{int(sid)}"
         return json.dumps(card, ensure_ascii=False, indent=2, default=str)
     except ValueError as exc:
-        return f"失败 (权限): {exc}"
+        return f"Failed (permission): {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ── global 级 ───────────────────────────────────────────
@@ -333,7 +333,7 @@ def _t_list_modules(args: dict) -> str:
         cat = _modules.list_modules() if hasattr(_modules, "list_modules") else []
         return json.dumps(cat, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_list_available_models(args: dict) -> str:
@@ -349,7 +349,7 @@ def _t_list_available_models(args: dict) -> str:
             ensure_ascii=False, indent=2,
         )
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ── 注册 ─────────────────────────────────────────────────
@@ -359,13 +359,13 @@ def register_query_tools() -> None:
     registry = get_registry()
     save_specs = [
         ("get_game_state",
-         "返回当前 save 状态的精简快照: turn/player/world/relationships/memory 概要。"
-         "fields 可选,只返指定一级 key。",
+         "Return a compact snapshot of the current save state: an overview of turn/player/world/relationships/memory. "
+         "fields is optional; only the given top-level keys are returned.",
          {"type": "object", "properties": {
              "fields": {"type": "array", "items": {"type": "string"}}}},
          _t_get_game_state),
         ("query_memory",
-         "按 kind / characters / time_label 过滤检索 memory.items。",
+         "Search memory.items filtered by kind / characters / time_label.",
          {"type": "object", "properties": {
              "kind": {"type": "string",
                       "enum": ["canon_fact", "runtime_fact", "hypothesis", "user_constraint"]},
@@ -375,31 +375,31 @@ def register_query_tools() -> None:
          }},
          _t_query_memory),
         ("get_user_variables",
-         "返回 worldline.user_variables 当前键值对。",
+         "Return the current key/value pairs of worldline.user_variables.",
          {"type": "object", "properties": {}},
          _t_get_user_variables),
         ("get_current_scene",
-         "返回当前 scene/encounter/active_entities 快照。",
+         "Return a snapshot of the current scene/encounter/active_entities.",
          {"type": "object", "properties": {}},
          _t_get_current_scene),
         ("get_known_events",
-         "返回最近的 world.known_events。",
+         "Return the most recent world.known_events.",
          {"type": "object", "properties": {"limit": {"type": "integer"}}},
          _t_get_known_events),
         ("list_relationships",
-         "返回 relationships dict。",
+         "Return the relationships dict.",
          {"type": "object", "properties": {}},
          _t_list_relationships),
         ("get_pending_questions",
-         "返回当前 pending_questions。",
+         "Return the current pending_questions.",
          {"type": "object", "properties": {}},
          _t_get_pending_questions),
         ("get_pending_writes",
-         "返回当前 pending_writes (待审批的状态写入)。",
+         "Return the current pending_writes (state writes awaiting approval).",
          {"type": "object", "properties": {}},
          _t_get_pending_writes),
         ("recent_audit_log",
-         "返回最近的 audit_log,可按 kind 过滤。",
+         "Return the recent audit_log, optionally filtered by kind.",
          {"type": "object", "properties": {
              "kind": {"type": "string"},
              "limit": {"type": "integer", "default": 10},
@@ -414,14 +414,14 @@ def register_query_tools() -> None:
             ))
 
     user_specs = [
-        ("list_my_personas", "列出当前用户的 persona。",
+        ("list_my_personas", "List the current user's personas.",
          {"type": "object", "properties": {}}, _t_list_my_personas),
-        ("list_my_character_cards", "列出当前用户的角色卡。",
+        ("list_my_character_cards", "List the current user's character cards.",
          {"type": "object", "properties": {}}, _t_list_my_character_cards),
-        ("get_my_usage", "返回最近 N 天的 LLM token 消耗。",
+        ("get_my_usage", "Return LLM token consumption for the last N days.",
          {"type": "object", "properties": {"days": {"type": "integer", "default": 30}}},
          _t_get_my_usage),
-        ("list_scripts", "列出当前用户可见的剧本。",
+        ("list_scripts", "List the scripts visible to the current user.",
          {"type": "object", "properties": {}}, _t_list_scripts),
     ]
     for name, desc, schema, exec_ in user_specs:  # type: ignore[assignment]
@@ -433,15 +433,15 @@ def register_query_tools() -> None:
 
     script_specs = [
         ("get_script_chapters",
-         "列出剧本的章节目录。可不带 script_id 时从 save 派生。",
+         "List a script's table of contents. Without script_id, it is derived from the save.",
          {"type": "object", "properties": {"script_id": {"type": "integer"}}},
          _t_get_script_chapters),
         ("list_script_npcs",
-         "列出剧本附带的 NPC 角色卡(精简清单:id/名字/身份/重要度)。要完整人设走 get_script_character_card。",
+         "List the NPC character cards that come with a script (compact list: id/name/identity/importance). For the full persona use get_script_character_card.",
          {"type": "object", "properties": {"script_id": {"type": "integer"}}},
          _t_list_script_npcs),
         ("get_script_character_card",
-         "读取剧本内某张 NPC 角色卡的完整人设(背景/外貌/性格/语气/范例对白等)。先用 list_script_npcs 拿 card_id。",
+         "Read the full persona of one NPC character card in a script (background / appearance / personality / tone / sample dialogue, etc.). Get card_id with list_script_npcs first.",
          {"type": "object", "properties": {
              "script_id": {"type": "integer"},
              "card_id": {"type": "integer"},
@@ -457,15 +457,15 @@ def register_query_tools() -> None:
 
     global_specs = [
         ("list_available_tools",
-         "元工具: 列出当前所有已注册工具。可按 origin 过滤(返回 LLM 可见的子集)。",
+         "Meta tool: list all currently registered tools. Can be filtered by origin (returns the subset visible to the LLM).",
          {"type": "object", "properties": {"origin": {"type": "string"}}},
          _t_list_available_tools),
         ("list_modules",
-         "列出所有 5E 模组目录。",
+         "List the catalog of all 5E modules.",
          {"type": "object", "properties": {}},
          _t_list_modules),
         ("list_available_models",
-         "列出当前可用的 LLM API + model 配置。",
+         "List the currently available LLM API + model configurations.",
          {"type": "object", "properties": {}},
          _t_list_available_models),
     ]

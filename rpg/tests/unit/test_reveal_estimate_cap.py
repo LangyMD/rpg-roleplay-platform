@@ -49,7 +49,7 @@ def test_source_guard_retrieval_applies_clamp():
 
 def test_source_guard_set_escape_valve_writes_floor():
     src = (_ROOT / "tools_dsl" / "command_tools.py").read_text(encoding="utf-8")
-    i = src.index("advance_story_progress 失败: 无 active save")
+    i = src.index("advance_story_progress failed: no active save")
     window = src[i:i + 1500]
     assert "set_user_progress_floor" in window, "/set 显式跳章必须写 user_progress_floor(逃生阀)"
 

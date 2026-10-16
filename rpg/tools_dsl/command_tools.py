@@ -56,17 +56,17 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_world_field",
         "description": (
-            '【推荐入口·合并版】设置 world.* 的任一字段。key 决定写法:\n'
-            '· "time": 走 update_time 触发 timeline 推断 (等价旧 set_world_time)\n'
-            '· "location": 走 update_location 触发场景刷新 (等价旧 set_player_location 但写 world.location)\n'
-            '· 其他任意 key: 写 world[key] (等价旧 set_world_attribute,但允许包括 time)\n'
-            '取代 set_world_time / set_player_location / set_world_attribute 3 个分散工具。'
+            '[Recommended entry point - merged] Set any world.* field. The key decides how it is written:\n'
+            '· "time": goes through update_time and triggers timeline inference (same as the old set_world_time)\n'
+            '· "location": goes through update_location and triggers a scene refresh (same as the old set_player_location, but writes world.location)\n'
+            '· any other key: writes world[key] (same as the old set_world_attribute, but time is allowed too)\n'
+            'Replaces the 3 separate tools set_world_time / set_player_location / set_world_attribute.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "key": {"type": "string", "description": "world 下要写的字段名"},
-                "value": {"type": "string", "description": "新值(字符串)"},
+                "key": {"type": "string", "description": "Field name under world to write"},
+                "value": {"type": "string", "description": "New value (string)"},
             },
             "required": ["key", "value"],
         },
@@ -74,16 +74,16 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_world_time",
         "description": (
-            "把世界当前时间/时间线锚点设置为新值。用户写"
-            '"设置时间为火星·扬陆城内"/"时间线=月球时期"/"切换时间到柏林暗流"等都用这个工具。'
-            "**重要**:这是用户硬覆盖,会触发 narrative_guard 检测,GM 下一轮不能写穿越/醒来等过渡叙事。"
+            "Set the world's current time / timeline anchor to a new value. Use this whenever the user writes things like "
+            '"set the time to Mars - inside Landing City" / "timeline = the lunar period" / "switch time to the Berlin undercurrent arc". '
+            "**Important**: this is a hard user override; it triggers the narrative_guard check, and next turn the GM must not write transitional narration such as time travel or waking up."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "target": {
                     "type": "string",
-                    "description": "新的时间/时间线标签,任意用户描述,如 '火星·扬陆城内'、'剧情月球时期'、'柏林暗流篇'",
+                    "description": "New time / timeline label, any user description, e.g. 'Mars - inside Landing City', 'the lunar period of the story', 'Berlin undercurrent arc'",
                 }
             },
             "required": ["target"],
@@ -91,11 +91,11 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_player_location",
-        "description": '设置玩家当前位置。用户写"位置改为X"/"在X"/"当前位置=X"等都用这个工具。',
+        "description": 'Set the player\'s current location. Use this whenever the user writes "move location to X" / "at X" / "current location = X", etc.',
         "input_schema": {
             "type": "object",
             "properties": {
-                "location": {"type": "string", "description": "新的当前位置标签"},
+                "location": {"type": "string", "description": "New current location label"},
             },
             "required": ["location"],
         },
@@ -103,18 +103,18 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_world_known_event",
         "description": (
-            '【事件类 5 选 1 决策树】写一件已发生事件,看下面用对工具:\n'
-            '· set_world_known_event(本工具): 一句话快记 world.known_events 流水账,**不进 KB / 不进历史档 / 不影响检索**。适合临时小事件如"巡逻兵换班"。\n'
-            '· vs record_history_anchor: 玩家做了 importance≥60 的事(改 NPC 关系/势力立场/改写原著锚点)用它,会写**存档独立历史时间线**,retrieve_context 下次注入【过去时态】给 GM。\n'
-            '· vs kb_record_event: 进 KB 世界树(canon_entities/graph_edges 永久层),被 search_canon/graph_neighbors 检索到。**本周目 NPC 之间关系/势力变化**用这个。\n'
-            '· vs add_memory_fact: 个人/角色级"我知道 X"用 memory.facts,例如"我记得把钥匙藏在炉子下",**不是世界级公开事件**。\n'
-            '· vs mark_anchor_satisfied: 原著剧本里有这个锚点已触发,用 mark_anchor_satisfied 配 drift_score,**不要重复**写到 known_events。\n'
-            '\n要旨:本工具是最弱的"流水账级",优先选其他 4 个。'
+            '[Event tools: pick 1 of 5 - decision tree] To record something that has happened, choose the right tool:\n'
+            '· set_world_known_event (this tool): a one-line quick log in world.known_events, **not stored in the KB / not in the history record / does not affect retrieval**. Good for small passing events such as "the patrol changed shifts".\n'
+            '· vs record_history_anchor: use it when the player did something with importance>=60 (changed an NPC relationship / faction stance / rewrote a canon anchor); it writes the **save\'s own history timeline**, and retrieve_context injects it to the GM as [past tense] next time.\n'
+            '· vs kb_record_event: goes into the KB world tree (canon_entities/graph_edges permanent layer) and is found by search_canon/graph_neighbors. Use it for **relationship / faction changes between NPCs in this playthrough**.\n'
+            '· vs add_memory_fact: personal / character-level "I know X" goes to memory.facts, e.g. "I remember hiding the key under the stove"; it is **not a public world-level event**.\n'
+            '· vs mark_anchor_satisfied: if the source script has this anchor and it has been triggered, use mark_anchor_satisfied with drift_score; **do not also** write it to known_events.\n'
+            '\nBottom line: this tool is the weakest "running log" level; prefer the other 4.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "event": {"type": "string", "description": "事件描述"},
+                "event": {"type": "string", "description": "Event description"},
             },
             "required": ["event"],
         },
@@ -122,14 +122,14 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_world_attribute",
         "description": (
-            '设置 world.<key> 的标量属性,如 weather/atmosphere/season/region 等。'
-            '不能用来改 time/timeline (那有专门工具 set_world_time)。'
+            'Set a scalar attribute world.<key>, such as weather/atmosphere/season/region. '
+            'Cannot be used to change time/timeline (use the dedicated tool set_world_time for that).'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "key": {"type": "string",
-                        "description": "world 下的属性名,如 weather/atmosphere"},
+                        "description": "Attribute name under world, e.g. weather/atmosphere"},
                 "value": {"type": "string"},
             },
             "required": ["key", "value"],
@@ -138,14 +138,14 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "confirm_time_jump",
         "description": (
-            '确认一个待确认的时间跳跃。当玩家用自然语言提出跳跃后,'
-            'GM 询问玩家"是否跳到 X",玩家回"确认"时调此工具。target 可选,'
-            '默认用 pending_jump.to。'
+            'Confirm a pending time jump. After the player proposes a jump in natural language, '
+            'the GM asks "jump to X?", and when the player answers "confirm", call this tool. target is optional; '
+            'defaults to pending_jump.to.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "target": {"type": "string", "description": "可选,跳到的时间标签"},
+                "target": {"type": "string", "description": "Optional; the time label to jump to"},
             },
             "required": [],
         },
@@ -153,19 +153,19 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "reject_time_jump",
         "description": (
-            '拒绝一个待确认的时间跳跃,清掉 pending_jump,保持原时间线。'
+            'Reject a pending time jump: clears pending_jump and keeps the original timeline.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "reason": {"type": "string", "description": "拒绝理由,可选"},
+                "reason": {"type": "string", "description": "Reason for rejecting, optional"},
             },
             "required": [],
         },
     },
     {
         "name": "set_player_name",
-        "description": "设置玩家角色姓名。",
+        "description": "Set the player character's name.",
         "input_schema": {
             "type": "object",
             "properties": {"name": {"type": "string"}},
@@ -174,7 +174,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_player_role",
-        "description": '设置玩家身份/职业/定位(如"穿越者·魔女"、"流亡贵族")。',
+        "description": 'Set the player\'s identity / occupation / role (e.g. "Transmigrator - Witch", "exiled noble").',
         "input_schema": {
             "type": "object",
             "properties": {"role": {"type": "string"}},
@@ -183,7 +183,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_player_background",
-        "description": "设置玩家背景故事(自由文本)。",
+        "description": "Set the player's backstory (free text).",
         "input_schema": {
             "type": "object",
             "properties": {"background": {"type": "string"}},
@@ -192,7 +192,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_player_appearance",
-        "description": "设置玩家外貌描述(整体替换)。",
+        "description": "Set the player's appearance description (replaces it entirely).",
         "input_schema": {
             "type": "object",
             "properties": {"appearance": {"type": "string"}},
@@ -201,7 +201,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_player_personality",
-        "description": "设置玩家性格/详细设定(整体替换)。",
+        "description": "Set the player's personality / detailed profile (replaces it entirely).",
         "input_schema": {
             "type": "object",
             "properties": {"personality": {"type": "string"}},
@@ -210,7 +210,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_player_speech_style",
-        "description": "设置玩家语气/说话方式(整体替换)。",
+        "description": "Set the player's tone / way of speaking (replaces it entirely).",
         "input_schema": {
             "type": "object",
             "properties": {"speech_style": {"type": "string"}},
@@ -220,26 +220,26 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_relationship",
         "description": (
-            '设置玩家与某 NPC 的关系状态。用户写"NPC关系=信任"/"X对我警惕"等用这个工具。\n'
-            "示例: set_relationship(character=\"迷迭香\", status=\"亲近\")"
+            'Set the relationship status between the player and an NPC. Use this when the user writes "NPC relationship = trust" / "X is wary of me", etc.\n'
+            "Example: set_relationship(character=\"Rosemary\", status=\"close\")"
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "character": {"type": "string", "description": "NPC 名字(字段名是 character,不是 npc_name)"},
+                "character": {"type": "string", "description": "NPC name (the field is named character, not npc_name)"},
                 "status": {"type": "string",
-                           "description": "关系状态描述(字段名是 status,不是 status_label),如 '信任/警惕/敌意/亲近/紧张/疏离'"},
+                           "description": "Relationship status description (the field is named status, not status_label), e.g. 'trusting/wary/hostile/close/tense/distant'"},
             },
             "required": ["character", "status"],
         },
     },
     {
         "name": "delete_relationship",
-        "description": '删除玩家与某 NPC 的关系条目(整条移除,不是清空)。侧栏点 × 删关系卡时调。',
+        "description": 'Delete the relationship entry between the player and an NPC (removes the whole entry rather than clearing it). Called when the user clicks x on a relationship card in the sidebar.',
         "input_schema": {
             "type": "object",
             "properties": {
-                "character": {"type": "string", "description": "要删除的 NPC 名字"},
+                "character": {"type": "string", "description": "Name of the NPC to delete"},
             },
             "required": ["character"],
         },
@@ -247,21 +247,21 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_timeline_phase",
         "description": (
-            '设置世界线当前 phase 标签(world.timeline.current_phase)。'
-            '会被记入 user_locked_fields,后续 update_time 不再用 _phase_for_time 推断覆盖。'
-            '用户在侧栏直接选/输 phase 时调。'
+            'Set the worldline\'s current phase label (world.timeline.current_phase). '
+            'It is recorded in user_locked_fields, so later update_time calls no longer overwrite it via _phase_for_time inference. '
+            'Called when the user picks/types a phase directly in the sidebar.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "phase": {"type": "string", "description": "phase 标签,如 '柏林暗流篇/月球时期'"},
+                "phase": {"type": "string", "description": "Phase label, e.g. 'Berlin undercurrent arc / lunar period'"},
             },
             "required": ["phase"],
         },
     },
     {
         "name": "set_main_quest",
-        "description": "设置主线任务文本。",
+        "description": "Set the main quest text.",
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -270,7 +270,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "set_current_objective",
-        "description": "设置当前回合目标(短期).",
+        "description": "Set the current (short-term) objective.",
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -280,18 +280,18 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "advance_story_progress",
         "description": (
-            "把玩家进度推进到指定原著章号(progress_chapter,单调只增、绝不回退)。"
-            "用于玩家【已经玩过】某段剧情、但系统进度没跟上 —— 典型:自插入/发散流(如无限流副本)"
-            "剧情不命中原著锚点,进度卡在早章。由玩家显式追平。"
-            "影响:防剧透天花板下限、检索窗口、软引导「下一拍」的起点章。"
-            "玩家说「推进到第X章 / 我已经过了第X章了 / 进度跳到第X章 / 已经玩到十几章了还卡在七八章」时调。"
+            "Advance the player's progress to the given source-novel chapter number (progress_chapter; monotonic, only increases, never goes back). "
+            "Use it when the player has [already played through] a stretch of story but system progress has not caught up - typically self-insert / divergent play "
+            "(e.g. infinite-flow instance runs) whose plot does not hit canon anchors, so progress is stuck at an early chapter. The player catches it up explicitly. "
+            "Affects: the floor of the anti-spoiler ceiling, the retrieval window, and the starting chapter for soft guidance's 'next beat'. "
+            "Call it when the player says 'advance to chapter X / I'm already past chapter X / jump progress to chapter X / I've played through a dozen chapters but it's still stuck at chapter 7 or 8'."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "to_chapter": {
                     "type": "integer",
-                    "description": "目标原著章号(≥1)。低于当前进度会被忽略(单调只增不减)。",
+                    "description": "Target source chapter number (>=1). Values below current progress are ignored (monotonic, never decreases).",
                 },
             },
             "required": ["to_chapter"],
@@ -300,28 +300,28 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "add_memory",
         "description": (
-            '【推荐入口·合并版】往 memory 任意一个桶追加一条。bucket enum 决定桶:\n'
-            '· "facts": 本局已知事实(玩家"我记下 X")\n'
-            '· "resources": 物品/资源(玩家"我有 X"/"获得 X")\n'
-            '· "abilities": 能力/技能\n'
-            '· "notes": 低优先级笔记\n'
-            '· "pinned": 高优先级固定(也可在 facts/resources 调用时加 pin=true)\n'
-            '取代 add_memory_fact/resource/ability/note/pin_memory 5 个分散工具,'
-            '降低 GM 决策面;旧工具仍保留向后兼容,但 GM 应优先用本工具。'
+            '[Recommended entry point - merged] Append one entry to any memory bucket. The bucket enum picks the bucket:\n'
+            '· "facts": facts known in this playthrough (player: "I note down X")\n'
+            '· "resources": items/resources (player: "I have X" / "obtained X")\n'
+            '· "abilities": abilities/skills\n'
+            '· "notes": low-priority notes\n'
+            '· "pinned": high-priority pinned entries (you can also pass pin=true when writing facts/resources)\n'
+            'Replaces the 5 separate tools add_memory_fact/resource/ability/note/pin_memory, '
+            'shrinking the GM\'s decision surface; the old tools remain for backward compatibility, but the GM should prefer this one.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "bucket": {"type": "string", "enum": ["facts", "resources", "abilities", "notes", "pinned"]},
                 "text": {"type": "string"},
-                "pin": {"type": "boolean", "description": "true=同时也写入 pinned 桶(高优先级冗余)"},
+                "pin": {"type": "boolean", "description": "true = also write it to the pinned bucket (high-priority duplicate)"},
             },
             "required": ["bucket", "text"],
         },
     },
     {
         "name": "add_memory_fact",
-        "description": '[DEPRECATED] 等价于 add_memory(bucket="facts", text=X)。新代码用 add_memory。',
+        "description": '[DEPRECATED] Same as add_memory(bucket="facts", text=X). Use add_memory instead.',
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -330,7 +330,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "add_memory_resource",
-        "description": '[DEPRECATED] 等价于 add_memory(bucket="resources", text=X)。新代码用 add_memory。',
+        "description": '[DEPRECATED] Same as add_memory(bucket="resources", text=X). Use add_memory instead.',
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -339,7 +339,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "add_memory_ability",
-        "description": '[DEPRECATED] 等价于 add_memory(bucket="abilities", text=X)。新代码用 add_memory。',
+        "description": '[DEPRECATED] Same as add_memory(bucket="abilities", text=X). Use add_memory instead.',
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -348,7 +348,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "pin_memory",
-        "description": '[DEPRECATED] 等价于 add_memory(bucket="pinned", text=X)。新代码用 add_memory。',
+        "description": '[DEPRECATED] Same as add_memory(bucket="pinned", text=X). Use add_memory instead.',
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -357,7 +357,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "add_memory_note",
-        "description": '[DEPRECATED] 等价于 add_memory(bucket="notes", text=X)。新代码用 add_memory。',
+        "description": '[DEPRECATED] Same as add_memory(bucket="notes", text=X). Use add_memory instead.',
         "input_schema": {
             "type": "object",
             "properties": {"text": {"type": "string"}},
@@ -366,7 +366,7 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "add_hypothesis",
-        "description": '登记一条推测/计划/草稿。和 add_memory_fact 不同,推测**不是**事实。',
+        "description": 'Record a hypothesis / plan / draft. Unlike add_memory_fact, a hypothesis is **not** a fact.',
         "input_schema": {
             "type": "object",
             "properties": {
@@ -374,11 +374,11 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
                 "characters": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "涉及到的 NPC/角色名,可选",
+                    "description": "NPC/character names involved, optional",
                 },
                 "time_label": {
                     "type": "string",
-                    "description": "推测发生的时间标签,可选",
+                    "description": "Time label at which the hypothesis applies, optional",
                 },
             },
             "required": ["text"],
@@ -387,13 +387,13 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "set_user_variable",
         "description": (
-            '设置玩家硬约束变量(worldline.user_variables).用于强制设定剧情走向,'
-            '如 "trust_slaine=信任下降"。和 add_memory_fact 不同,user_variable 是显式约束,世界线推演必须先满足。'
+            'Set a player hard-constraint variable (worldline.user_variables). Used to force the direction of the story, '
+            'e.g. "trust_slaine=trust declining". Unlike add_memory_fact, a user_variable is an explicit constraint that worldline simulation must satisfy first.'
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "key": {"type": "string", "description": "变量名(英文或拼音,如 trust_slaine)"},
+                "key": {"type": "string", "description": "Variable name (ASCII identifier, e.g. trust_slaine)"},
                 "value": {"type": "string"},
             },
             "required": ["key", "value"],
@@ -402,17 +402,17 @@ COMMAND_TOOLS: list[dict[str, Any]] = [
     {
         "name": "clarify",
         "description": (
-            "当 LLM 无法明确把用户的话映射到上面任何工具,或者用户句子歧义时,"
-            "用这个工具向用户提问。**只有在真的无法决定时**才用。"
+            "When you cannot clearly map the user's words to any tool above, or the user's sentence is ambiguous, "
+            "use this tool to ask the user. Use it **only when you genuinely cannot decide**."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "question": {"type": "string", "description": "向用户的问题"},
+                "question": {"type": "string", "description": "Question for the user"},
                 "options": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "可选选项,2-4 项",
+                    "description": "Optional choices, 2-4 items",
                 },
             },
             "required": ["question"],
@@ -435,26 +435,26 @@ def _set_player_profile_field(state, args, field, label):
     故此处读到的 _origin 不可被 LLM 伪造。"""
     v = (args.get(field) or "").strip()
     if not v:
-        return f"set_player_{field} 失败: {field} 为空"
+        return f"set_player_{field} failed: {field} is empty"
     path = f"player.{field}"
     origin = str(args.get("_origin") or "")
     user_intent = origin in ("ui_button", "llm_set", "api_direct")
     if not user_intent and state._is_user_locked(path):
-        return f"失败: 玩家{label}已被玩家手动定制(锁定),GM/史官不可自动改写;请玩家在状态面板修改"
+        return f"Failed: the player's {label} was customized by the player (locked); the GM/chronicler may not rewrite it automatically. The player can edit it in the status panel"
     state.data.setdefault("player", {})[field] = v
     if user_intent:
         try:
             state.mark_user_locked(path)
         except Exception:
             pass
-    return f"玩家{label} → {v[:40]}"
+    return f"Player {label} -> {v[:40]}"
 
 
 def _exec_set_world_field(state, args) -> str:
     key = (args.get("key") or "").strip()
     value = (args.get("value") or "").strip()
     if not key or not value:
-        return "set_world_field 失败: key 或 value 为空"
+        return "set_world_field failed: key or value is empty"
     if key == "time":
         return execute_tool(state, "set_world_time", {"target": value})
     if key == "location":
@@ -467,10 +467,10 @@ def _exec_add_memory(state, args) -> str:
     text = (args.get("text") or "").strip()
     pin = bool(args.get("pin"))
     if not bucket or not text:
-        return "add_memory 失败: bucket 或 text 为空"
+        return "add_memory failed: bucket or text is empty"
     valid_buckets = {"facts", "resources", "abilities", "notes", "pinned"}
     if bucket not in valid_buckets:
-        return f"add_memory 失败: bucket 非法 ({bucket} 不在 {valid_buckets})"
+        return f"add_memory failed: invalid bucket ({bucket} not in {valid_buckets})"
     # dispatch 到对应旧 executor
     old_map = {
         "facts": "add_memory_fact",
@@ -482,14 +482,14 @@ def _exec_add_memory(state, args) -> str:
     main = execute_tool(state, old_map[bucket], {"text": text})
     if pin and bucket != "pinned":
         pin_r = execute_tool(state, "pin_memory", {"text": text})
-        return f"{main} + 同时固定: {pin_r}"
+        return f"{main} + also pinned: {pin_r}"
     return main
 
 
 def _exec_set_world_time(state, args) -> str:
     target = (args.get("target") or "").strip()
     if not target:
-        return "set_world_time 失败: target 为空"
+        return "set_world_time failed: target is empty"
     old = state.data.get("world", {}).get("time", "")
     state.update_time(target, source="user_set")
     # 时间连续性护栏 v0:天数倒退检测(检测→surface,不拦截;解析不出天数即休眠)。
@@ -513,19 +513,19 @@ def _exec_set_world_time(state, args) -> str:
             state.data["permissions"]["audit_log"] = _audit[-200:]
         except Exception:
             pass
-        return f"时间线 → {target} (原: {old}) ⚠ {_regress}"
-    return f"时间线 → {target} (原: {old})"
+        return f"Timeline -> {target} (was: {old}) ⚠ {_regress}"
+    return f"Timeline -> {target} (was: {old})"
 
 
 def _exec_set_world_known_event(state, args) -> str:
     event = (args.get("event") or "").strip()
     if not event:
-        return "set_world_known_event 失败: event 为空"
+        return "set_world_known_event failed: event is empty"
     # acceptance 验收元信息属流水线审计,不进玩家可见事件库(与 apply_ops 列表闸/
     # save_kb.materialize 同谓词,dispatcher 工具路径是第三个写入口)。
     from state.json_ops import is_acceptance_meta
     if is_acceptance_meta(event):
-        return "set_world_known_event 忽略: acceptance 验收元信息不进事件库"
+        return "set_world_known_event ignored: acceptance-check metadata does not go into the event log"
     events = state.data.setdefault("world", {}).setdefault("known_events", [])
     if event not in events:
         events.append(event)
@@ -533,18 +533,18 @@ def _exec_set_world_known_event(state, args) -> str:
         # state_snapshot(持久化进 DB)。注入只看最近 15 条,故保留最近 100 条足矣。
         if len(events) > 100:
             del events[:-100]
-        return f"已知事件 += {event}"
-    return f"已知事件已存在: {event}"
+        return f"Known events += {event}"
+    return f"Known event already exists: {event}"
 
 
 def _exec_set_world_attribute(state, args) -> str:
     key = (args.get("key") or "").strip()
     value = (args.get("value") or "").strip()
     if not key or not value:
-        return "set_world_attribute 失败: key 或 value 为空"
+        return "set_world_attribute failed: key or value is empty"
     # 禁用 time/timeline (有专门工具)
     if key in {"time", "timeline"}:
-        return f"set_world_attribute 失败: 请用 set_world_time 改 {key}"
+        return f"set_world_attribute failed: use set_world_time to change {key}"
     world = state.data.setdefault("world", {})
     world[key] = value
     return f"world.{key} = {value}"
@@ -556,26 +556,26 @@ def _exec_confirm_time_jump(state, args) -> str:
     pending = timeline.get("pending_jump") or {}
     actual_target = target or pending.get("to") or state.data.get("world", {}).get("time")
     if not pending:
-        return "confirm_time_jump 失败: 没有待确认的 pending_jump"
+        return "confirm_time_jump failed: there is no pending_jump awaiting confirmation"
     state.confirm_time_jump(actual_target)
-    return f"时间跳跃确认 → {actual_target}"
+    return f"Time jump confirmed -> {actual_target}"
 
 
 def _exec_delete_relationship(state, args) -> str:
     ch = (args.get("character") or "").strip()
     if not ch:
-        return "delete_relationship 失败: character 为空"
+        return "delete_relationship failed: character is empty"
     rels = state.data.setdefault("relationships", {})
     if ch not in rels:
-        return f"delete_relationship: {ch} 不在 relationships(无需删)"
+        return f"delete_relationship: {ch} is not in relationships (nothing to delete)"
     del rels[ch]
-    return f"关系已删除: {ch}"
+    return f"Relationship deleted: {ch}"
 
 
 def _exec_set_timeline_phase(state, args) -> str:
     phase = (args.get("phase") or "").strip()
     if not phase:
-        return "set_timeline_phase 失败: phase 为空"
+        return "set_timeline_phase failed: phase is empty"
     timeline = state.data.setdefault("world", {}).setdefault("timeline", {})
     old = timeline.get("current_phase", "")
     timeline["current_phase"] = phase
@@ -592,13 +592,13 @@ def _exec_advance_story_progress(state, args) -> str:
     try:
         to_ch = int(raw)
     except (TypeError, ValueError):
-        return "advance_story_progress 失败: to_chapter 必须是整数章号"
+        return "advance_story_progress failed: to_chapter must be an integer chapter number"
     if to_ch < 1:
-        return "advance_story_progress 失败: to_chapter 必须 ≥ 1"
+        return "advance_story_progress failed: to_chapter must be >= 1"
     # save_id 由 dispatcher 无条件注入 args(服务端绑定、防跨档),不信任 state。
     sid = args.get("save_id")
     if not sid:
-        return "advance_story_progress 失败: 无 active save(存档未就绪)"
+        return "advance_story_progress failed: no active save (save not ready)"
     clamp_note = ""
     try:
         from gm_serving.settings import advance_progress, read_settings, set_user_progress_floor
@@ -615,7 +615,7 @@ def _exec_advance_story_progress(state, args) -> str:
             ).fetchone()
             max_ch = int((row or {}).get("m") or 0)
             if max_ch > 0 and to_ch > max_ch:
-                clamp_note = f"(目标第 {to_ch} 章超出剧本共 {max_ch} 章,已按第 {max_ch} 章推进)"
+                clamp_note = f" (target chapter {to_ch} exceeds the script's {max_ch} chapters; advanced to chapter {max_ch} instead)"
                 to_ch = max_ch
             before = (read_settings(db, int(sid)) or {}).get("progress_chapter")
             advance_progress(db, int(sid), to_ch)  # max-only,单调只增
@@ -624,16 +624,16 @@ def _exec_advance_story_progress(state, args) -> str:
             set_user_progress_floor(db, int(sid), to_ch)
             after = (read_settings(db, int(sid)) or {}).get("progress_chapter")
     except Exception as exc:
-        return f"advance_story_progress 失败: {type(exc).__name__}: {exc}"
+        return f"advance_story_progress failed: {type(exc).__name__}: {exc}"
     if before is not None and after is not None and int(after) == int(before):
-        return f"进度未变:已在第 {after} 章(目标第 {to_ch} 章 ≤ 当前,单调不回退){clamp_note}"
-    return f"进度推进:第 {before} 章 → 第 {after} 章{clamp_note}"
+        return f"Progress unchanged: already at chapter {after} (target chapter {to_ch} <= current; progress never goes back){clamp_note}"
+    return f"Progress advanced: chapter {before} -> chapter {after}{clamp_note}"
 
 
 def _exec_add_hypothesis(state, args) -> str:
     v = (args.get("text") or "").strip()
     if not v:
-        return "add_hypothesis 失败: text 为空"
+        return "add_hypothesis failed: text is empty"
     # 权限闸门(孪生洞补齐):本工具直调 state.add_hypothesis,绕过 apply_state_write 权限
     # 闸门。推测经 context_providers/memory.py 以「未确认推测」注入 GM 上下文,有真实叙事
     # 影响,与 apply_ops.py 的 JSON-op "hypothesis" 分支同构须闸——同走 add_pending_narrative_op
@@ -650,7 +650,7 @@ def _exec_add_hypothesis(state, args) -> str:
             {"text": v, "time_label": args.get("time_label"),
              "characters": args.get("characters")},
             source="gm:tool",
-            display=f"推测登记：{v[:40]}",
+            display=f"Hypothesis recorded: {v[:40]}",
         )
     hid = state.add_hypothesis(
         text=v,
@@ -658,7 +658,7 @@ def _exec_add_hypothesis(state, args) -> str:
         time_label=args.get("time_label"),
         characters=args.get("characters"),
     )
-    return f"推测登记: {hid}"
+    return f"Hypothesis recorded: {hid}"
 
 
 
@@ -679,9 +679,9 @@ def execute_tool(state: Any, name: str, args: dict) -> str:
         if name == "set_player_location":
             loc = (args.get("location") or "").strip()
             if not loc:
-                return "set_player_location 失败: location 为空"
+                return "set_player_location failed: location is empty"
             state.update_location(loc)
-            return f"位置 → {loc}"
+            return f"Location -> {loc}"
         if name == "set_world_known_event":
             return _exec_set_world_known_event(state, args)
         if name == "set_world_attribute":
@@ -689,39 +689,39 @@ def execute_tool(state: Any, name: str, args: dict) -> str:
         if name == "confirm_time_jump":
             return _exec_confirm_time_jump(state, args)
         if name == "reject_time_jump":
-            reason = (args.get("reason") or "玩家拒绝").strip()
+            reason = (args.get("reason") or "Rejected by the player").strip()
             timeline = (state.data.get("world") or {}).get("timeline") or {}
             if not (timeline.get("pending_jump")):
-                return "reject_time_jump 失败: 没有待确认的 pending_jump"
+                return "reject_time_jump failed: there is no pending_jump awaiting confirmation"
             state.reject_time_jump(reason)
-            return f"已撤销时间跳跃: {reason}"
+            return f"Time jump cancelled: {reason}"
         if name == "set_player_name":
             v = (args.get("name") or "").strip()
             if not v:
-                return "set_player_name 失败: name 为空"
+                return "set_player_name failed: name is empty"
             state.data.setdefault("player", {})["name"] = v
-            return f"玩家姓名 → {v}"
+            return f"Player name -> {v}"
         if name == "set_player_role":
             v = (args.get("role") or "").strip()
             if not v:
-                return "set_player_role 失败: role 为空"
+                return "set_player_role failed: role is empty"
             state.data.setdefault("player", {})["role"] = v
-            return f"玩家身份 → {v}"
+            return f"Player role -> {v}"
         if name == "set_player_background":
-            return _set_player_profile_field(state, args, "background", "背景")
+            return _set_player_profile_field(state, args, "background", "background")
         if name == "set_player_appearance":
-            return _set_player_profile_field(state, args, "appearance", "外貌")
+            return _set_player_profile_field(state, args, "appearance", "appearance")
         if name == "set_player_personality":
-            return _set_player_profile_field(state, args, "personality", "性格设定")
+            return _set_player_profile_field(state, args, "personality", "personality")
         if name == "set_player_speech_style":
-            return _set_player_profile_field(state, args, "speech_style", "语气")
+            return _set_player_profile_field(state, args, "speech_style", "speech style")
         if name == "set_relationship":
             ch = (args.get("character") or "").strip()
             st = (args.get("status") or "").strip()
             if not ch or not st:
-                return "set_relationship 失败: character 或 status 为空"
+                return "set_relationship failed: character or status is empty"
             state.update_relationship(ch, st)
-            return f"关系 {ch} → {st}"
+            return f"Relationship {ch} -> {st}"
         if name == "delete_relationship":
             return _exec_delete_relationship(state, args)
         if name == "set_timeline_phase":
@@ -729,19 +729,19 @@ def execute_tool(state: Any, name: str, args: dict) -> str:
         if name == "set_main_quest":
             v = (args.get("text") or "").strip()
             if not v:
-                return "set_main_quest 失败: text 为空"
+                return "set_main_quest failed: text is empty"
             state.data.setdefault("memory", {})["main_quest"] = v
             # 打「上次更新回合」戳 —— 陈旧提醒靠它。写入路径有两条(本执行器 + apply_ops
             # 老路径的标量分支),两条都要戳,漏一条主线就会假性陈旧、天天被催。
             from state.quest_staleness import stamp_main_quest
             stamp_main_quest(state.data)
-            return f"主线 → {v}"
+            return f"Main quest -> {v}"
         if name == "set_current_objective":
             v = (args.get("text") or "").strip()
             if not v:
-                return "set_current_objective 失败: text 为空"
+                return "set_current_objective failed: text is empty"
             state.data.setdefault("memory", {})["current_objective"] = v
-            return f"当前目标 → {v}"
+            return f"Current objective -> {v}"
         if name == "advance_story_progress":
             return _exec_advance_story_progress(state, args)
         if name in ("add_memory_fact", "add_memory_resource", "add_memory_ability",
@@ -755,31 +755,32 @@ def execute_tool(state: Any, name: str, args: dict) -> str:
             }[name]
             v = (args.get("text") or "").strip()
             if not v:
-                return f"{name} 失败: text 为空"
+                return f"{name} failed: text is empty"
             # _origin 由 dispatcher 无条件注入(用户意图分流的既有约定):玩家自己的写入
             # 不受洪泛闸,GM/史官的受。拒绝理由原样回给 GM,让它下一轮自己合并。
             ok, why = state.add_memory_ex(bucket, v, origin=str(args.get("_origin") or ""))
             if ok:
                 return f"memory.{bucket} += {v}"
-            if why and "去重" not in why:
-                return f"失败: {name} 被拒 —— {why}"
-            return f"memory.{bucket} 已含此条 (去重)"
+            # why 来自 state.add_memory_ex(中文或英文化后的去重文案都认)
+            if why and "去重" not in why and "dedup" not in why.lower() and "duplicate" not in why.lower():
+                return f"Failed: {name} was rejected - {why}"
+            return f"memory.{bucket} already contains this entry (deduplicated)"
         if name == "add_hypothesis":
             return _exec_add_hypothesis(state, args)
         if name == "set_user_variable":
             k = (args.get("key") or "").strip()
             v = (args.get("value") or "").strip()
             if not k or not v:
-                return "set_user_variable 失败: key 或 value 为空"
+                return "set_user_variable failed: key or value is empty"
             state.set_user_variable(k, v, source="user:/set:tool")
             return f"user_variables.{k} = {v}"
         if name == "clarify":
             q = (args.get("question") or "").strip()
             opts = args.get("options") or []
-            return f"clarify: {q} (选项: {opts})"
+            return f"clarify: {q} (options: {opts})"
         return f"unknown tool: {name}"
     except Exception as exc:
-        return f"{name} 执行异常: {type(exc).__name__}: {exc}"
+        return f"{name} error: {type(exc).__name__}: {exc}"
 
 
 # Public re-exports

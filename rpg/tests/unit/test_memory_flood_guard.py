@@ -176,7 +176,7 @@ class TestRejectionIsVisible(unittest.TestCase):
         for i in range(memory_append_per_turn_max()):
             execute_tool(s, "add_memory_ability", {"text": f"能力{i}", "_origin": GM})
         out = execute_tool(s, "add_memory_ability", {"text": "溢出的一条", "_origin": GM})
-        self.assertTrue(out.startswith("失败:"), out)
+        self.assertTrue(out.startswith("Failed:"), out)
 
     def test_duplicate_is_reported_as_duplicate_not_as_flood(self):
         """精确去重要排在闸前面:重写一条已有的什么都没改,回「超额」会误导 GM。"""
@@ -185,14 +185,14 @@ class TestRejectionIsVisible(unittest.TestCase):
         for i in range(memory_append_per_turn_max()):
             execute_tool(s, "add_memory_ability", {"text": f"能力{i}", "_origin": GM})
         out_dup = execute_tool(s, "add_memory_ability", {"text": "能力0", "_origin": GM})
-        self.assertIn("去重", out_dup)
+        self.assertIn("deduplicated", out_dup)
 
     def test_tool_path_respects_player_origin(self):
         from tools_dsl.command_tools import execute_tool  # noqa: PLC0415
         s = _state()
         for i in range(memory_append_per_turn_max() + 3):
             out = execute_tool(s, "add_memory_ability", {"text": f"能力{i}", "_origin": "ui_button"})
-            self.assertFalse(out.startswith("失败:"), out)
+            self.assertFalse(out.startswith("Failed:"), out)
 
 
 class TestParallelPathClosed(unittest.TestCase):

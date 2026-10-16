@@ -85,7 +85,7 @@ class ScheduleConsequenceToolGate(unittest.TestCase):
         )
         self.assertEqual(len(_ledger(g)), 1, "full_access 应直写")
         self.assertEqual(_pending(g), [], "full_access 不应产生 pending")
-        self.assertIn("已登记", res, res)
+        self.assertIn("Consequence recorded", res, res)
 
     def test_player_origin_bypasses_gate_even_read_only(self):
         """玩家主动 origin(ui_button)属玩家意志 → 即便 read_only 也直写,不入 pending。"""

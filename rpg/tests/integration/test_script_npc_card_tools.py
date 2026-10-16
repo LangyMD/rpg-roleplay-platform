@@ -70,7 +70,7 @@ class TestScriptNpcCardTools(unittest.TestCase):
     def test_list_returns_npc_cards_for_owner(self):
         from tools_dsl.command_tools_queries import _t_list_script_npcs
         out = _t_list_script_npcs(self.owner, self.sid, {}, None)
-        self.assertFalse(out.startswith("失败"), out)
+        self.assertFalse(out.startswith("Failed"), out)
         rows = json.loads(out)
         names = {r["name"] for r in rows}
         self.assertEqual(names, {"林宣", "裁判老师"})
@@ -81,7 +81,7 @@ class TestScriptNpcCardTools(unittest.TestCase):
     def test_get_returns_full_card_for_owner(self):
         from tools_dsl.command_tools_queries import _t_get_script_character_card
         out = _t_get_script_character_card(self.owner, self.sid, {"card_id": self.card1}, None)
-        self.assertFalse(out.startswith("失败"), out)
+        self.assertFalse(out.startswith("Failed"), out)
         card = json.loads(out)
         # 完整人设字段在(list 不含,get 才有)
         blob = json.dumps(card, ensure_ascii=False)
@@ -91,23 +91,23 @@ class TestScriptNpcCardTools(unittest.TestCase):
     def test_outsider_blocked_on_list(self):
         from tools_dsl.command_tools_queries import _t_list_script_npcs
         out = _t_list_script_npcs(self.outsider, self.sid, {}, None)
-        self.assertTrue(out.startswith("失败 (权限)"), out)
+        self.assertTrue(out.startswith("Failed (permission)"), out)
 
     def test_outsider_blocked_on_get(self):
         from tools_dsl.command_tools_queries import _t_get_script_character_card
         out = _t_get_script_character_card(self.outsider, self.sid, {"card_id": self.card1}, None)
-        self.assertTrue(out.startswith("失败 (权限)"), out)
+        self.assertTrue(out.startswith("Failed (permission)"), out)
 
     def test_empty_script_friendly_message(self):
         from tools_dsl.command_tools_queries import _t_list_script_npcs
         out = _t_list_script_npcs(self.owner, self.empty_sid, {}, None)
         self.assertNotIn("UndefinedTable", out)
-        self.assertIn("暂无 NPC 角色卡", out)
+        self.assertIn("has no NPC character cards yet", out)
 
     def test_get_requires_card_id(self):
         from tools_dsl.command_tools_queries import _t_get_script_character_card
         out = _t_get_script_character_card(self.owner, self.sid, {}, None)
-        self.assertIn("card_id 必填", out)
+        self.assertIn("card_id is required", out)
 
     def test_tools_registered_and_visible_to_llm_chat(self):
         from tools_dsl.command_dispatcher import get_registry

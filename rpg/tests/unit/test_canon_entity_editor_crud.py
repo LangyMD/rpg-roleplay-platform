@@ -278,23 +278,23 @@ def test_editor_agent_tool_creates_without_key_and_validates_type(env):
 
     sid, uid = env["sid"], env["uid"]
     out = _t_upsert_canon_entity(uid, sid, {"name": "灵脉", "type": "concept"}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
     assert "灵脉_concept" in out
     assert _row(env, "灵脉_concept")["attrs"].get("source") == "editor"
 
     # 同名同类型再建:失败并指向已有 key(不静默造 灵脉_concept_2)
     out = _t_upsert_canon_entity(uid, sid, {"name": "灵脉", "type": "concept"}, None)
-    assert out.startswith("失败") and "灵脉_concept" in out and "灵脉_concept_2" not in out
+    assert out.startswith("Failed") and "灵脉_concept" in out and "灵脉_concept_2" not in out
 
     out = _t_upsert_canon_entity(uid, sid, {"name": "某物", "type": "weapon"}, None)
-    assert out.startswith("失败") and "weapon" in out
+    assert out.startswith("Failed") and "weapon" in out
 
     out = _t_upsert_canon_entity(uid, sid, {"logical_key": "灵脉_concept", "type": "bogus"}, None)
-    assert out.startswith("失败") and "bogus" in out
+    assert out.startswith("Failed") and "bogus" in out
     assert _row(env, "灵脉_concept")["type"] == "concept"
 
     out = _t_upsert_canon_entity(uid, sid, {"logical_key": "灵脉_concept", "type": "势力"}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
     assert _row(env, "灵脉_concept")["type"] == "faction"
 
 

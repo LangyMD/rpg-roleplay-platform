@@ -71,10 +71,10 @@ def _t_ui_describe_page(user_id: int, args: dict) -> str:
     所以 atlas 已经在 LLM 看到的 system prompt 里。这个工具主要是给 LLM 一个
     "我要看一眼当前页面" 的语义入口, 实际返回是 ack 字符串提示。
     """
-    return ("当前页面的 UI Atlas 已通过 pageContext.ui_atlas 注入到上下文。"
-            "请直接阅读 system prompt 中的 ui_atlas 段,无需重复请求。"
-            "atlas 包含: page (路由), open_modals (已打开弹窗), "
-            "forms (字段及当前值), top_actions (可点按钮)。")
+    return ("The current page's UI Atlas has been injected into the context via pageContext.ui_atlas. "
+            "Read the ui_atlas section in the system prompt directly; no need to request it again. "
+            "The atlas contains: page (route), open_modals (open dialogs), "
+            "forms (fields and their current values), top_actions (clickable buttons).")
 
 
 def _t_ui_set_field(user_id: int, args: dict) -> str | dict[str, Any]:
@@ -84,19 +84,19 @@ def _t_ui_set_field(user_id: int, args: dict) -> str | dict[str, Any]:
     field_key = str(args.get("field_key") or "").strip()
     value = args.get("value")
     if not form_id:
-        return "失败: form_id 必填 (从 ui_atlas.forms[].id 拿)"
+        return "Failed: form_id is required (take it from ui_atlas.forms[].id)"
     if not field_key:
-        return "失败: field_key 必填 (从 ui_atlas.forms[].fields[].key 拿)"
+        return "Failed: field_key is required (take it from ui_atlas.forms[].fields[].key)"
     if value is None:
-        return "失败: value 必填 (可以是字符串/数字/布尔)"
+        return "Failed: value is required (string / number / boolean)"
     # 权限闸门(后端权威,不指望前端 ui-atlas.js 零检查):read_only / default 模式
     # 下不允许助手代填表单字段。read 法参照 apply_ops(state.permissions.mode)。
     # 失败串走 dispatcher「失败: ...」惯例(_RESULT_FAILURE_RE 识别)。
     mode = _current_permission_mode(user_id)
     if mode in ("read_only", "default"):
         return (
-            f"失败: 当前权限模式为 {mode},不允许助手代填表单字段(ui_set_field)。"
-            f"请切换到完全访问权限(full_access),或自行在页面上填写。"
+            f"Failed: the current permission mode is {mode}, which does not allow the assistant to fill in form fields (ui_set_field). "
+            f"Switch to full access (full_access), or fill in the field on the page yourself."
         )
     # 返回的 dict 会被 console_assistant 主循环识别为 UI action
     return {
@@ -104,7 +104,7 @@ def _t_ui_set_field(user_id: int, args: dict) -> str | dict[str, Any]:
         "form_id": form_id,
         "field_key": field_key,
         "value": value,
-        "ack": f"已请求前端在 '{form_id}' 上填字段 '{field_key}' = {value!r}",
+        "ack": f"Asked the front end to fill field '{field_key}' = {value!r} on '{form_id}'",
     }
 
 
@@ -117,14 +117,14 @@ def _t_ui_click(user_id: int, args: dict) -> str | dict[str, Any]:
     form_id = str(args.get("form_id") or "").strip()
     action_label = str(args.get("action_label") or "").strip()
     if not form_id:
-        return "失败: form_id 必填 (modal 内按钮用 modal id, 页面级按钮用 'global')"
+        return "Failed: form_id is required (use the modal id for buttons inside a modal, 'global' for page-level buttons)"
     if not action_label:
-        return "失败: action_label 必填 (从 ui_atlas.forms[].top_actions[].label 拿)"
+        return "Failed: action_label is required (take it from ui_atlas.forms[].top_actions[].label)"
     return {
         "__ui_action__": "click",
         "form_id": form_id,
         "action_label": action_label,
-        "ack": f"已请求前端在 '{form_id}' 上点击 '{action_label}'",
+        "ack": f"Asked the front end to click '{action_label}' on '{form_id}'",
     }
 
 
@@ -135,9 +135,9 @@ def register_ui_action_tools() -> None:
     reg.register(ToolSpec(
         name="ui_describe_page",
         description=(
-            "查看当前页面的 UI 结构 (forms / 字段 / 按钮)。"
-            "实际 atlas 已通过 pageContext 注入 system prompt, "
-            "你直接读取 ui_atlas 段即可,不必每次调本工具。"
+            "Inspect the current page's UI structure (forms / fields / buttons). "
+            "The actual atlas is already injected into the system prompt via pageContext; "
+            "just read the ui_atlas section directly instead of calling this tool every time."
         ),
         input_schema={"type": "object", "properties": {}, "required": []},
         executor=_t_ui_describe_page,
@@ -150,17 +150,17 @@ def register_ui_action_tools() -> None:
     reg.register(ToolSpec(
         name="ui_set_field",
         description=(
-            "在当前页面的某 form 里填一个字段 (代用户在 input/select/textarea 里输入)。"
-            "form_id 和 field_key 必须从 ui_atlas.forms[*].id / .fields[*].key 里取, "
-            "不要瞎编。优先用 label 文本作为 field_key (e.g. '存档名称')。"
-            "value 是字符串/数字/布尔。select 字段可以传 option label 或 value。"
+            "Fill in a field of a form on the current page (types into an input/select/textarea on the user's behalf). "
+            "form_id and field_key must come from ui_atlas.forms[*].id / .fields[*].key; "
+            "never make them up. Prefer the label text as field_key (e.g. 'Save name'). "
+            "value is a string / number / boolean. For a select field you may pass the option label or value."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "form_id":   {"type": "string", "description": "form 的 id, 从 ui_atlas 拿"},
-                "field_key": {"type": "string", "description": "字段的 key (一般是 label 文本)"},
-                "value":     {"description": "要填的值 (string/number/bool)"},
+                "form_id":   {"type": "string", "description": "The form's id, from ui_atlas"},
+                "field_key": {"type": "string", "description": "The field's key (usually its label text)"},
+                "value":     {"description": "Value to fill in (string/number/bool)"},
             },
             "required": ["form_id", "field_key", "value"],
         },
@@ -168,23 +168,23 @@ def register_ui_action_tools() -> None:
         scope="user",
         origins=_UI_ORIGINS,
         destructive=False,
-        intent_keywords=("fill", "set", "input", "填", "填写", "输入"),
+        intent_keywords=("fill", "set", "input", "type", "填", "填写", "输入"),
         input_examples=(
-            {"form_id": "newgame", "field_key": "存档名称", "value": "雾港调查"},
-            {"form_id": "newgame", "field_key": "剧本", "value": "我蕾穆丽娜不爱你"},
-            {"form_id": "card-edit", "field_key": "姓名", "value": "晓星"},
+            {"form_id": "newgame", "field_key": "Save name", "value": "Fog Harbor investigation"},
+            {"form_id": "newgame", "field_key": "Script", "value": "The Lighthouse Gate"},
+            {"form_id": "card-edit", "field_key": "Name", "value": "Stella"},
         ),
     ))
 
     reg.register(ToolSpec(
         name="ui_click",
         description=(
-            "点击当前页面的某个按钮 (代用户鼠标点击)。"
-            "form_id='global' 用于 page-level 按钮 (如 '新游戏'、'刷新');"
-            "其他 form_id 用于 modal 内按钮 (如 '创建并进入'、'取消')。"
-            "action_label 必须从 ui_atlas.forms[*].top_actions[*].label 取。"
-            "destructive=true 因为可能触发提交/创建/删除 等不可逆动作 — "
-            "在 default 权限模式下会先 yield confirmation_required 让用户确认。"
+            "Click a button on the current page (a mouse click on the user's behalf). "
+            "form_id='global' is for page-level buttons (e.g. 'New game', 'Refresh'); "
+            "other form_ids are for buttons inside a modal (e.g. 'Create and enter', 'Cancel'). "
+            "action_label must come from ui_atlas.forms[*].top_actions[*].label. "
+            "destructive=true because it may trigger irreversible actions such as submit/create/delete - "
+            "in default permission mode it first yields confirmation_required so the user can confirm."
         ),
         input_schema={
             "type": "object",
@@ -198,10 +198,10 @@ def register_ui_action_tools() -> None:
         scope="user",
         origins=_UI_CLICK_ORIGINS,  # destructive=True 不允许 llm_chat (安全不变量)
         destructive=True,  # 点提交按钮可能产生不可逆动作 (创建存档/删存档等)
-        intent_keywords=("click", "submit", "点", "提交", "创建", "确定"),
+        intent_keywords=("click", "submit", "press", "create", "confirm", "点", "提交", "创建", "确定"),
         input_examples=(
-            {"form_id": "newgame", "action_label": "创建并进入"},
-            {"form_id": "global", "action_label": "新游戏"},
-            {"form_id": "card-edit", "action_label": "保存"},
+            {"form_id": "newgame", "action_label": "Create and enter"},
+            {"form_id": "global", "action_label": "New game"},
+            {"form_id": "card-edit", "action_label": "Save"},
         ),
     ))

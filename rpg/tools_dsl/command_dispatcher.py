@@ -91,7 +91,7 @@ class ToolSpec:
         desc = self.description
         if self.input_examples:
             import json as _json
-            lines = ["", "示例调用:"]
+            lines = ["", "Example calls:"]
             for ex in self.input_examples[:3]:
                 lines.append(f"  {_json.dumps(ex, ensure_ascii=False)}")
             desc = desc + "\n" + "\n".join(lines)
@@ -143,7 +143,7 @@ class ToolRegistry:
 
     def register(self, spec: ToolSpec) -> None:
         if spec.name in self._tools:
-            raise ValueError(f"工具 {spec.name!r} 已注册")
+            raise ValueError(f"tool {spec.name!r} is already registered")
         self._tools[spec.name] = spec
 
     def replace(self, spec: ToolSpec) -> None:
@@ -265,11 +265,26 @@ _INT_GROUP_RE = re.compile(r"-?\d+")
 #   ③"委派失败: ..."/"提取失败:..."/"生图失败(...)"(动词+失败无空格,冒号/括号锚定)
 # 老检测只认①的前三种,②③被记成 ok=True → 前端把失败计进「设定已更新」、
 # delegate_writing_task 等工具的失败路径恒报成功。
+#
+# 英文化后的新惯例(生产端已切英文;老中文形态仍须识别 —— 历史库行/会话里都是中文):
+#   ①' "Failed: ..." / "Failed (permission): ..." / "Error: ..." / "Refused: ..."(裸前缀,不分大小写)
+#   ②' "<tool> failed: ..." / "<tool> error: ..."
+#   ③' "Delegation failed: ..." / "Image generation failed (image_id=3): ..."
+#       (至多 3 个前缀词;前缀词不含 冒号/括号/方括号 —— 防「X updated (write-back failed: Y)」
+#        这类部分成功句被误判)
 _RESULT_FAILURE_RE = re.compile(
     r"^(?:失败|ERROR|拒绝|unknown tool:)"
     r"|^\S{1,64}\s(?:失败|执行异常)\s*[::(（]"
     r"|^\S{1,64}?(?:失败|执行异常)\s*[::(（]"
+    r"|^(?i:failed|error|refused)\b"
+    r"|^(?:[^\s:：(（\[]{1,64}\s){1,3}(?i:failed|error)\s*[:：(（]"
 )
+
+
+def is_failure_result_text(text: Any) -> bool:
+    """单点识别「工具失败结果串」(中英两种惯例都认)。供 dispatcher 之外的消费方复用,
+    别再各自写 startswith(("失败", ...))。"""
+    return isinstance(text, str) and bool(_RESULT_FAILURE_RE.match(text))
 
 
 def _coerce_numeric_value(v: Any, declared: str) -> Any:
@@ -467,41 +482,41 @@ class ToolDispatcher:
         # 1) 鉴权
         if not self._authorize(env.user_id):
             raise DispatchError("auth_failed",
-                                f"user_id={env.user_id} 未通过鉴权")
+                                f"user_id={env.user_id} failed authorization")
         # 2) 工具是否存在
         spec = self._registry.get(env.tool)
         if spec is None:
-            raise DispatchError("unknown_tool", f"未注册工具: {env.tool}")
+            raise DispatchError("unknown_tool", f"unregistered tool: {env.tool}")
         # 3) origin 白名单
         if env.origin not in spec.origins:
             raise DispatchError(
                 "origin_forbidden",
-                f"工具 {env.tool} 不允许从 origin={env.origin} 调用 "
-                f"(允许: {sorted(spec.origins)})",
+                f"tool {env.tool} may not be called from origin={env.origin} "
+                f"(allowed: {sorted(spec.origins)})",
             )
         # 4) save 级工具必须带 save_id
         if spec.scope == "save" and env.save_id is None:
             raise DispatchError(
                 "scope_missing_save",
-                f"save 级工具 {env.tool} 必须带 save_id",
+                f"save-scoped tool {env.tool} requires save_id",
             )
         # 5) script 级工具必须带 script_id (允许从 save 派生)
         if spec.scope == "script" and env.script_id is None and env.save_id is None:
             raise DispatchError(
                 "scope_missing_script",
-                f"script 级工具 {env.tool} 必须带 script_id 或 save_id",
+                f"script-scoped tool {env.tool} requires script_id or save_id",
             )
         # 6) 递归深度
         if env.depth > MAX_TRACE_DEPTH:
             raise DispatchError(
                 "depth_exceeded",
-                f"trace 深度 {env.depth} 超过上限 {MAX_TRACE_DEPTH} (防递归死锁)",
+                f"trace depth {env.depth} exceeds the limit of {MAX_TRACE_DEPTH} (recursion guard)",
             )
         # 7) 限流: per-user 每秒上限
         if not self._rate_ok(env.user_id):
             raise DispatchError(
                 "rate_limited",
-                f"user_id={env.user_id} 每秒工具调用数超 {MAX_CALLS_PER_USER_PER_SECOND}",
+                f"user_id={env.user_id} exceeded {MAX_CALLS_PER_USER_PER_SECOND} tool calls per second",
             )
         # task 97: 8) required 字段检查 — 字段完全不存在 (None) 时返友好错误,
         # LLM 读了自己调 ask_user_choice。
@@ -527,7 +542,7 @@ class ToolDispatcher:
                 hints.append(hint)
             # 附带模型实际传入的字段名,帮助模型发现拼写/命名错误
             actual_keys = sorted(env.args.keys()) if env.args else []
-            actual_hint = f"。你传入的字段是 {actual_keys}" if actual_keys else ""
+            actual_hint = f". The fields you passed were {actual_keys}" if actual_keys else ""
             # 当模型传入了与缺失字段名相似的字段时,显式提示正确字段名
             typo_hint = ""
             if actual_keys and missing:
@@ -537,11 +552,11 @@ class ToolDispatcher:
                         k[0] == m[0] or abs(len(k) - len(m)) <= 2
                     )]
                     if candidates:
-                        typo_hint = f"。注意:你可能误用了 {candidates},正确字段名是 '{m}'"
+                        typo_hint = f". Note: you may have used {candidates} by mistake; the correct field name is '{m}'"
                         break
             raise DispatchError(
                 "missing_required",
-                f"工具 {env.tool} 缺必填字段: {', '.join(hints)}{actual_hint}{typo_hint}",
+                f"tool {env.tool} is missing required fields: {', '.join(hints)}{actual_hint}{typo_hint}",
             )
         # 8.5) schema 驱动整数纠偏 — 放在去重签名/审计/执行之前,下游统一看到纠偏后的值
         _coerce_declared_integers(spec, env.args)
@@ -558,14 +573,14 @@ class ToolDispatcher:
             if sig in seen:
                 raise DispatchError(
                     "trace_duplicate",
-                    f"trace_id={env.trace_id} 已执行过相同 ({env.tool}, args)",
+                    f"trace_id={env.trace_id} already executed the same ({env.tool}, args)",
                 )
             seen.add(sig)
         # 9) destructive 工具不能从 llm_chat / autonomous_agent origin 调
         if spec.destructive and env.origin in ("llm_chat", "autonomous_agent"):
             raise DispatchError(
                 "destructive_blocked",
-                f"破坏性工具 {env.tool} 不允许从 llm_chat 调用 (需 ui_button 显式审批)",
+                f"destructive tool {env.tool} may not be called from llm_chat (requires explicit ui_button approval)",
             )
         return spec
 

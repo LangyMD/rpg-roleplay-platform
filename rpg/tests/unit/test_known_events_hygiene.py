@@ -72,10 +72,10 @@ class KnownEventsWriteGates(unittest.TestCase):
         from tools_dsl.command_tools import execute_tool
         st = GameState.new()
         r = execute_tool(st, "set_world_known_event", {"event": _ACC})
-        self.assertIn("忽略", r)
+        self.assertIn("ignored", r)
         self.assertEqual(st.data["world"]["known_events"], [])
         r2 = execute_tool(st, "set_world_known_event", {"event": "主神光柱降下"})
-        self.assertIn("已知事件", r2)
+        self.assertIn("Known events", r2)
         self.assertEqual(st.data["world"]["known_events"], ["主神光柱降下"])
 
 

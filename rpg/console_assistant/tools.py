@@ -178,8 +178,8 @@ def list_assistant_tools(surface: str = "console") -> list[dict[str, Any]]:
             "server_id": DISPATCHER_SENTINEL,
             "name": spec.name,
             "description": spec.description + (
-                "\n示例:\n" + "\n".join(
-                    f"  调用 {spec.name}(" + ", ".join(
+                "\nExamples:\n" + "\n".join(
+                    f"  call {spec.name}(" + ", ".join(
                         f"{k}={repr(v)}" for k, v in ex.items()
                     ) + ")"
                     for ex in (spec.input_examples or ())[:2]

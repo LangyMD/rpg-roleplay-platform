@@ -38,7 +38,7 @@ def stream_chat(
     })
 
     if not isinstance(message, str) or not message.strip():
-        yield _sse_event("error", {"message": "message 不能为空"})
+        yield _sse_event("error", {"message": "message must not be empty"})
         yield _sse_event("done", {})
         return
 

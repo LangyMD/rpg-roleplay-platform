@@ -31,14 +31,14 @@ def _t_schedule_consequence(state: Any, args: dict) -> str:
     """登记一条待兑现的后果（GM function-calling 通道）。"""
     text = (args.get("text") or "").strip()
     if not text:
-        return "失败: text 不能为空"
+        return "Failed: text must not be empty"
 
     due_turns = args.get("due_turns")
     if due_turns is not None:
         try:
             due_turns = int(due_turns)
         except (TypeError, ValueError):
-            return "失败: due_turns 必须是整数"
+            return "Failed: due_turns must be an integer"
 
     due_location = args.get("due_location")
     if due_location is not None:
@@ -59,7 +59,7 @@ def _t_schedule_consequence(state: Any, args: dict) -> str:
             "consequence",
             {"text": text, "due_turns": due_turns, "due_location": due_location},
             source="gm:tool",
-            display=f"后果登记：{text[:40]}",
+            display=f"Consequence recorded: {text[:40]}",
         )
 
     ok, msg = state.register_consequence(
@@ -69,8 +69,8 @@ def _t_schedule_consequence(state: Any, args: dict) -> str:
         origin="gm",
     )
     if ok:
-        return f"已登记后果: {msg}"
-    return f"失败: {msg}"
+        return f"Consequence recorded: {msg}"
+    return f"Failed: {msg}"
 
 
 def register_consequence_tools() -> None:
@@ -81,27 +81,27 @@ def register_consequence_tools() -> None:
         registry.register(ToolSpec(
             name="schedule_consequence",
             description=(
-                "登记一条待兑现的后果（承诺/欠债/约定），到期或抵达指定地点时会被"
-                "系统自动提醒 GM 在剧情中让它自然兑现。\n"
-                "due_turns 和 due_location 至少填一个：due_turns 是相对当前回合数的"
-                "回合数（如 5 表示 5 回合后到期）；due_location 是地点名（玩家抵达"
-                "含该地点子串的位置时触发）。\n"
-                "pending 条目上限 20 条，超出会被拒绝；同文本+同期限重复登记会被忽略。"
+                "Record a consequence that is still to be paid off (a promise / debt / agreement). When it falls due or the player reaches the given place, "
+                "the system automatically reminds the GM to let it play out naturally in the story.\n"
+                "Fill in at least one of due_turns and due_location: due_turns is a number of turns relative to the current turn "
+                "(e.g. 5 means it falls due 5 turns from now); due_location is a place name (it triggers when the player reaches "
+                "a location containing that substring).\n"
+                "At most 20 pending entries; more are rejected. Duplicate registrations with the same text and due condition are ignored."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
                     "text": {
                         "type": "string",
-                        "description": "后果描述（如：答应雷纳德查清林中兽伤,明天中午前带证据回村）",
+                        "description": "Consequence description (e.g. promised Reynard to find out what is mauling people in the forest and bring proof back to the village before noon tomorrow)",
                     },
                     "due_turns": {
                         "type": "integer",
-                        "description": "相对当前回合数的到期回合数（正整数，可选，与 due_location 至少填一个）",
+                        "description": "Number of turns from now until it falls due (positive integer, optional; fill in at least one of this and due_location)",
                     },
                     "due_location": {
                         "type": "string",
-                        "description": "触发地点（玩家当前位置含此子串时触发，可选，与 due_turns 至少填一个）",
+                        "description": "Trigger location (fires when the player's current location contains this substring; optional; fill in at least one of this and due_turns)",
                     },
                 },
                 "required": ["text"],

@@ -13,14 +13,14 @@ from ._helpers import _resolve_sid, _strlist
 def _t_update_npc_card(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     card_id = args.get("card_id")
     if not card_id:
-        return "失败: card_id 必填(先用 list_script_npcs 拿到角色卡 id)"
+        return "Failed: card_id is required (get the character card id with list_script_npcs first)"
     try:
         cid = int(card_id)
     except (TypeError, ValueError):
-        return "失败: card_id 必须是整数"
+        return "Failed: card_id must be an integer"
     try:
         from platform_app.db import connect, init_db
         from platform_app.perms import script_owned
@@ -29,7 +29,7 @@ def _t_update_npc_card(user_id: int, script_id: int | None, args: dict, state: A
         #    这里前置一道给统一友好失败串)。
         with connect() as db:
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             # 取现有卡作为基底:upsert_character_card 是「全量覆盖式」,缺省字段会被清空,
             # 故先读现卡、再用 args 里出现的字段叠加,避免漏传字段被抹掉。name 是必填(空会报错)。
             existing = db.execute(
@@ -37,7 +37,7 @@ def _t_update_npc_card(user_id: int, script_id: int | None, args: dict, state: A
                 (cid, sid),
             ).fetchone()
             if not existing:
-                return f"失败: 角色卡 #{cid} 不存在或不属于剧本 #{sid}"
+                return f"Failed: character card #{cid} does not exist or does not belong to script #{sid}"
         base = dict(existing)
         # 撤销快照:存改前全字段(供作者一键撤回 AI 对角色卡的改动)。upsert 是全量覆盖式,
         # 把这些原值喂回即可还原。
@@ -60,7 +60,7 @@ def _t_update_npc_card(user_id: int, script_id: int | None, args: dict, state: A
                 payload[k] = base[k]
         # name 必填:确保有值(取 args 或现卡)。
         if not (str(payload.get("name") or "").strip()):
-            return "失败: name 不能为空"
+            return "Failed: name must not be empty"
         # tags 不是 character_cards 直接列(存进 metadata),upsert 不读 tags → 落进 metadata。
         if "tags" in payload:
             meta = dict(base.get("metadata") or {})
@@ -76,7 +76,7 @@ def _t_update_npc_card(user_id: int, script_id: int | None, args: dict, state: A
                 if script_owned(adb, sid, user_id):
                     _write_commit(
                         adb, script_id=sid, user_id=user_id, kind="card_edit",
-                        message=f"编辑 NPC 角色卡 #{cid}",
+                        message=f"Edit NPC character card #{cid}",
                         payload={"table": "character_cards", "op": "edit",
                                  "ids": {"card_id": cid},
                                  "fields": [k for k in editable if args.get(k) is not None],
@@ -85,11 +85,11 @@ def _t_update_npc_card(user_id: int, script_id: int | None, args: dict, state: A
                     adb.commit()
         except Exception:
             pass
-        return f"已更新 NPC 角色卡 #{cid}(剧本 #{sid})"
+        return f"Updated NPC character card #{cid} (script #{sid})"
     except ValueError as exc:
-        return f"失败: {exc}"
+        return f"Failed: {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_create_npc_card(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
@@ -97,24 +97,24 @@ def _t_create_npc_card(user_id: int, script_id: int | None, args: dict, state: A
     要改已有卡用 update_npc_card(先 list_script_npcs 拿 id)。"""
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     name = str(args.get("name") or "").strip()
     if not name:
-        return "失败: name 必填(角色名)"
+        return "Failed: name is required (the character's name)"
     try:
         from platform_app.db import connect, init_db
         from platform_app.perms import script_owned
         init_db()
         with connect() as db:
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             dup = db.execute(
                 "select id from character_cards where script_id=%s and card_type='npc' and name=%s limit 1",
                 (sid, name),
             ).fetchone()
             if dup:
-                return (f"失败: 剧本 #{sid} 已有同名 NPC「{name}」(#{dup['id']})。"
-                        "要改它用 update_npc_card,不要重复新建。")
+                return (f"Failed: script #{sid} already has an NPC named '{name}' (#{dup['id']}). "
+                        "To change it use update_npc_card; do not create a duplicate.")
         payload: dict[str, Any] = {"name": name}
         for k in ("full_name", "aliases", "identity", "appearance", "personality",
                   "speech_style", "current_status", "secrets", "background",
@@ -131,17 +131,17 @@ def _t_create_npc_card(user_id: int, script_id: int | None, args: dict, state: A
             with connect() as adb:
                 if script_owned(adb, sid, user_id):
                     _write_commit(adb, script_id=sid, user_id=user_id, kind="card_add",
-                                  message=f"新增 NPC 角色卡「{name}」",
+                                  message=f"Add NPC character card '{name}'",
                                   payload={"table": "character_cards", "op": "add",
                                            "ids": {"card_id": cid}})
                     adb.commit()
         except Exception:
             pass
-        return f"已新建 NPC 角色卡「{name}」(#{cid},剧本 #{sid})" if cid else \
-            f"已新建 NPC 角色卡「{name}」(剧本 #{sid})"
+        return f"Created NPC character card '{name}' (#{cid}, script #{sid})" if cid else \
+            f"Created NPC character card '{name}' (script #{sid})"
     except ValueError as exc:
-        return f"失败: {exc}"
+        return f"Failed: {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 

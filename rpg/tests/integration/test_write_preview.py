@@ -60,7 +60,7 @@ class WritePreviewE2E(unittest.TestCase):
         self.assertFalse(pv["is_new"])
         self.assertIn("原始正文", pv["before"])
         self.assertIn("改写正文", pv["after"])
-        self.assertIn("第1章", pv["label"])
+        self.assertIn("Chapter 1", pv["label"])
 
     def test_chapter_preview_new_chapter(self):
         from console_assistant.write_preview import build_write_preview

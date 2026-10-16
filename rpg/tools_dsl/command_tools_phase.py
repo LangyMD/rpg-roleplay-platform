@@ -44,7 +44,7 @@ def _t_phase_list(user_id: int, args: dict) -> str:
                 (save_id, user_id),
             ).fetchone()
             if not own:
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             rows = db.execute(
                 """
                 select phase_index, phase_label, turn_start, turn_end,
@@ -69,7 +69,7 @@ def _t_phase_list(user_id: int, args: dict) -> str:
             })
         return json.dumps(result, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_phase_advance(user_id: int, args: dict) -> str:
@@ -90,7 +90,7 @@ def _t_phase_advance(user_id: int, args: dict) -> str:
                 (save_id, user_id),
             ).fetchone()
             if not own:
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             # Get current turn from the latest branch_commit for this save
             row = db.execute(
                 "select turn_index from branch_commits where save_id = %s order by id desc limit 1",
@@ -107,9 +107,9 @@ def _t_phase_advance(user_id: int, args: dict) -> str:
             story_time_label="",
         )
         new_index = new_phase.get("phase_index", "?")
-        return f"phase_advance: 新 phase {new_index} 已开启 (turn={turn_index}, label={label or '(未设置)'})"
+        return f"phase_advance: new phase {new_index} opened (turn={turn_index}, label={label or '(not set)'})"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_phase_rebuild(user_id: int, args: dict) -> str:
@@ -140,13 +140,13 @@ def _t_phase_rebuild(user_id: int, args: dict) -> str:
                 (save_id, user_id),
             ).fetchone()
             if not own:
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             row = db.execute(
                 "select id, metadata from save_phase_digests where save_id = %s and phase_index = %s",
                 (save_id, phase_index),
             ).fetchone()
             if not row:
-                return f"失败: phase_index={phase_index} 不存在 (save_id={save_id})"
+                return f"Failed: phase_index={phase_index} does not exist (save_id={save_id})"
             meta = dict(row.get("metadata") or {})
             meta["needs_rebuild"] = True
             db.execute(
@@ -154,9 +154,9 @@ def _t_phase_rebuild(user_id: int, args: dict) -> str:
                 "where save_id = %s and phase_index = %s",
                 (Jsonb(meta), save_id, phase_index),
             )
-        return f"phase_rebuild: phase {phase_index} 已标记 needs_rebuild=true (save_id={save_id})"
+        return f"phase_rebuild: phase {phase_index} marked needs_rebuild=true (save_id={save_id})"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -172,14 +172,14 @@ def register_phase_tools() -> None:
         ToolSpec(
             name="phase_list",
             description=(
-                "列出指定存档 (save_id) 的所有 phase 摘要阶段，"
-                "含 phase_index / phase_label / turn 范围 / status / summary 前 80 字。"
-                "用于查看剧情分段历史。"
+                "List all phase summary segments of the given save (save_id), "
+                "with phase_index / phase_label / turn range / status / the first 80 characters of the summary. "
+                "Use it to review the story's segment history."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
                 },
                 "required": ["save_id"],
             },
@@ -191,14 +191,14 @@ def register_phase_tools() -> None:
         ToolSpec(
             name="phase_advance",
             description=(
-                "手动为指定存档开启新的 phase 阶段 (不等自动 30-turn 检测)。"
-                "label 可选，作为新阶段的标题。"
+                "Manually open a new phase for the given save (without waiting for the automatic 30-turn detection). "
+                "label is optional and becomes the new phase's title."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "label": {"type": "string", "description": "新 phase 标签 (可选)"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "label": {"type": "string", "description": "New phase label (optional)"},
                 },
                 "required": ["save_id"],
             },
@@ -210,14 +210,14 @@ def register_phase_tools() -> None:
         ToolSpec(
             name="phase_rebuild",
             description=(
-                "标记指定 phase 需要重新生成 LLM 摘要 (metadata.needs_rebuild=true)。"
-                "实际重摘由 107D 后台任务处理。"
+                "Mark the given phase as needing its LLM summary regenerated (metadata.needs_rebuild=true). "
+                "The actual re-summarization is handled by the 107D background task."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "phase_index": {"type": "integer", "description": "目标 phase 下标 (0-based)"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "phase_index": {"type": "integer", "description": "Target phase index (0-based)"},
                 },
                 "required": ["save_id", "phase_index"],
             },

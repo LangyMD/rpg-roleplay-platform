@@ -53,7 +53,7 @@ def _t_list_pending_anchors(user_id: int, args: dict) -> str:
         chapter_min = int(args.get("chapter_min")) if args.get("chapter_min") is not None else None
         chapter_max = int(args.get("chapter_max")) if args.get("chapter_max") is not None else None
     except (TypeError, ValueError):
-        return "失败: chapter_min / chapter_max 必须整数"
+        return "Failed: chapter_min / chapter_max must be integers"
     try:
         limit = int(args.get("limit") or 5)
     except (TypeError, ValueError):
@@ -68,7 +68,7 @@ def _t_list_pending_anchors(user_id: int, args: dict) -> str:
         from tools_dsl.command_dispatcher import _get_sync_scope_lock
         with _get_sync_scope_lock((int(user_id), save_id)), connect() as db:
             if not _own_save(db, save_id, user_id):
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
         from agents.anchor_seed_agent import list_pending_for_phase, summarize_save_anchor_state
         anchors = list_pending_for_phase(
             save_id, phase_label,
@@ -94,7 +94,7 @@ def _t_list_pending_anchors(user_id: int, args: dict) -> str:
             "anchors": anchors,
         }, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_mark_anchor_satisfied(user_id: int, args: dict) -> str:
@@ -116,10 +116,10 @@ def _t_mark_anchor_satisfied(user_id: int, args: dict) -> str:
     anchor_key = (args.get("anchor_key") or "").strip()
     anchor_id_raw = args.get("anchor_id")
     if not anchor_key and anchor_id_raw is None:
-        return "失败: anchor_key 或 anchor_id 至少给一个"
+        return "Failed: provide at least one of anchor_key or anchor_id"
     how = (args.get("how_it_happened") or "").strip()
     if not how:
-        return "失败: how_it_happened 必填,描述事件实际怎么发生"
+        return "Failed: how_it_happened is required; describe how the event actually happened"
     if len(how) > 600:
         how = how[:600]
     try:
@@ -131,7 +131,7 @@ def _t_mark_anchor_satisfied(user_id: int, args: dict) -> str:
     try:
         occurred_turn = int(args.get("occurred_at_turn")) if args.get("occurred_at_turn") is not None else None
     except (TypeError, ValueError):
-        return "失败: occurred_at_turn 必须整数"
+        return "Failed: occurred_at_turn must be an integer"
 
     try:
         from platform_app.db import connect, init_db
@@ -140,7 +140,7 @@ def _t_mark_anchor_satisfied(user_id: int, args: dict) -> str:
         from tools_dsl.command_dispatcher import _get_sync_scope_lock
         with _get_sync_scope_lock((int(user_id), save_id)), connect() as db:
             if not _own_save(db, save_id, user_id):
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             # 默认 occurred_turn 从 branch_commits 最大值取
             if occurred_turn is None:
                 r = db.execute(
@@ -166,11 +166,11 @@ def _t_mark_anchor_satisfied(user_id: int, args: dict) -> str:
                     (save_id, int(anchor_id_raw)),
                 ).fetchone()
             if not row:
-                return f"失败: 找不到锚点 (save={save_id}, key={anchor_key!r}, id={anchor_id_raw})"
+                return f"Failed: anchor not found (save={save_id}, key={anchor_key!r}, id={anchor_id_raw})"
             if row.get("status") in ("occurred", "variant"):
                 return (
-                    f"提示: 锚点 {anchor_key or row['id']} 已经是 {row['status']},未变动。"
-                    f" (要重新标记请先 mark_anchor_superseded 再操作)"
+                    f"Note: anchor {anchor_key or row['id']} is already {row['status']}; nothing changed."
+                    f" (To re-mark it, call mark_anchor_superseded first)"
                 )
             db.execute(
                 """
@@ -220,7 +220,7 @@ def _t_mark_anchor_satisfied(user_id: int, args: dict) -> str:
             "summary": row.get("summary", "")[:120],
         }, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_mark_anchor_superseded(user_id: int, args: dict) -> str:
@@ -235,10 +235,10 @@ def _t_mark_anchor_superseded(user_id: int, args: dict) -> str:
     anchor_key = (args.get("anchor_key") or "").strip()
     anchor_id_raw = args.get("anchor_id")
     if not anchor_key and anchor_id_raw is None:
-        return "失败: anchor_key 或 anchor_id 至少给一个"
+        return "Failed: provide at least one of anchor_key or anchor_id"
     reason = (args.get("reason") or "").strip()
     if not reason:
-        return "失败: reason 必填 (说明为什么这个锚点已经不可能发生)"
+        return "Failed: reason is required (explain why this anchor can no longer happen)"
     if len(reason) > 600:
         reason = reason[:600]
 
@@ -249,7 +249,7 @@ def _t_mark_anchor_superseded(user_id: int, args: dict) -> str:
         from tools_dsl.command_dispatcher import _get_sync_scope_lock
         with _get_sync_scope_lock((int(user_id), save_id)), connect() as db:
             if not _own_save(db, save_id, user_id):
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             if anchor_key:
                 row = db.execute(
                     "select id, status, is_fatal, summary, anchor_key from save_anchor_states "
@@ -263,15 +263,15 @@ def _t_mark_anchor_superseded(user_id: int, args: dict) -> str:
                     (save_id, int(anchor_id_raw)),
                 ).fetchone()
             if not row:
-                return f"失败: 找不到锚点 (save={save_id}, key={anchor_key!r})"
+                return f"Failed: anchor not found (save={save_id}, key={anchor_key!r})"
             if row.get("is_fatal"):
                 return (
-                    "拒绝: 这是 is_fatal=true 的锚点 (死神来了模式),原则上必发生,"
-                    "不能 superseded。请改用 mark_anchor_satisfied 描述"
-                    "实际发生方式 (可以高 drift_score)。"
+                    "Refused: this is an is_fatal=true anchor (Final Destination mode); it must happen in principle "
+                    "and cannot be superseded. Use mark_anchor_satisfied instead and describe "
+                    "how it actually happened (a high drift_score is fine)."
                 )
             if row.get("status") == "superseded":
-                return "提示: 锚点已是 superseded 状态,未变动。"
+                return "Note: the anchor is already superseded; nothing changed."
             db.execute(
                 """
                 update save_anchor_states set
@@ -296,7 +296,7 @@ def _t_mark_anchor_superseded(user_id: int, args: dict) -> str:
             "reason": reason,
         }, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ── 锚点脱离 pending → 自动补写历史锚点 ────────────────────────────────────────
@@ -332,13 +332,13 @@ def _t_record_history_anchor(user_id: int, args: dict) -> str:
         return _chk
     summary = (args.get("summary") or "").strip()
     if not summary:
-        return "失败: summary 必填"
+        return "Failed: summary is required"
     # 安全围栏:save 必须属于当前用户(LLM 可在 args 注入任意 save_id;复用兄弟工具同款 _own_save)
     from platform_app.db import connect, init_db
     init_db()
     with connect() as db:
         if not _own_save(db, int(save_id_raw), user_id):
-            return f"失败 (权限): save {int(save_id_raw)} 不属于当前用户或不存在"
+            return f"Failed (permission): save {int(save_id_raw)} does not belong to the current user or does not exist"
     try:
         from agents.save_history import record_history_anchor
         linked_pending = args.get("linked_pending_anchors") or []
@@ -358,7 +358,7 @@ def _t_record_history_anchor(user_id: int, args: dict) -> str:
             source=(args.get("source") or "gm_generated").strip(),
         )
         if not result.get("ok"):
-            return f"失败: {result.get('error', '未知')}"
+            return f"Failed: {result.get('error', 'unknown')}"
         # iter#5: 级联自动 mark_anchor_satisfied — 用户的"大体对应,允许不同"诉求
         # linked_pending_anchors 非空 → 同事务里把对应 pending 标 satisfied,防止
         # 同事件【未来段 pending】+【过去段 history】双重注入,GM 看到自相矛盾上下文
@@ -394,13 +394,13 @@ def _t_record_history_anchor(user_id: int, args: dict) -> str:
                         if row:
                             cascade_results.append(f"{ak_str}→{row['status']}")
             except Exception as casc_exc:
-                cascade_results.append(f"[级联失败:{type(casc_exc).__name__}: {casc_exc}]")
-        cascade_str = (f" + 级联标记 pending: {', '.join(cascade_results)}"
+                cascade_results.append(f"[cascade failed: {type(casc_exc).__name__}: {casc_exc}]")
+        cascade_str = (f" + cascaded pending marks: {', '.join(cascade_results)}"
                        if cascade_results else "")
-        return (f"OK: 历史锚点已写入(id={result['id']}, turn={result['turn_occurred']}, "
+        return (f"OK: history anchor written (id={result['id']}, turn={result['turn_occurred']}, "
                 f"importance={result['importance']}){cascade_str}")
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_check_pending_anchor_drift(user_id: int, args: dict) -> str:
@@ -418,20 +418,20 @@ def _t_check_pending_anchor_drift(user_id: int, args: dict) -> str:
         return _chk
     aks = args.get("anchor_keys")
     if not isinstance(aks, list) or not aks:
-        return "失败: anchor_keys 必填且为非空数组"
+        return "Failed: anchor_keys is required and must be a non-empty array"
     # 安全围栏:save 必须属于当前用户(防 LLM 注入异档 save_id 跨用户读)
     from platform_app.db import connect, init_db
     init_db()
     with connect() as db:
         if not _own_save(db, int(save_id_raw), user_id):
-            return f"失败 (权限): save {int(save_id_raw)} 不属于当前用户或不存在"
+            return f"Failed (permission): save {int(save_id_raw)} does not belong to the current user or does not exist"
     try:
         from agents.save_history import find_history_for_pending
         result = find_history_for_pending(int(save_id_raw), [str(x) for x in aks])
         import json
         return json.dumps(result, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_list_recent_history(user_id: int, args: dict) -> str:
@@ -452,7 +452,7 @@ def _t_list_recent_history(user_id: int, args: dict) -> str:
     init_db()
     with connect() as db:
         if not _own_save(db, int(save_id_raw), user_id):
-            return f"失败 (权限): save {int(save_id_raw)} 不属于当前用户或不存在"
+            return f"Failed (permission): save {int(save_id_raw)} does not belong to the current user or does not exist"
     try:
         from agents.save_history import list_recent_history
         items = list_recent_history(
@@ -464,7 +464,7 @@ def _t_list_recent_history(user_id: int, args: dict) -> str:
         import json
         return json.dumps(items, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_summarize_anchors(user_id: int, args: dict) -> str:
@@ -481,12 +481,12 @@ def _t_summarize_anchors(user_id: int, args: dict) -> str:
         from tools_dsl.command_dispatcher import _get_sync_scope_lock
         with _get_sync_scope_lock((int(user_id), save_id)), connect() as db:
             if not _own_save(db, save_id, user_id):
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
         from agents.anchor_seed_agent import summarize_save_anchor_state
         s = summarize_save_anchor_state(save_id)
         return json.dumps(s, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -532,13 +532,13 @@ def _t_claim_protagonist_pov(user_id: int, args: dict) -> str:
         from tools_dsl.command_dispatcher import _get_sync_scope_lock
         with _get_sync_scope_lock((int(user_id), save_id)), connect() as db:
             if not _own_save(db, save_id, user_id):
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             # 1. 拿 script_id
             sr = db.execute(
                 "select script_id, state_snapshot from game_saves where id=%s", (save_id,),
             ).fetchone()
             if not sr:
-                return "失败: 存档不存在"
+                return "Failed: save does not exist"
             script_id = int(sr["script_id"])
             state = sr["state_snapshot"] if isinstance(sr["state_snapshot"], dict) else {}
             # 2. 找原作主角
@@ -552,7 +552,7 @@ def _t_claim_protagonist_pov(user_id: int, args: dict) -> str:
                 if r:
                     name = r["name"]
             if not name:
-                return "失败: 未找到原作主角(剧本可能还未跑 canon_extract)"
+                return "Failed: original protagonist not found (the script may not have run canon_extract yet)"
             # 3. 找该主角的"首次登场"类 pending anchors
             #    匹配:summary 含 "X(character)首次登场" OR must_preserve::text 含 "X 参与"
             rows = db.execute(
@@ -569,7 +569,8 @@ def _t_claim_protagonist_pov(user_id: int, args: dict) -> str:
                          status='occurred', drift_score=0.0,
                          variant_description=%s, updated_at=now()
                        where id=%s and save_id=%s""",
-                    (f"玩家以「{state.get('player', {}).get('name', '玩家')}」代入 {name} 的 POV 位置 — 主角登场即玩家入场", r["id"], save_id),
+                    # 签名 "takes over {name}'s POV position" 是 revoke 反查的契约(老中文签名见 revoke)
+                    (f"The player, as '{state.get('player', {}).get('name', 'the player')}', takes over {name}'s POV position - the protagonist's entrance is the player's entrance", r["id"], save_id),
                 )
                 satisfied.append({"anchor_id": r["id"], "anchor_key": r["anchor_key"], "summary": (r["summary"] or "")[:120]})
             # 5. 把原作主角名加进 player.aliases (持久化到 state_snapshot)
@@ -599,7 +600,7 @@ def _t_claim_protagonist_pov(user_id: int, args: dict) -> str:
             "player_aliases_added": name,
         }, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_revoke_protagonist_pov(user_id: int, args: dict) -> str:
@@ -621,7 +622,7 @@ def _t_revoke_protagonist_pov(user_id: int, args: dict) -> str:
     save_id = int(save_id_raw)
     name = (args.get("original_protag_name") or "").strip()
     if not name:
-        return "失败: original_protag_name 必填"
+        return "Failed: original_protag_name is required"
     try:
         from psycopg.types.json import Jsonb
 
@@ -631,7 +632,7 @@ def _t_revoke_protagonist_pov(user_id: int, args: dict) -> str:
         from tools_dsl.command_dispatcher import _get_sync_scope_lock
         with _get_sync_scope_lock((int(user_id), save_id)), connect() as db:
             if not _own_save(db, save_id, user_id):
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
             # 1. 把 claim 标记过的 anchor 重置 pending。
             #    BUG 修复:原来用 `summary like '%X(character)首次登场%' AND variant_description like`,
             #    但 claim 是按 (summary OR must_preserve like '%X 参与%') 标记的 —— 靠 must_preserve
@@ -642,8 +643,9 @@ def _t_revoke_protagonist_pov(user_id: int, args: dict) -> str:
                 """select id, anchor_key, summary, status, variant_description
                    from save_anchor_states
                    where save_id=%s and status in ('occurred','variant')
-                     and variant_description like %s""",
-                (save_id, f"%代入 {name} 的 POV 位置%"),
+                     and (variant_description like %s or variant_description like %s)""",
+                # 中英两种签名都认:老存档是中文签名,claim 现写英文签名
+                (save_id, f"%代入 {name} 的 POV 位置%", f"%takes over {name}'s POV position%"),
             ).fetchall() or []
             reverted = []
             for r in rows:
@@ -683,7 +685,7 @@ def _t_revoke_protagonist_pov(user_id: int, args: dict) -> str:
             "pov_replaces_after": pov_list,
         }, ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _anchor_worldline_specs() -> list:
@@ -691,21 +693,21 @@ def _anchor_worldline_specs() -> list:
         ToolSpec(
             name="list_pending_anchors",
             description=(
-                "【世界线收束】查询当前存档待发生的原著锚点事件。"
-                "GM 应每隔几轮调用一次,了解『剧本必须发生但还没发生』的关键事件,"
-                "并主动设计场景把剧情往那里引。返回按 importance desc 排序的列表,"
-                "含 anchor_key / chapter / summary / must_preserve / may_vary / is_fatal。"
-                "is_fatal=true 表示死神来了模式 — 玩家任何阻止尝试都会以替代方式触发。"
+                "[Worldline convergence] List the canon anchor events still pending in the current save. "
+                "The GM should call it every few turns to learn which key events 'the script requires but have not happened yet', "
+                "and actively design scenes that steer the story toward them. Returns a list sorted by importance desc, "
+                "with anchor_key / chapter / summary / must_preserve / may_vary / is_fatal. "
+                "is_fatal=true means Final Destination mode - any attempt by the player to prevent it triggers it another way."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "phase_label": {"type": "string", "description": "可选,只取该 phase 下的锚点"},
-                    "chapter_min": {"type": "integer", "description": "可选,章节范围下限"},
-                    "chapter_max": {"type": "integer", "description": "可选,章节范围上限"},
-                    "limit": {"type": "integer", "description": "返回条数 (1-20),默认 5", "default": 5},
-                    "include_metadata": {"type": "boolean", "description": "true 时附带 participants/locations,默认 false"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "phase_label": {"type": "string", "description": "Optional; only anchors in this phase"},
+                    "chapter_min": {"type": "integer", "description": "Optional; lower bound of the chapter range"},
+                    "chapter_max": {"type": "integer", "description": "Optional; upper bound of the chapter range"},
+                    "limit": {"type": "integer", "description": "Number of results (1-20), default 5", "default": 5},
+                    "include_metadata": {"type": "boolean", "description": "When true, include participants/locations; default false"},
                 },
                 "required": ["save_id"],
             },
@@ -715,27 +717,27 @@ def _anchor_worldline_specs() -> list:
             destructive=False,
             input_examples=[
                 {"save_id": 1, "limit": 5},
-                {"save_id": 1, "phase_label": "柏林暗流篇", "limit": 3},
+                {"save_id": 1, "phase_label": "Berlin undercurrent arc", "limit": 3},
                 {"save_id": 1, "chapter_min": 10, "chapter_max": 30},
             ],
         ),
         ToolSpec(
             name="mark_anchor_satisfied",
             description=(
-                "【世界线收束】标记某个原著锚点已经在本存档发生。"
-                "drift_score=0 表示完全按原著方式发生; drift_score>=0.15 时 status 变为 variant "
-                "(以变体方式发生,核心保留但具体不同)。how_it_happened 必填,"
-                "描述本存档里这件事是怎么发生的 (会写入日志供后续 audit)。"
+                "[Worldline convergence] Mark a canon anchor as having happened in this save. "
+                "drift_score=0 means it happened exactly as in canon; with drift_score>=0.15 the status becomes variant "
+                "(happened as a variant: the core is preserved but the details differ). how_it_happened is required: "
+                "describe how this event happened in this save (it is logged for later audit)."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "anchor_key": {"type": "string", "description": "锚点 key (如 'chapter:12:event:3')"},
-                    "anchor_id": {"type": "integer", "description": "或锚点主键 id (anchor_key 二选一)"},
-                    "how_it_happened": {"type": "string", "description": "事件实际发生方式描述"},
-                    "drift_score": {"type": "number", "description": "0.0-1.0, 偏离原著程度"},
-                    "occurred_at_turn": {"type": "integer", "description": "可选,默认存档当前 turn"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "anchor_key": {"type": "string", "description": "Anchor key (e.g. 'chapter:12:event:3')"},
+                    "anchor_id": {"type": "integer", "description": "Or the anchor's primary-key id (one of anchor_key / anchor_id)"},
+                    "how_it_happened": {"type": "string", "description": "Description of how the event actually happened"},
+                    "drift_score": {"type": "number", "description": "0.0-1.0, how far it deviates from canon"},
+                    "occurred_at_turn": {"type": "integer", "description": "Optional; defaults to the save's current turn"},
                 },
                 "required": ["save_id", "how_it_happened"],
             },
@@ -745,26 +747,26 @@ def _anchor_worldline_specs() -> list:
             destructive=False,
             input_examples=[
                 {"save_id": 1, "anchor_key": "chapter:12:event:0",
-                 "how_it_happened": "穆蕾莉娅在地下车场对 MC 透露异端情报,而非原著的浴室场景",
+                 "how_it_happened": "Muriel reveals the heretic intel to the MC in the underground garage instead of the canon bathhouse scene",
                  "drift_score": 0.3},
                 {"save_id": 1, "anchor_key": "chapter:7:event:2",
-                 "how_it_happened": "完全按原著方式 — Kaiserin 当夜命令清空北区情报站", "drift_score": 0.0},
+                 "how_it_happened": "Exactly as in canon - the Kaiserin orders the northern intelligence station cleared that night", "drift_score": 0.0},
             ],
         ),
         ToolSpec(
             name="mark_anchor_superseded",
             description=(
-                "【世界线收束】标记某个原著锚点已被剧情绕过,永远不会按这个锚点发生。"
-                "is_fatal=true 锚点【拒绝】被 superseded (死神来了模式不可绕过)。"
-                "非 fatal 锚点也需谨慎用 — 大多数偏离应该用 mark_anchor_satisfied 配 drift_score 来记录。"
+                "[Worldline convergence] Mark a canon anchor as bypassed by the story: it will never happen as this anchor describes. "
+                "is_fatal=true anchors [refuse] to be superseded (Final Destination mode cannot be bypassed). "
+                "Use it carefully even for non-fatal anchors - most deviations should be recorded with mark_anchor_satisfied plus a drift_score."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "anchor_key": {"type": "string", "description": "锚点 key"},
-                    "anchor_id": {"type": "integer", "description": "或锚点主键 id"},
-                    "reason": {"type": "string", "description": "为什么这个锚点已经不可能发生 (必填)"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "anchor_key": {"type": "string", "description": "Anchor key"},
+                    "anchor_id": {"type": "integer", "description": "Or the anchor's primary-key id"},
+                    "reason": {"type": "string", "description": "Why this anchor can no longer happen (required)"},
                 },
                 "required": ["save_id", "reason"],
             },
@@ -774,32 +776,32 @@ def _anchor_worldline_specs() -> list:
             destructive=False,
             input_examples=[
                 {"save_id": 1, "anchor_key": "chapter:18:event:1",
-                 "reason": "MC 提前 6 章拦截了图卢兹方面的密令,该事件的前置条件已不存在"},
+                 "reason": "The MC intercepted Toulouse's secret order 6 chapters early, so the event's preconditions no longer exist"},
             ],
         ),
         ToolSpec(
             name="record_history_anchor",
             description=(
-                "【存档独立时间线】记录玩家在这个世界线创造的重要历史节点 (过去时态)。"
-                "跟 mark_anchor_satisfied 不同 — 那个标记的是【原著】锚点;本工具记录【玩家创造】"
-                "的新事件,不必对应任何原著锚点。importance 建议:60+ 改变 NPC 关系/势力立场,"
-                "80+ 改写原著锚点(linked_pending_anchors 不空),90+ 引入新角色/势力。"
-                "不需要每轮都调 — 流水账有 state.history 兜;只在事件足够 important 时留档。"
+                "[Save-specific timeline] Record an important historical milestone the player created in this worldline (past tense). "
+                "Different from mark_anchor_satisfied - that one marks [canon] anchors; this tool records new events [created by the player] "
+                "that need not correspond to any canon anchor. Suggested importance: 60+ changes an NPC relationship / faction stance, "
+                "80+ rewrites a canon anchor (linked_pending_anchors non-empty), 90+ introduces a new character/faction. "
+                "No need to call it every turn - state.history already covers the running log; only record events that are important enough."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "summary": {"type": "string", "description": "事件描述,过去时态,≤800 字"},
-                    "importance": {"type": "integer", "description": "0-100,建议 ≥60", "default": 60},
-                    "story_time_label": {"type": "string", "description": "事件发生时存档 world.time,可空"},
-                    "ingame_chapter": {"type": "integer", "description": "玩家声明的原著章节进度"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "标签数组,如 ['政治','穿越者泄密']"},
-                    "characters": {"type": "array", "items": {"type": "string"}, "description": "涉及人物名"},
-                    "locations": {"type": "array", "items": {"type": "string"}, "description": "涉及地点"},
-                    "linked_canon_keys": {"type": "array", "items": {"type": "string"}, "description": "关联到 canon 实体 logical_key"},
-                    "linked_pending_anchors": {"type": "array", "items": {"type": "string"}, "description": "**强引导**:若改写了某原著锚点,务必填 anchor_key (本工具会自动同步 mark_anchor_satisfied,防止 GM 下一轮看到 pending 还重复触发)。"},
-                    "drift_score": {"type": "number", "minimum": 0, "maximum": 1, "description": "若 linked_pending_anchors 非空,级联标记时用的 drift_score (0=按原著,1=核心保留全变),默认 0.5"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "summary": {"type": "string", "description": "Event description, past tense, <= 800 characters"},
+                    "importance": {"type": "integer", "description": "0-100, >= 60 recommended", "default": 60},
+                    "story_time_label": {"type": "string", "description": "The save's world.time when the event happened; may be empty"},
+                    "ingame_chapter": {"type": "integer", "description": "Source-chapter progress declared by the player"},
+                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tag array, e.g. ['politics', 'transmigrator leak']"},
+                    "characters": {"type": "array", "items": {"type": "string"}, "description": "Names of the characters involved"},
+                    "locations": {"type": "array", "items": {"type": "string"}, "description": "Locations involved"},
+                    "linked_canon_keys": {"type": "array", "items": {"type": "string"}, "description": "Linked canon entity logical_keys"},
+                    "linked_pending_anchors": {"type": "array", "items": {"type": "string"}, "description": "**Strongly encouraged**: if a canon anchor was rewritten, you must fill in its anchor_key (this tool then syncs mark_anchor_satisfied automatically, so the GM does not see it still pending next turn and trigger it again)."},
+                    "drift_score": {"type": "number", "minimum": 0, "maximum": 1, "description": "If linked_pending_anchors is non-empty, the drift_score used for the cascaded marks (0 = as in canon, 1 = core kept but everything else changed); default 0.5"},
                     "source": {"type": "string", "enum": ["gm_generated", "player_declared"], "default": "gm_generated"},
                 },
                 "required": ["save_id", "summary"],
@@ -809,26 +811,26 @@ def _anchor_worldline_specs() -> list:
             origins=_ANCHOR_MUTATE_ORIGINS,
             destructive=False,
             input_examples=[
-                {"save_id": 2, "summary": "MC 在波斯王宫向国王透露 1914 年一战会爆发的情报,国王召开内阁紧急会议",
-                 "importance": 75, "tags": ["政治", "穿越者泄密"], "characters": ["波斯国王"], "locations": ["波斯王宫"]},
-                {"save_id": 2, "summary": "MC 拯救了原著中应被刺杀的林有德,改写了陨石坑刺杀事件",
-                 "importance": 90, "characters": ["林有德"], "linked_pending_anchors": ["chapter:162:event:0"]},
+                {"save_id": 2, "summary": "At the Persian royal palace the MC told the king that a world war would break out in 1914; the king called an emergency cabinet meeting",
+                 "importance": 75, "tags": ["politics", "transmigrator leak"], "characters": ["King of Persia"], "locations": ["Persian royal palace"]},
+                {"save_id": 2, "summary": "The MC saved Lin Youde, who was assassinated in canon, rewriting the crater assassination event",
+                 "importance": 90, "characters": ["Lin Youde"], "linked_pending_anchors": ["chapter:162:event:0"]},
             ],
         ),
         ToolSpec(
             name="check_pending_anchor_drift",
             description=(
-                "【世界线收束】反查指定 pending anchor 是否已被某条 history 改写 (linked_pending_anchors 反查)。"
-                "用于排查『为什么 retrieve_context 注入了某 pending,但我觉得已经做过这件事了』的怀疑。"
-                "返回每个 anchor 对应的 history 列表 (turn 倒序前 3 条),空数组表示未改写。"
-                "GM 一般不需要主动调 — retrieve_context 已经在注入时自动标 ⚠ 并显示 drift_marker。"
+                "[Worldline convergence] Reverse-look-up whether the given pending anchors have been rewritten by some history entry (reverse lookup of linked_pending_anchors). "
+                "Use it to investigate the suspicion 'why did retrieve_context inject this pending anchor when I think it already happened?'. "
+                "Returns, per anchor, its history entries (top 3 by turn desc); an empty array means not rewritten. "
+                "The GM usually need not call it - retrieve_context already marks ⚠ and shows drift_marker when injecting."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
                     "save_id": {"type": "integer"},
                     "anchor_keys": {"type": "array", "items": {"type": "string"},
-                                    "description": "要反查的 anchor_key 数组"},
+                                    "description": "Array of anchor_keys to look up"},
                 },
                 "required": ["save_id", "anchor_keys"],
             },
@@ -840,18 +842,18 @@ def _anchor_worldline_specs() -> list:
         ToolSpec(
             name="list_recent_history",
             description=(
-                "【存档独立时间线】查询本存档最近的历史锚点 (按 turn 倒序)。"
-                "GM 应在每轮开始时调一次,了解【玩家在这个世界线已经做过什么】,"
-                "避免叙事重复或与已发生事实矛盾(记忆污染防护)。"
-                "返回 list[{turn, summary, importance, tags, characters, locations, linked_anchors}]。"
+                "[Save-specific timeline] List this save's recent history anchors (by turn desc). "
+                "The GM should call it once at the start of each turn to learn [what the player has already done in this worldline], "
+                "avoiding repeated narration or contradictions with established facts (memory-pollution guard). "
+                "Returns list[{turn, summary, importance, tags, characters, locations, linked_anchors}]."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
-                    "limit": {"type": "integer", "description": "返回条数,默认 8", "default": 8},
-                    "min_importance": {"type": "integer", "description": "只返 importance ≥ 此值的", "default": 0},
-                    "character_filter": {"type": "string", "description": "可选,只返涉及此角色的"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
+                    "limit": {"type": "integer", "description": "Number of results, default 8", "default": 8},
+                    "min_importance": {"type": "integer", "description": "Only return entries with importance >= this value", "default": 0},
+                    "character_filter": {"type": "string", "description": "Optional; only return entries involving this character"},
                 },
                 "required": ["save_id"],
             },
@@ -861,19 +863,19 @@ def _anchor_worldline_specs() -> list:
             destructive=False,
             input_examples=[
                 {"save_id": 2, "limit": 5},
-                {"save_id": 2, "character_filter": "林有德", "min_importance": 60},
+                {"save_id": 2, "character_filter": "Lin Youde", "min_importance": 60},
             ],
         ),
         ToolSpec(
             name="summarize_anchors",
             description=(
-                "【世界线收束】返回当前存档的锚点整体收束状态: pending / occurred / variant / superseded "
-                "各多少,fatal_pending 数,avg_drift。GM 偶尔调用看一眼整体偏离度。"
+                "[Worldline convergence] Return the current save's overall anchor convergence status: counts of pending / occurred / variant / superseded, "
+                "the number of fatal_pending, and avg_drift. The GM can call it occasionally to check overall drift."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
                 },
                 "required": ["save_id"],
             },
@@ -890,10 +892,10 @@ def _anchor_pov_specs() -> list:
         ToolSpec(
             name="revoke_protagonist_pov",
             description=(
-                "【主角身份覆盖·撤销】claim_protagonist_pov 的逆操作。"
-                "把因 claim 操作标 satisfied 的 'X 首次登场' anchor 重置 pending,"
-                "清 player.aliases / pov_replaces 里的 X 项。"
-                "用于纠正误调或玩家身份语义切换。"
+                "[Protagonist identity override - undo] The inverse of claim_protagonist_pov. "
+                "Resets the 'X first appears' anchors that the claim marked satisfied back to pending, "
+                "and removes X from player.aliases / pov_replaces. "
+                "Use it to correct a mistaken call or when the player's identity semantics change."
             ),
             input_schema={
                 "type": "object",
@@ -907,27 +909,27 @@ def _anchor_pov_specs() -> list:
             scope="user",
             origins=_ANCHOR_MUTATE_ORIGINS,
             destructive=False,
-            input_examples=[{"save_id": 3, "original_protag_name": "爱丽丝"}],
+            input_examples=[{"save_id": 3, "original_protag_name": "Alice"}],
         ),
         ToolSpec(
             name="claim_protagonist_pov",
             description=(
-                "【主角身份覆盖】玩家**显式声明** '我就是原作主角 X'(灵魂占据 X 的身体)。\n\n"
-                "**重要边界**:isekai 默认是「玩家自定义角色卡 + 现代灵魂,与原作主角【平行共存】」 — \n"
-                "原作主角作为独立 NPC 正常登场,玩家在同一场景平行加入。**不要默认调用本工具**。\n\n"
-                "**只在以下情形 GM 主动调**:\n"
-                "  · 玩家明说 '我就是 X' / '我占据了 X 的身体' / '我的灵魂在 X 身上'\n"
-                "  · 玩家选 user_card 时显式标注其为某原作角色的化名\n\n"
-                "调用效果:'X(character)首次登场' 类 pending anchor → satisfied (drift=0),\n"
-                "player.aliases 加 X,player_meta.pov_replaces 加 X。幂等可重复。"
+                "[Protagonist identity override] The player **explicitly declares** 'I am the original protagonist X' (their soul occupies X's body).\n\n"
+                "**Important boundary**: isekai defaults to 'the player's own character card + a modern soul, [coexisting in parallel] with the original protagonist' - \n"
+                "the original protagonist appears normally as an independent NPC and the player joins the same scenes alongside them. **Do not call this tool by default**.\n\n"
+                "**The GM should call it only when**:\n"
+                "  · the player says outright 'I am X' / 'I took over X's body' / 'my soul is in X'\n"
+                "  · the player picked a user_card explicitly marked as an alias of a canon character\n\n"
+                "Effect: pending anchors of the 'X(character) first appearance' kind -> satisfied (drift=0),\n"
+                "X is added to player.aliases and player_meta.pov_replaces. Idempotent; safe to repeat."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "目标存档 id"},
+                    "save_id": {"type": "integer", "description": "Target save id"},
                     "original_protag_name": {
                         "type": "string",
-                        "description": "可选,原作主角名(完全匹配 kb_canon_entities.name)。不传按 type='character' importance desc 第 1 取。",
+                        "description": "Optional; the original protagonist's name (exact match on kb_canon_entities.name). If omitted, the top type='character' entity by importance desc is used.",
                     },
                 },
                 "required": ["save_id"],
@@ -938,7 +940,7 @@ def _anchor_pov_specs() -> list:
             destructive=False,
             input_examples=[
                 {"save_id": 3},  # 默认按 importance 取
-                {"save_id": 3, "original_protag_name": "爱丽丝"},
+                {"save_id": 3, "original_protag_name": "Alice"},
             ],
         ),
     ]

@@ -22,7 +22,7 @@ def test_briefing_deterministic_and_bounded():
         "离线很久时最近的事优先入选(取最新60条反转,预算从最新日组往前装)")
     assert "截断保底" in BR, "最新日组独自超预算不返回 None"
     # v4 起收尾指导句被提到模块级 TAIL_TEXT 常量(供预算计入复用),不再是函数体内字面量。
-    assert "不要一口气复述全部" in BR, "GM 指令:自然提及不照本宣科"
+    assert "do not recount them all in one go" in BR, "GM 指令:自然提及不照本宣科"
     body = BR[BR.find("def build_offline_briefing"):]
     assert "TAIL_TEXT" in body, "收尾句须通过 TAIL_TEXT 拼进最终输出"
     assert "call_agent" not in BR and "llm" not in BR.lower().replace("零 llm", ""), "零 LLM 确定性拼装"

@@ -55,10 +55,10 @@ def _t_worldbook_add(state: Any, args: dict) -> str:
     """向当前 save 的世界书 overlay 新增一条 addition。"""
     title = (args.get("title") or "").strip()
     if not title:
-        return "失败: title 不能为空"
+        return "Failed: title must not be empty"
     content = (args.get("content") or "").strip()
     if not content:
-        return "失败: content 不能为空"
+        return "Failed: content must not be empty"
 
     keys = args.get("keys") or []
     if not isinstance(keys, list):
@@ -76,11 +76,11 @@ def _t_worldbook_add(state: Any, args: dict) -> str:
     # save_id: 优先从 args 获取（调用方应传入），回退从 state._save_id 或 state.data
     save_id = args.get("save_id") or getattr(state, "_save_id", None) or state.data.get("save_id")
     if not save_id:
-        return "失败: save_id 未提供 (请在 args 中传入 save_id)"
+        return "Failed: save_id not provided (pass save_id in args)"
     try:
         save_id = int(save_id)
     except (TypeError, ValueError):
-        return "失败: save_id 必须是整数"
+        return "Failed: save_id must be an integer"
 
     try:
         from psycopg.types.json import Jsonb
@@ -98,9 +98,9 @@ def _t_worldbook_add(state: Any, args: dict) -> str:
                 (save_id, title, content, Jsonb(keys), priority, turn),
             ).fetchone()
         new_id = row["id"]
-        return f"已新增世界书条目 #{new_id}: {title}"
+        return f"Added worldbook entry #{new_id}: {title}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_worldbook_retire(state: Any, args: dict) -> str:
@@ -109,23 +109,23 @@ def _t_worldbook_retire(state: Any, args: dict) -> str:
     reason = (args.get("reason") or "").strip()
 
     if base_entry_id is None:
-        return "失败: base_entry_id 必填"
+        return "Failed: base_entry_id is required"
     try:
         base_entry_id = int(base_entry_id)
     except (TypeError, ValueError):
-        return "失败: base_entry_id 必须是整数"
+        return "Failed: base_entry_id must be an integer"
     if not reason:
-        return "失败: reason 不能为空"
+        return "Failed: reason must not be empty"
 
     turn = int(state.data.get("turn") or 0)
 
     save_id = args.get("save_id") or getattr(state, "_save_id", None) or state.data.get("save_id")
     if not save_id:
-        return "失败: save_id 未提供 (请在 args 中传入 save_id)"
+        return "Failed: save_id not provided (pass save_id in args)"
     try:
         save_id = int(save_id)
     except (TypeError, ValueError):
-        return "失败: save_id 必须是整数"
+        return "Failed: save_id must be an integer"
 
     try:
         from platform_app.db import connect, init_db
@@ -137,7 +137,7 @@ def _t_worldbook_retire(state: Any, args: dict) -> str:
                 (save_id,),
             ).fetchone()
             if not save_row:
-                return f"失败: 找不到 save_id={save_id}"
+                return f"Failed: save_id={save_id} not found"
             script_id = save_row["script_id"]
 
             entry_row = db.execute(
@@ -146,7 +146,7 @@ def _t_worldbook_retire(state: Any, args: dict) -> str:
             ).fetchone()
             if not entry_row:
                 return (
-                    f"失败: worldbook_entries #{base_entry_id} 不存在或不属于"
+                    f"Failed: worldbook_entries #{base_entry_id} does not exist or does not belong to"
                     f" script_id={script_id}"
                 )
 
@@ -158,8 +158,8 @@ def _t_worldbook_retire(state: Any, args: dict) -> str:
             ).fetchone()
             if existing:
                 return (
-                    f"已存在: worldbook_entries #{base_entry_id} 在 save #{save_id}"
-                    f" 中已有 retirement overlay (id={existing['id']})"
+                    f"Already exists: worldbook_entries #{base_entry_id} already has a retirement overlay"
+                    f" in save #{save_id} (id={existing['id']})"
                 )
 
             # 3) 插入 retirement
@@ -172,20 +172,20 @@ def _t_worldbook_retire(state: Any, args: dict) -> str:
                 """,
                 (save_id, base_entry_id, reason, turn),
             ).fetchone()
-        return f"已停用剧本世界书 #{base_entry_id}: {reason}"
+        return f"Retired script worldbook entry #{base_entry_id}: {reason}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_worldbook_list_save_overlay(user_id: int, args: dict) -> str:
     """列出某 save 的所有 worldbook overlay (additions + retirements)。"""
     save_id = args.get("save_id")
     if save_id is None:
-        return "失败: save_id 必填"
+        return "Failed: save_id is required"
     try:
         save_id = int(save_id)
     except (TypeError, ValueError):
-        return "失败: save_id 必须是整数"
+        return "Failed: save_id must be an integer"
 
     try:
         from platform_app.db import connect, init_db
@@ -197,7 +197,7 @@ def _t_worldbook_list_save_overlay(user_id: int, args: dict) -> str:
                 (save_id, user_id),
             ).fetchone()
             if not save_row:
-                return f"失败 (权限): save {save_id} 不属于当前用户或不存在"
+                return f"Failed (permission): save {save_id} does not belong to the current user or does not exist"
 
             rows = db.execute(
                 """
@@ -238,7 +238,7 @@ def _t_worldbook_list_save_overlay(user_id: int, args: dict) -> str:
             indent=2,
         )
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -255,26 +255,26 @@ def register_worldbook_tools() -> None:
         registry.register(ToolSpec(
             name="worldbook_add",
             description=(
-                "向当前存档的世界书 overlay 新增一条 addition 条目。\n"
-                "仅用于玩家/GM 在剧情中发现的新设定（剧本 worldbook_entries 没有的内容）。\n"
-                "不会修改剧本原始数据，只在本 save 生效。\n"
-                "keys 是触发关键词列表，priority 默认 50。"
+                "Add an addition entry to the current save's worldbook overlay.\n"
+                "Only for new lore the player/GM discovered during the story (content the script's worldbook_entries do not have).\n"
+                "Does not modify the script's original data; applies only to this save.\n"
+                "keys is the list of trigger keywords; priority defaults to 50."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "存档 id"},
-                    "title": {"type": "string", "description": "条目标题，不能为空"},
-                    "content": {"type": "string", "description": "条目正文"},
+                    "save_id": {"type": "integer", "description": "Save id"},
+                    "title": {"type": "string", "description": "Entry title; must not be empty"},
+                    "content": {"type": "string", "description": "Entry body"},
                     "keys": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "触发关键词列表（可空）",
+                        "description": "List of trigger keywords (may be empty)",
                         "default": [],
                     },
                     "priority": {
                         "type": "integer",
-                        "description": "优先级，默认 50，≥90 视为强制插入",
+                        "description": "Priority, default 50; >= 90 is treated as forced insertion",
                         "default": 50,
                     },
                 },
@@ -291,23 +291,23 @@ def register_worldbook_tools() -> None:
         registry.register(ToolSpec(
             name="worldbook_retire",
             description=(
-                "将剧本 worldbook_entries 中某条 entry 标记为在本存档后续 turn 不再激活。\n"
-                "典型用途：NPC 死亡、地点毁灭、设定被颠覆。\n"
-                "base_entry_id 必须是 worldbook_entries.id，且属于本 save 绑定的剧本。\n"
-                "reason 简短说明停用原因（如 '角色死亡 turn 12'）。\n"
-                "操作不可逆（可手动删 DB 行恢复），禁止 llm_chat 裸调。"
+                "Mark an entry of the script's worldbook_entries as no longer active in later turns of this save.\n"
+                "Typical uses: an NPC dies, a location is destroyed, a piece of lore is overturned.\n"
+                "base_entry_id must be a worldbook_entries.id belonging to the script this save is bound to.\n"
+                "reason briefly explains why it is retired (e.g. 'character died turn 12').\n"
+                "Irreversible (restorable only by deleting the DB row manually); llm_chat may not call it directly."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "存档 id"},
+                    "save_id": {"type": "integer", "description": "Save id"},
                     "base_entry_id": {
                         "type": "integer",
-                        "description": "要停用的 worldbook_entries.id",
+                        "description": "The worldbook_entries.id to retire",
                     },
                     "reason": {
                         "type": "string",
-                        "description": "停用原因（如 'NPC 死亡 turn 47'）",
+                        "description": "Reason for retiring it (e.g. 'NPC died turn 47')",
                     },
                 },
                 "required": ["save_id", "base_entry_id", "reason"],
@@ -323,15 +323,15 @@ def register_worldbook_tools() -> None:
         registry.register(ToolSpec(
             name="worldbook_list_save_overlay",
             description=(
-                "列出指定存档的所有 worldbook overlay 条目。\n"
-                "返回 {additions: [...], retirements: [...]}。\n"
-                "additions 每项含 id/title/content(前80字)/keys/priority/introduced_turn；\n"
-                "retirements 每项含 id/retired_entry_id/retired_reason/introduced_turn。"
+                "List all worldbook overlay entries of the given save.\n"
+                "Returns {additions: [...], retirements: [...]}.\n"
+                "Each addition has id/title/content (first 80 characters)/keys/priority/introduced_turn;\n"
+                "each retirement has id/retired_entry_id/retired_reason/introduced_turn."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "save_id": {"type": "integer", "description": "存档 id"},
+                    "save_id": {"type": "integer", "description": "Save id"},
                 },
                 "required": ["save_id"],
             },
