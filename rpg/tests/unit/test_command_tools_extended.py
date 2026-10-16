@@ -101,7 +101,7 @@ class SavesUserToolsExecution(unittest.TestCase):
             conn.side_effect = Exception("DB 不可用")
             r = self._call("list_my_saves", {})
             self.assertFalse(r.ok)
-            self.assertIn("失败", r.result or "")
+            self.assertIn("Failed", r.result or "")
 
     def test_delete_save_blocked_from_llm_set(self):
         """delete_save destructive=True,llm_set 不允许 (只 ui_button)。"""
@@ -123,11 +123,72 @@ class SavesUserToolsExecution(unittest.TestCase):
     def test_rename_save_validates_args(self):
         r = self._call("rename_save", {"save_id": "abc", "title": "x"}, trace_id="tr-1")
         self.assertFalse(r.ok)
-        self.assertIn("失败", r.result or "")
+        self.assertIn("Failed", r.result or "")
 
     def test_continue_branch_missing_args(self):
         r = self._call("continue_branch", {"save_id": 1}, trace_id="tcb-1")
         self.assertFalse(r.ok)
+
+    # continue_branch 曾调用不存在的 branches.continue_branch → 恒返失败。
+    # 现接 resolve_commit_id_by_message + continue_from(与 POST /api/branches/continue 同源)。
+    def _patch_fork(self, *, owns=True, node_id=42):
+        from unittest.mock import MagicMock
+        from platform_app import branches as _b
+        db_cm = MagicMock()
+        db_cm.__enter__.return_value = MagicMock()
+        db_cm.__exit__.return_value = False
+        resolve = MagicMock(return_value=node_id)
+        cont = MagicMock(return_value={
+            "ok": True, "active_commit_id": node_id,
+            "active_ref": {"name": "refs/heads/from-42-abcd"},
+        })
+        patches = [
+            patch("platform_app.db.connect", return_value=db_cm),
+            patch("platform_app.db.init_db"),
+            patch("platform_app.perms.owns_save", return_value=owns),
+            patch.object(_b, "resolve_commit_id_by_message", resolve),
+            patch.object(_b, "continue_from", cont),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        return resolve, cont
+
+    def test_continue_branch_real_fork_functions_exist(self):
+        from platform_app import branches as _b
+        self.assertTrue(callable(getattr(_b, "resolve_commit_id_by_message", None)))
+        self.assertTrue(callable(getattr(_b, "continue_from", None)))
+        self.assertFalse(hasattr(_b, "continue_branch"))
+
+    def test_continue_branch_forks_from_turn(self):
+        resolve, cont = self._patch_fork(node_id=42)
+        r = self._call("continue_branch", {"save_id": 7, "from_turn": 3}, trace_id="tcb-2")
+        self.assertTrue(r.ok, r.result)
+        # turn N → message_index 2N+1:resolve 内部 (idx - opening_offset)//2 两种相位都得 N
+        resolve.assert_called_once_with(1, 7, 7)
+        cont.assert_called_once_with(1, 42)
+        self.assertIn("Created a branch", r.result)
+        self.assertIn("commit_id=42", r.result)
+
+    def test_continue_branch_turn_to_message_index_math(self):
+        for turn in (0, 1, 5, 30):
+            idx = 2 * turn + 1
+            for opening_offset in (0, 1):
+                self.assertEqual(max(0, (idx - opening_offset) // 2), turn)
+
+    def test_continue_branch_rejects_foreign_save(self):
+        resolve, cont = self._patch_fork(owns=False)
+        r = self._call("continue_branch", {"save_id": 7, "from_turn": 1}, trace_id="tcb-3")
+        self.assertFalse(r.ok)
+        self.assertIn("permission", r.result)
+        resolve.assert_not_called()
+        cont.assert_not_called()
+
+    def test_continue_branch_missing_commit_fails(self):
+        resolve, cont = self._patch_fork(node_id=None)
+        r = self._call("continue_branch", {"save_id": 7, "from_turn": 99}, trace_id="tcb-4")
+        self.assertFalse(r.ok)
+        cont.assert_not_called()
 
 
 # ────────────────────────────────────────────────────────────
