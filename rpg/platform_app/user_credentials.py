@@ -150,9 +150,9 @@ def _ip_is_internal(ip_str: str) -> bool:
 # RPG_DEPLOYMENT_MODE),所以文案直接给出关掉它的开关。前端同义文案在 i18n 的
 # settings.edit_api.cloud_no_local_model,改一处要同批改另一处。
 _LOCAL_MODEL_HINT = (
-    "当前实例开启了多用户鉴权,出于 SSRF 防护只接受公网 https 地址,本机、局域网和 http 地址会被拒绝。"
-    "要接本地模型,请用桌面版,或以单用户方式自部署(RPG_REQUIRE_AUTH=0 且 RPG_DEPLOYMENT_MODE=local);"
-    "如果这是公网中转站,请填它的 https 地址。"
+    "This instance has multi-user authentication enabled, so for SSRF protection only public https addresses are accepted; "
+    "localhost, LAN and http addresses are rejected. To use a local model, use the desktop app or self-host in single-user mode "
+    "(RPG_REQUIRE_AUTH=0 and RPG_DEPLOYMENT_MODE=local); if this is a public relay, enter its https address."
 )
 
 
@@ -170,9 +170,9 @@ def _validate_base_url(url: str) -> None:
     try:
         p = urlparse(url)
     except Exception as exc:
-        raise ValueError("base_url 必须是合法 URL") from exc
+        raise ValueError("base_url must be a valid URL") from exc
     if p.scheme not in {"https", "http"}:
-        raise ValueError("base_url 必须是 http/https")
+        raise ValueError("base_url must be http/https")
     from core.config import require_auth as _require_auth
     # 本地/自部署单用户模式:用户自己的机器 + 自己的 key,SSRF「自我保护」无意义。而这里的
     # 解析级 IP 拦截会**误杀两类合法本地用法**:① 指向本机大模型(Ollama/LM Studio 127.0.0.1)
@@ -186,7 +186,7 @@ def _validate_base_url(url: str) -> None:
         raise ValueError(_LOCAL_MODEL_HINT)
     host = (p.hostname or "").lower()
     if not host:
-        raise ValueError("base_url 缺少 host")
+        raise ValueError("base_url is missing a host")
     # 字面量本地名快速拦截
     if host in {"localhost", "ip6-localhost", "ip6-loopback"} or host.endswith(".localhost"):
         raise ValueError(_LOCAL_MODEL_HINT)
@@ -195,12 +195,12 @@ def _validate_base_url(url: str) -> None:
         infos = socket.getaddrinfo(host, p.port or (443 if p.scheme == "https" else 80),
                                    proto=socket.IPPROTO_TCP)
     except OSError as exc:
-        raise ValueError(f"base_url 主机无法解析：{host}") from exc
+        raise ValueError(f"base_url host cannot be resolved: {host}") from exc
     for info in infos:
         ip_str = info[4][0]
         if _ip_is_internal(ip_str):
             # 同一类问题(地址在用户自己网络里)→ 同一份可执行文案,后面附技术细节便于排查。
-            raise ValueError(f"{_LOCAL_MODEL_HINT}(该域名解析到私有/保留地址:{host} → {ip_str})")
+            raise ValueError(f"{_LOCAL_MODEL_HINT} (this domain resolves to a private/reserved address: {host} -> {ip_str})")
 
 
 def _normalize_openai_base_url(url: str) -> str:
@@ -248,7 +248,7 @@ def _validate_proxy(proxy: str | None) -> str | None:
     if not proxy:
         return ""
     if not re.match(r"^(https?|socks5h?)://[^\s/]+", proxy, re.IGNORECASE):
-        raise ValueError("代理地址格式不对 · 形如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080")
+        raise ValueError("Invalid proxy address format; use something like http://127.0.0.1:7890 or socks5://127.0.0.1:1080")
     try:
         from core.config import require_auth as _require_auth
         _hosted = bool(_require_auth())
@@ -260,13 +260,13 @@ def _validate_proxy(proxy: str | None) -> str | None:
         _phost = (_urlparse(proxy).hostname or "").lower()
         if (not _phost or _phost in {"localhost", "ip6-localhost", "ip6-loopback"}
                 or _phost.endswith(".localhost")):
-            raise ValueError("服务器模式下代理不允许指向本地地址")
+            raise ValueError("In server mode the proxy cannot point to a local address")
         try:
             _infos = _socket.getaddrinfo(_phost, None, proto=_socket.IPPROTO_TCP)
         except OSError as _exc:
-            raise ValueError(f"代理主机无法解析:{_phost}") from _exc
+            raise ValueError(f"Proxy host cannot be resolved: {_phost}") from _exc
         if any(_ip_is_internal(_i[4][0]) for _i in _infos):
-            raise ValueError(f"服务器模式下代理不允许指向私有/本地/保留地址:{_phost}")
+            raise ValueError(f"In server mode the proxy cannot point to a private/local/reserved address: {_phost}")
     return proxy
 
 
@@ -314,12 +314,12 @@ def set_credential(user_id: int, api_id: str, plaintext_key: str, base_url_overr
         raise ValueError("api_id cannot be empty")
     auth_mode = (auth_mode or "api_key").strip() or "api_key"
     if auth_mode not in ("api_key", "none"):
-        raise ValueError("auth_mode 只能是 api_key 或 none")
+        raise ValueError("auth_mode must be api_key or none")
     keep_base_url = base_url_override is None
     if auth_mode == "none" and not (
         stored_base_url_override(user_id, api_id) if keep_base_url else base_url_override
     ):
-        raise ValueError("免鉴权模式必须填接口地址(base_url)——不指地址的「免 Key」无意义")
+        raise ValueError("No-auth mode requires an endpoint URL (base_url) - \"no key\" without an address makes no sense")
     if not plaintext_key and not preserve_key_if_empty and auth_mode != "none":
         # 空 key 常态 = 删除凭证（base_url 无关，短路在校验之前，保持 delete 路径零变化）。
         # auth_mode='none' 例外:无 key 正是它的常态,要落库而不是删。
@@ -329,7 +329,7 @@ def set_credential(user_id: int, api_id: str, plaintext_key: str, base_url_overr
     if keep_base_url:
         pass  # 本次没提地址:已存值原样保留,落库时由 SQL 维持原列值
     elif base_url_override and not allow_base_url:
-        raise ValueError("base_url_override 仅管理员可设置 · 普通用户必须使用 catalog 中的 base_url")
+        raise ValueError("Only administrators can set base_url_override; regular users must use the base_url from the catalog")
     elif not allow_base_url:
         base_url_override = ""
     elif base_url_override:

@@ -304,7 +304,7 @@ def _build_initial_snapshot(
                     player["background"] = id_background
                 if _card_name and _card_name != id_name_label:
                     overlay["card_name"] = _card_name           # 阿米娅(灵魂本名)
-                    player["display_name"] = f"{id_name_label}（{_card_name}）"  # 罗辑(阿米娅)
+                    player["display_name"] = f"{id_name_label} ({_card_name})"  # 罗辑(阿米娅)
                     _al = player.setdefault("aliases", [])
                     if _card_name not in _al:
                         _al.append(_card_name)
@@ -493,7 +493,7 @@ def _apply_script_opening(state: Any, user_id: int, script_id: int, prefer_chapt
         if first_title:
             # 去掉 markdown # 前缀，让 event 文本干净
             ev_title = re.sub(r"^#+\s*", "", first_title).strip()
-            world["known_events"] = [f"开场：{ev_title}"] if ev_title else []
+            world["known_events"] = [f"Opening: {ev_title}"] if ev_title else []
         return
 
     title = str(chosen.get("title") or "").strip()
@@ -536,7 +536,7 @@ def _apply_script_opening(state: Any, user_id: int, script_id: int, prefer_chapt
     ]
     events: list[str] = []
     if title_clean:
-        events.append(f"开场：{title_clean}")
+        events.append(f"Opening: {title_clean}")
     for s in body_sents[:2]:
         events.append(s if len(s) <= 80 else (s[:77] + "…"))
     if events:
@@ -547,7 +547,7 @@ def _apply_script_opening(state: Any, user_id: int, script_id: int, prefer_chapt
     if len(snippet) > 400:
         snippet = snippet[:400].rstrip() + "…"
     memory["last_retrieval"] = (
-        f"=== 剧本开场 · {title_clean or '第1章'} ===\n{snippet}"
+        f"=== Script opening · {title_clean or 'Chapter 1'} ===\n{snippet}"
         if snippet else memory.get("last_retrieval", "")
     )
 

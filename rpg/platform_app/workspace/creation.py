@@ -95,7 +95,7 @@ def create_save(
             values (%s, %s, %s, %s, %s)
             returning *
             """,
-            (user_id, script_id, title.strip() or "新存档", str(SAVE_FILE), Jsonb(snapshot)),
+            (user_id, script_id, title.strip() or "New save", str(SAVE_FILE), Jsonb(snapshot)),
         ).fetchone()
         # v27: 持久化身份卡 + 角色↔身份绑定。身份卡是 save 级独立实体,不修改角色卡行。
         # 注意:仅当 identity 至少有 role 或 background 才落库;否则视为"没身份,直接用角色卡"。
@@ -232,7 +232,7 @@ def _ingest_character_book(save_id: int, character_book: Any) -> int:
         if isinstance(keys, str):
             keys = [keys]
         keys = [str(k).strip() for k in keys if str(k).strip()][:32]
-        title = (str(e.get("comment") or e.get("name") or (keys[0] if keys else "") or "世界书条目")).strip()[:200]
+        title = (str(e.get("comment") or e.get("name") or (keys[0] if keys else "") or "Worldbook entry")).strip()[:200]
         # SillyTavern 的 priority 越大越优先(与我们一致);缺省给 60(高于普通 50,
         # 低于角色卡高优先级层),让角色专属设定较易命中检索。
         try:
@@ -286,7 +286,7 @@ def create_tavern_save(
     if character_card_id is not None:
         card = _ucards.get_user_card(user_id, int(character_card_id))
         if not card:
-            raise ValueError("找不到该角色卡(需 card_type='pc' 且属于当前用户)")
+            raise ValueError("Character card not found (it must have card_type='pc' and belong to the current user)")
         meta = card.get("metadata") or {}
 
     # —— persona:显式 → 默认 persona → inline 占位 ——
@@ -295,7 +295,7 @@ def create_tavern_save(
 
     def _persona_to_fields(p: dict) -> dict:
         return {
-            "name": (p.get("name") or "你"),
+            "name": (p.get("name") or "You"),
             "role": (p.get("role") or ""),
             "background": (p.get("background") or ""),
             "appearance": (p.get("appearance") or ""),
@@ -316,12 +316,12 @@ def create_tavern_save(
         except Exception:
             pass
     if not persona_fields:
-        persona_fields = {"name": "你"}
+        persona_fields = {"name": "You"}
 
     # 空起手:character={};否则投影角色卡字段
     if card is not None:
         character_snapshot: dict[str, Any] = {
-            "name": card.get("name") or "角色",
+            "name": card.get("name") or "Character",
             "identity": card.get("identity") or "",
             "background": card.get("background") or "",
             "appearance": card.get("appearance") or "",

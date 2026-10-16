@@ -208,7 +208,7 @@ class TestEnvProxyUnsupportedEntries:
         """显式凭据代理写坏了:给一句能照着改的话,不悄悄退回直连(用户明确要走代理)。"""
         with pytest.raises(UnsupportedProxy) as ei:
             safe_httpx_client(timeout=5, proxy=bad)
-        assert "HTTP 代理" in str(ei.value)
+        assert "HTTP proxy" in str(ei.value)
 
     def test_private_hooks_present(self):
         """两个内部钩子 httpx 升级若改名,环境代理过滤就会悄悄失效 —— 在这里红。"""

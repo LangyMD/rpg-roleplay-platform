@@ -77,7 +77,7 @@ class EndpointConvertsUniqueViolationTo400(unittest.TestCase):
         self.assertRegex(SCRIPTS_API, r"isinstance\(exc, UniqueViolation\)")
         # 转 400 + 可行动文案
         self.assertRegex(SCRIPTS_API, r'status_code=400')
-        self.assertIn("已存在同名 NPC 角色卡", SCRIPTS_API)
+        self.assertIn("already has an NPC character card with that name", SCRIPTS_API)
 
 
 if __name__ == "__main__":

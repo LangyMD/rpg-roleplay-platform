@@ -187,7 +187,7 @@ async def api_image_file(filename: str, request: Request) -> FileResponse:
         or ".." in filename
         or filename.startswith(".")
     ):
-        raise HTTPException(status_code=400, detail="非法文件名")
+        raise HTTPException(status_code=400, detail="Invalid file name")
 
     # 2. 扩展名白名单
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -198,10 +198,10 @@ async def api_image_file(filename: str, request: Request) -> FileResponse:
     try:
         target = storage.resolve_path("ai_images/" + filename)
     except ValueError:
-        raise HTTPException(status_code=400, detail="非法路径")
+        raise HTTPException(status_code=400, detail="Invalid path")
 
     if not target.exists():
-        raise HTTPException(status_code=404, detail="文件不存在")
+        raise HTTPException(status_code=404, detail="File not found")
 
     return FileResponse(str(target))
 
@@ -236,7 +236,7 @@ async def api_generate_image(request: Request):
 
     prompt: str = str(body.get("prompt") or "").strip()
     if not prompt:
-        raise HTTPException(status_code=400, detail="prompt 不能为空")
+        raise HTTPException(status_code=400, detail="prompt cannot be empty")
 
     kind: str = str(body.get("kind") or "chat").strip()
     api_id: str | None = body.get("api_id") or None
@@ -255,13 +255,13 @@ async def api_generate_image(request: Request):
         if attach_type not in ("user_avatar", "card_avatar", "script_cover"):
             raise HTTPException(
                 status_code=400,
-                detail=f"attach.type 无效: {attach_type!r}，合法值：user_avatar / card_avatar / script_cover",
+                detail=f"Invalid attach.type: {attach_type!r}; valid values: user_avatar / card_avatar / script_cover",
             )
         # S3: 入队前校验归属，防耗配额/信息泄露
         if attach_type == "card_avatar":
             card_id = attach.get("card_id") or attach.get("id")
             if not card_id:
-                raise HTTPException(status_code=400, detail="attach.card_id 不能为空")
+                raise HTTPException(status_code=400, detail="attach.card_id cannot be empty")
             init_db()
             _att_script_id = attach.get("script_id")
             with connect() as db:
@@ -289,11 +289,11 @@ async def api_generate_image(request: Request):
                         (int(card_id), user_id),
                     ).fetchone()
             if not row:
-                raise HTTPException(status_code=403, detail="无权为该角色卡生图：卡不存在或不属于当前用户")
+                raise HTTPException(status_code=403, detail="Not allowed to generate images for this character card: it does not exist or does not belong to the current user")
         elif attach_type == "script_cover":
             script_id = attach.get("script_id") or attach.get("id")
             if not script_id:
-                raise HTTPException(status_code=400, detail="attach.script_id 不能为空")
+                raise HTTPException(status_code=400, detail="attach.script_id cannot be empty")
             init_db()
             with connect() as db:
                 row = db.execute(
@@ -301,7 +301,7 @@ async def api_generate_image(request: Request):
                     (int(script_id), user_id),
                 ).fetchone()
             if not row:
-                raise HTTPException(status_code=403, detail="无权为该剧本生图：剧本不存在或不属于当前用户")
+                raise HTTPException(status_code=403, detail="Not allowed to generate images for this script: it does not exist or does not belong to the current user")
         # user_avatar: 始终放行（只能给自己生）
 
     from platform_app.image_jobs import enqueue_image_generation  # type: ignore[import]
@@ -347,12 +347,12 @@ async def api_image_cancel(image_id: int, request: Request):
             (image_id, uid),
         ).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="生图任务不存在或无权操作")
+            raise HTTPException(status_code=404, detail="Image job not found or not accessible")
         st = str(row["status"] or "")
         if st in ("done", "failed", "cancelled"):
             return json_response({"ok": True, "status": st, "noop": True})
         db.execute(
-            "update ai_images set status = 'cancelled', error = '用户取消' "
+            "update ai_images set status = 'cancelled', error = 'Cancelled by user' "
             "where id = %s and user_id = %s",
             (image_id, uid),
         )
@@ -377,7 +377,7 @@ async def api_list_images(request: Request):
 
     save_id: str = str(request.query_params.get("save_id") or "").strip()
     if not save_id:
-        raise HTTPException(status_code=400, detail="save_id 不能为空")
+        raise HTTPException(status_code=400, detail="save_id cannot be empty")
 
     init_db()
     with connect() as db:
@@ -418,7 +418,7 @@ async def api_get_image(image_id: int, request: Request):
 
     record = get_image_record(image_id)
     if record is None or int(record.get("user_id") or 0) != user_id:
-        raise HTTPException(status_code=404, detail="图片记录不存在或无权访问")
+        raise HTTPException(status_code=404, detail="Image record not found or not accessible")
 
     return json_response({
         "ok": True,

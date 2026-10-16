@@ -176,7 +176,7 @@ def test_no_auth_without_base_url_uses_stored(fake_db):
                       auth_mode="none")
     _upsert(log)
     state["stored"] = ""
-    with pytest.raises(ValueError, match="免鉴权模式必须填接口地址"):
+    with pytest.raises(ValueError, match="No-auth mode requires an endpoint URL"):
         uc.set_credential(19, "ollama", "", base_url_override=None, allow_base_url=True,
                           auth_mode="none")
 

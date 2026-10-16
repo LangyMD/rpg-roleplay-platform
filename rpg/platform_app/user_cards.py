@@ -160,7 +160,7 @@ def upsert_persona(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     init_db()
     name = (payload.get("name") or "").strip()
     if not name:
-        raise ValueError("persona.name 不能为空")
+        raise ValueError("persona.name cannot be empty")
     persona_id = payload.get("id")
     slug = (payload.get("slug") or "").strip() or _slugify(name)
     is_default = bool(payload.get("is_default"))
@@ -185,7 +185,7 @@ def upsert_persona(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                 (int(persona_id), user_id),
             ).fetchone()
             if not owned:
-                raise ValueError("persona 不存在或无权访问")
+                raise ValueError("Persona not found or not accessible")
             try:
                 db.execute(
                     """
@@ -378,22 +378,22 @@ def upsert_user_card(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     init_db()
     name = (payload.get("name") or "").strip()
     if not name:
-        raise ValueError("character.name 不能为空")
+        raise ValueError("character.name cannot be empty")
     # task 68: 字段长度上限 + 列表数量上限,防 SillyTavern 大卡 / 注入 payload 炸库
     _MAX_FIELD = 16 * 1024   # 单文本字段 ≤16KB
     _MAX_LIST = 100          # 单列表 ≤100 元素
     _MAX_NAME = 200          # 名称类 ≤200 字符
     if len(name) > _MAX_NAME:
-        raise ValueError(f"character.name 超过 {_MAX_NAME} 字符上限")
+        raise ValueError(f"character.name exceeds the {_MAX_NAME}-character limit")
     for text_field in ("full_name", "identity", "background", "appearance", "personality",
                        "speech_style", "current_status", "secrets"):
         v = payload.get(text_field)
         if isinstance(v, str) and len(v) > _MAX_FIELD:
-            raise ValueError(f"character.{text_field} 超过 {_MAX_FIELD} 字符上限")
+            raise ValueError(f"character.{text_field} exceeds the {_MAX_FIELD}-character limit")
     for list_field in ("aliases", "sample_dialogue", "tags"):
         v = payload.get(list_field)
         if isinstance(v, list) and len(v) > _MAX_LIST:
-            raise ValueError(f"character.{list_field} 超过 {_MAX_LIST} 元素上限")
+            raise ValueError(f"character.{list_field} exceeds the {_MAX_LIST}-item limit")
     card_id = payload.get("id")
     slug = (payload.get("slug") or "").strip() or _slugify(name)
 
@@ -423,7 +423,7 @@ def upsert_user_card(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     # SEC(M-13): metadata JSONB 限长(character_book 经 JSON body 路径可达 nginx 50MB),防存储放大。
     import json as _json
     if len(_json.dumps(payload.get("metadata") or {}, ensure_ascii=False).encode("utf-8")) > 256 * 1024:
-        raise ValueError("角色卡 metadata 过大(上限 256KB)")
+        raise ValueError("Character card metadata is too large (limit 256KB)")
 
     with connect() as db:
         if card_id:
@@ -583,7 +583,7 @@ def list_public_cards(q: str | None = None, limit: int = 30, offset: int = 0) ->
         dto["is_public"] = True
         dto["clone_count"] = int(r.get("clone_count") or 0)
         dto["published_at"] = str(r["published_at"]) if r.get("published_at") else None
-        dto["owner_name"] = r.get("owner_name") or r.get("owner_username") or "匿名作者"
+        dto["owner_name"] = r.get("owner_name") or r.get("owner_username") or "Anonymous author"
         dto.pop("secrets", None)  # 列表不暴露作者私密设定(导入后才得完整卡)
         items.append(dto)
     return {"ok": True, "items": items, "total": len(items), "limit": limit, "offset": offset}
@@ -598,9 +598,9 @@ def clone_public_card(user_id: int, card_id: int) -> dict[str, Any]:
             (int(card_id),),
         ).fetchone()
         if not src:
-            raise ValueError("公开角色卡不存在")
+            raise ValueError("Public character card not found")
         if int(src["user_id"]) == int(user_id):
-            raise ValueError("这是你自己的角色卡,无需导入")
+            raise ValueError("This is your own character card; no need to import it")
         new_slug = f"{src['slug'] or 'card'}-imp{int(card_id)}"
         new = db.execute(
             """
@@ -621,7 +621,7 @@ def clone_public_card(user_id: int, card_id: int) -> dict[str, Any]:
             {"uid": user_id, "slug": new_slug, "src": int(card_id)},
         ).fetchone()
         if not new:
-            raise ValueError("你已导入过这张角色卡")
+            raise ValueError("You have already imported this character card")
         db.execute("update character_cards set clone_count = clone_count + 1 where id = %s", (int(card_id),))
         # 复制人设图历史行 —— image_url 引用同一站内资产(物理文件不重存,满足「公开卡人设图/历史不存两次」)
         try:

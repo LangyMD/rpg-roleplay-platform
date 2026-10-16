@@ -337,4 +337,4 @@ def test_embedding_unsupported_proxy_is_recorded(monkeypatch):
                                           proxy="ftp://127.0.0.1:21")
     assert out is None
     assert att.kind == _breaker.KIND_CONFIG
-    assert "代理" in att.friendly
+    assert "proxy" in att.friendly.lower()
