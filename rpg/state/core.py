@@ -996,7 +996,7 @@ Current location: {p['current_location']}
         # 精确去重排在洪泛闸**前面**:重复写入本来就什么都不改,拿「超额」当理由回它会
         # 误导 GM(它会以为自己在刷屏,其实只是重写了一条已有的)。
         if text in items:
-            return False, "already present (去重 / deduplicated)"
+            return False, "already present (deduplicated)"
         # 洪泛闸(群反馈:一门功法逐窍拆写刷了二十多条能力)。放在这里是因为这里是所有
         # 写入路径的共同终点;拒绝会原样退回给 GM,绝不静默丢玩家可见资产。
         from state.memory_budget import check_append

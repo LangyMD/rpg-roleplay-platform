@@ -26,7 +26,7 @@ def _require_script(db, user_id: int, script_id: int) -> dict[str, Any]:
     from platform_app.perms import script_readable
     row = script_readable(db, script_id, user_id)
     if not row:
-        raise ValueError("无权访问该剧本")
+        raise ValueError("No access to this script")
     return row
 
 

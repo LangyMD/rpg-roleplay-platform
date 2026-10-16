@@ -45,7 +45,7 @@ def schedule_llm_extraction(user_id: int, script_id: int,
         owned = db.execute("select 1 from scripts where id=%s and owner_id=%s",
                            (script_id, user_id)).fetchone()
         if not owned:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
 
         # 去重 + per-user 并发上限:先查活跃任务
         existing = db.execute(
@@ -63,7 +63,7 @@ def schedule_llm_extraction(user_id: int, script_id: int,
             (user_id,),
         ).fetchone()
         if int(active["n"] if active else 0) >= 1:
-            raise ValueError("您已有 1 个 LLM 提取任务在跑,请等其完成或取消")
+            raise ValueError("An LLM extraction job of yours is already running; wait for it to finish or cancel it")
 
         # 原子写入:利用 v13 unique partial index (user_id, script_id, kind)
         # where status in ('pending','running') 防止 TOCTOU 竞态。

@@ -263,7 +263,7 @@ class ApplyOpsMixin:
                     )
             elif "询问玩家" in key or "向玩家提问" in key or "澄清问题" in key:
                 if self.add_pending_question(value or key, source="gm"):
-                    updates.append("等待玩家回答")
+                    updates.append("Awaiting player answer")
             elif "状态写入" in key or "UI变量" in key or "界面变量" in key:
                 applied = self.apply_state_write(value, source="gm")
                 updates.append(applied)
@@ -355,7 +355,7 @@ class ApplyOpsMixin:
                     options = op.get("options") or []
                     if q:
                         if self.add_pending_question(q, source="gm:json", options=options if isinstance(options, list) else None):
-                            updates.append("等待玩家回答")
+                            updates.append("Awaiting player answer")
                     else:
                         # task 60：缺 question 文本时不静默
                         _log_op_parse_error("question op 缺 'question' 或 'text' 字段", op)

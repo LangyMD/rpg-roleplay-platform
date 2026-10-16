@@ -326,7 +326,7 @@ class ApplyOpBranchTests(unittest.TestCase):
             "```\n"
         )
         updates = s.apply_structured_updates(gm_response)
-        self.assertTrue(any("等待玩家回答" in u for u in updates), updates)
+        self.assertTrue(any("Awaiting player answer" in u for u in updates), updates)
 
     def test_consequence_op_still_works_alongside(self):
         """回归:新分支不破坏既有 consequence op 行为(同批柱子2/3 op 共存)。"""

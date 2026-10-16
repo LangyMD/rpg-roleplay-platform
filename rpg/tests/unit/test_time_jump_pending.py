@@ -139,7 +139,7 @@ class PendingQuestionOptions(unittest.TestCase):
 ```"""
         )
 
-        self.assertIn("等待玩家回答", updates)
+        self.assertIn("Awaiting player answer", updates)
         pending = s.data["permissions"]["pending_questions"]
         self.assertEqual(len(pending), 1)
         self.assertEqual(pending[0]["options"], [
@@ -164,7 +164,7 @@ class PendingQuestionOptions(unittest.TestCase):
 ```"""
         )
 
-        self.assertIn("等待玩家回答", updates)
+        self.assertIn("Awaiting player answer", updates)
         self.assertNotIn("事实：借助掩体", updates)
         self.assertNotIn("事实：搜寻车厢", updates)
         self.assertNotIn("借助掩体", s.data["memory"]["facts"])

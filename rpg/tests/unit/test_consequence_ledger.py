@@ -317,7 +317,7 @@ class ApplyOpBranchTests(unittest.TestCase):
             "```\n"
         )
         updates = s.apply_structured_updates(gm_response)
-        self.assertTrue(any("等待玩家回答" in u for u in updates), updates)
+        self.assertTrue(any("Awaiting player answer" in u for u in updates), updates)
 
 
 # ────────────────────────────────────────────────────────────

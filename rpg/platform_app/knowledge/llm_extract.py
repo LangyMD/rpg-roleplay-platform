@@ -57,7 +57,7 @@ def run_llm_extraction(
             (script_id, user_id),
         ).fetchone()
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         book_id = _ensure_book(db, script)["id"]
 
         # 跑前预算(算法感知,arc/per_chapter 分开估)

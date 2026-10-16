@@ -328,7 +328,7 @@ def sync_script_knowledge(user_id: int, script_id: int, *, rebuild: bool = False
             (script_id, user_id),
         ).fetchone()
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         book = _ensure_book(db, script)
         if rebuild:
             # task 43/47: rebuild 必须连 character_cards + worldbook 一起清,
