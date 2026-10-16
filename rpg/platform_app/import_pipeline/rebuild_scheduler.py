@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import secrets
-import threading
 from typing import Any
 
 from psycopg.types.json import Jsonb
@@ -261,6 +260,8 @@ def schedule_module_rebuild(
     if module == "embeddings":
         _embedding_preflight_or_raise(user_id)
 
+    from .liveness import reap_dead_jobs_quietly, start_job_thread
+    reap_dead_jobs_quietly(user_id=user_id)
     with connect() as db:
         existing = db.execute(
             "select job_id from import_jobs "
@@ -286,12 +287,7 @@ def schedule_module_rebuild(
                 Jsonb([{"id": module, "label": action_label, "status": "pending"}]),
             ),
         )
-    th = threading.Thread(
-        target=_run_module_rebuild,
-        args=(job_id, user_id, script_id, module, body),
-        daemon=True,
-    )
-    th.start()
+    start_job_thread(job_id, _run_module_rebuild, (job_id, user_id, script_id, module, body))
     return {"ok": True, "job_id": job_id, "reused": False, "module": module, "kind": kind}
 
 

@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import secrets
-import threading
 from typing import Any
 
 from psycopg.types.json import Jsonb
@@ -47,7 +46,9 @@ def schedule_llm_extraction(user_id: int, script_id: int,
         if not owned:
             raise ValueError("No access to this script")
 
-        # 去重 + per-user 并发上限:先查活跃任务
+        # 去重 + per-user 并发上限:先查活跃任务(worker 已死的先收尾,别占名额)
+        from platform_app.import_pipeline.liveness import reap_dead_jobs_quietly
+        reap_dead_jobs_quietly(user_id=user_id)
         existing = db.execute(
             "select job_id from import_jobs "
             "where user_id=%s and script_id=%s and kind='llm_extract' "
@@ -95,10 +96,8 @@ def schedule_llm_extraction(user_id: int, script_id: int,
                 return {"ok": True, "job_id": dup["job_id"], "reused": True}
             raise RuntimeError("Could not create or find an active llm_extract job")
 
-    th = threading.Thread(
-        target=_run, args=(job_id, user_id, script_id, options), daemon=True,
-    )
-    th.start()
+    from platform_app.import_pipeline.liveness import start_job_thread
+    start_job_thread(job_id, _run, (job_id, user_id, script_id, options))
     return {"ok": True, "job_id": job_id, "reused": False}
 
 

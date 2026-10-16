@@ -12,6 +12,7 @@ from psycopg.types.json import Jsonb
 
 from ..db import connect, expose, init_db
 from .control import JobController
+from .liveness import reap_dead_jobs_quietly, start_job_thread
 from .stages_core import (
     _final_stage_status,
     _stage_canon_extract,
@@ -125,6 +126,8 @@ def schedule_full_import(
     """启动一次完整拆书流水线，返回 job_id。"""
     init_db()
     require_user_llm_credential(user_id)
+    # worker 已死(进程重启/崩溃)的任务先收尾,别让它们占着并发名额把用户锁死
+    reap_dead_jobs_quietly(user_id=user_id)
     # 去重 + 限流（同 script 已有 running 任务直接返回那个 job）
     with connect() as db:
         existing = db.execute(
@@ -163,9 +166,7 @@ def schedule_full_import(
         )
 
     options = {"enable_cards": enable_cards, "enable_worldbook": enable_worldbook}
-    th = threading.Thread(target=_run_pipeline, args=(job_id, user_id, script_id, options), daemon=True)
-    _RUNNING[job_id] = th
-    th.start()
+    _RUNNING[job_id] = start_job_thread(job_id, _run_pipeline, (job_id, user_id, script_id, options))
     return {"ok": True, "job_id": job_id, "reused": False}
 
 
@@ -326,6 +327,9 @@ def cancel_job(user_id: int, job_id: str) -> dict[str, Any]:
         ).fetchone()
     if not row:
         raise ValueError("job does not exist")
+    # 没有活 worker 来读取消标记(进程重启过)→ 当场落 cancelled,别让前端永远「取消中」
+    if reap_dead_jobs_quietly(user_id=user_id, job_id=job_id):
+        return {"ok": True, "current_status": "cancelled"}
     return {"ok": True, "current_status": row.get("status")}
 
 

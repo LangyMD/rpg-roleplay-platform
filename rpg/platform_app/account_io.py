@@ -411,7 +411,6 @@ _STAGE_LABELS = {"scripts": "Imported script", "saves": "Imported save", "cards"
 def import_account_job(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
     """建 import_jobs 作业 + 后台线程跑 import_account,逐项上报进度。返回 {ok, job_id}。"""
     import secrets
-    import threading
 
     init_db()
     if len(zip_bytes) > MAX_ACCOUNT_ZIP_BYTES:
@@ -427,8 +426,8 @@ def import_account_job(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
                 {"id": "cards", "label": "Imported character card", "status": "pending"},
             ])),
         )
-    th = threading.Thread(target=_run_account_import_job, args=(job_id, user_id, zip_bytes), daemon=True)
-    th.start()
+    from .import_pipeline.liveness import start_job_thread
+    start_job_thread(job_id, _run_account_import_job, (job_id, user_id, zip_bytes))
     return {"ok": True, "job_id": job_id}
 
 
