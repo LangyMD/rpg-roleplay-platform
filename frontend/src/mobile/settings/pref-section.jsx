@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../icons.jsx';
 import { SetGroup, MSlider, Toggle, usePrefSave } from './shared.jsx';
-import { changeLanguage } from '../../i18n/index.js';
+import i18n, { changeLanguage, DEFAULT_LANGUAGE } from '../../i18n/index.js';
 
 /* ────────────────────────────────────────────────────────────────── */
 /* SECTION: 偏好 (preferences)                                        */
@@ -10,7 +10,10 @@ import { changeLanguage } from '../../i18n/index.js';
 function PrefSection({ nav }) {
   const { t } = useTranslation();
   const save = usePrefSave('pref');
-  const [lang, setLang] = useState('zh-CN');
+  const saveTop = usePrefSave('');
+  const [lang, setLang] = useState(() => i18n.resolvedLanguage || i18n.language || DEFAULT_LANGUAGE);
+  // 故事语言(narration_language,顶层 key,后端 core/language.py 读;缺省 en)—— 与桌面 PrefSection 孪生
+  const [storyLang, setStoryLang] = useState(DEFAULT_LANGUAGE);
   const [serif, setSerif] = useState(true);
   const [auto, setAuto] = useState(true);
   const [blackSwan, setBlackSwan] = useState(false);
@@ -26,6 +29,7 @@ function PrefSection({ nav }) {
         if (cancelled) return;
         const p = (r && r.preferences) || {};
         if (p['pref.ui_language']) setLang(p['pref.ui_language']);
+        if (p.narration_language === 'zh-CN' || p.narration_language === 'en') setStoryLang(p.narration_language);
         if (typeof p['pref.serif'] === 'boolean') setSerif(p['pref.serif']);
         if (typeof p['pref.autosave'] === 'boolean') setAuto(p['pref.autosave']);
         if (typeof p['black_swan.enabled'] === 'boolean') setBlackSwan(p['black_swan.enabled']);
@@ -55,10 +59,23 @@ function PrefSection({ nav }) {
             <span>{t('mobile.settings.pref.ui_language_desc')}</span>
           </div>
           <div className="pl-seg2" style={{ marginLeft: 'auto', flexShrink: 0, width: 170 }}>
-            {[['zh-CN','简体'],['zh-TW','繁體'],['en','EN']].map(([id, l]) => (
+            {[['en','EN'],['zh-CN','简体'],['zh-TW','繁體']].map(([id, l]) => (
               <button key={id} className={lang===id?'active accent':''} onClick={() => {
                 setLang(id); save('ui_language', id);
                 Promise.resolve(changeLanguage(id)).catch(() => {});
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="pl-setrow">
+          <div className="pl-setrow-tx">
+            <strong>{t('settings.preferences.story_lang')}</strong>
+            <span>{t('settings.preferences.story_lang_desc')}</span>
+          </div>
+          <div className="pl-seg2" style={{ marginLeft: 'auto', flexShrink: 0, width: 130 }}>
+            {[['en','EN'],['zh-CN','中文']].map(([id, l]) => (
+              <button key={id} className={storyLang===id?'active accent':''} onClick={() => {
+                setStoryLang(id); saveTop('narration_language', id);
               }}>{l}</button>
             ))}
           </div>

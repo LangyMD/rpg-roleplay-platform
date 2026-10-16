@@ -1,5 +1,6 @@
 // Game Console 页面入口 — Vite ESM 版
 import '../web-vitals-rum.js';
+import '../fonts.js';
 import React from 'react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import * as ReactDOM from 'react-dom/client';
@@ -37,7 +38,7 @@ import '../media.css';
 import { MobileGame } from '../mobile/game/MobileGame.jsx';
 import { safeUUID } from '../lib/crypto-safe.js';
 import { safeStructuredClone } from '../lib/clone-safe.js';
-import { isAttemptResetPhase } from '../lib/tavern-chat-run.js';
+import { isAttemptResetPhase, RECEIPT_FAIL_RE } from '../lib/tavern-chat-run.js';
 import { LeftRail, TopBar, ChatArea, HistoryDrawer, SearchDrawer, GameToastStack, RunSteps, GameSettingsModal } from '../game-app.jsx';
 import { Composer, ConfirmStrip } from '../game-composer.jsx';
 import { RightPanel, PANEL_TABS } from '../game-panels.jsx';
@@ -121,11 +122,11 @@ function advancePublicStage(prevId, nextStage) {
 }
 
 const STREAM_CHUNKS = [
-  '你转过身去看沈知微，雾灯把她的侧脸照得发青。她没再追问残页，反而把腰上的铜针袋解下来，递到你手里。',
-  '\n\n『先收着。』她说，『北港有人来了——是从南陵跟过来的。』',
-  '\n\n海雾忽然又厚一层。你借着雾色看向北港，看见三个穿青衣的人正在台阶下停步。其中走在最前的一个，腰间挂着南陵巡检的腰牌——是韩司直。',
-  '\n\n他抬头朝你的方向看了一眼，又像是没看见，绕过石阶往灯塔的方向去了。',
-  '\n\n沈知微低声道：『他在等天黑。等天黑你就走不掉了。』',
+  'You turn to look at Shen Zhiwei. The fog lamp casts a pale green light across her face. She does not press you about the torn pages again; instead she unties the bag of copper needles at her waist and presses it into your hand.',
+  '\n\n"Keep this," she says. "Someone has come to the north harbor. They followed us from Nanling."',
+  '\n\nThe sea fog thickens. Through the haze you look toward the north harbor and see three men in blue-green robes stop at the foot of the steps. The one in front wears a Nanling patrol inspector\'s badge at his waist. It is Inspector Han.',
+  '\n\nHe glances up in your direction, as if he has not seen you, then skirts the stone steps and heads for the lighthouse.',
+  '\n\nShen Zhiwei lowers her voice. "He is waiting for nightfall. Once it is dark, you will not get away."',
 ];
 
 function App() {
@@ -912,7 +913,7 @@ function App() {
             const items = (data && Array.isArray(data.items)) ? data.items : [];
             if (items.length) {
               // 失败项(后端惯例:「X 失败:」「X 被拒绝:」「X 未生效:」)不该被标成「已更新」
-              const fail = items.filter((s) => /失败|被拒绝|未生效/.test(String(s))).length;
+              const fail = items.filter((s) => RECEIPT_FAIL_RE.test(String(s))).length;
               const label = fail
                 ? t('game.console.run.settings_updated_partial', { ok: items.length - fail, fail })
                 : t('game.console.run.settings_updated', { count: items.length });
@@ -954,9 +955,9 @@ function App() {
           logEvent('weekday_notice', data);
           const errs = (data && Array.isArray(data.errors)) ? data.errors : [];
           if (!errs.length) return;
-          const detail = errs.map((e) => `${e.rel}应为${e.expected}(写成了${e.claimed})`).join('；');
-          window.__apiToast?.(`本轮星期算错了(今天${(data && data.base) || ''})`, {
-            kind: 'warn', detail: `${detail}。可点「重新生成」。`, duration: 8000,
+          const detail = errs.map((e) => t('game.console.weekday.item', { rel: e.rel, expected: e.expected, claimed: e.claimed })).join(t('game.console.weekday.sep'));
+          window.__apiToast?.(t('game.console.weekday.title', { base: (data && data.base) || '' }), {
+            kind: 'warn', detail: t('game.console.weekday.detail', { detail }), duration: 8000,
           });
         },
         on_usage: (data) => {
@@ -1152,20 +1153,20 @@ function App() {
 
   const startRun = useCallback((playerText) => {
     if (window.api && window.api.base !== undefined) return startRunReal(playerText);
-    const ts = ['申时三刻', '酉时初', '酉时一刻', '酉时二刻'][history.length % 4];
+    const ts = ['15:45', '17:00', '17:15', '17:30'][history.length % 4];
     setHistory((h) => [...h, { role: 'user', content: playerText, ts, attachments }]);
     setText(''); setAttachments([]); setShowSlash(false); setShowPlus(false);
     runRef.current.stopped = false; runRef.current.timers = [];
     if (runRef.current.doneTimer) { clearTimeout(runRef.current.doneTimer); runRef.current.doneTimer = null; }
     const startedAt = Date.now();
     const MOCK_PHASES = [
-      { phase: 'prompt',       message: '加载上下文子代理运行提示（模式：local_fallback）。', duration: 220 },
-      { phase: 'intent',       message: '未发现显式时间跳跃；沿用当前锁定时间线。', duration: 180 },
-      { phase: 'manifest',     message: '已解析 ContentPack：novel · woaileni', duration: 260 },
-      { phase: 'provider:novel_retrieval', message: 'novel_retrieval 贡献 4 层、6 条事实', duration: 620 },
-      { phase: 'assembly',     message: '已生成主 GM 上下文清单。', duration: 200 },
-      { phase: 'rules_engine', message: 'RulesEngine 已完成本轮规则裁定。', duration: 340 },
-      { phase: 'main_gm',      message: '主 GM 正在读取上下文并生成正文。', duration: 2200 },
+      { phase: 'prompt',       message: 'Loading context sub-agent run hints (mode: local_fallback).', duration: 220 },
+      { phase: 'intent',       message: 'No explicit time skip found; keeping the current locked timeline.', duration: 180 },
+      { phase: 'manifest',     message: 'Resolved ContentPack: novel · woaileni', duration: 260 },
+      { phase: 'provider:novel_retrieval', message: 'novel_retrieval contributed 4 layers, 6 facts', duration: 620 },
+      { phase: 'assembly',     message: 'Built the main GM context manifest.', duration: 200 },
+      { phase: 'rules_engine', message: 'RulesEngine finished this turn\'s rulings.', duration: 340 },
+      { phase: 'main_gm',      message: 'Main GM is reading context and writing the narration.', duration: 2200 },
     ];
     setRunState({ running: true, publicStage: 'context', label: PUBLIC_STAGES.context.label, detail: '', totalElapsed: 0, completedAt: 0, completedElapsed: 0, rawSteps: [] });
     setClicheNotice(null);  // 反馈#22: 新一轮清掉上轮的套路比喻提示
@@ -1181,7 +1182,7 @@ function App() {
         setRunState((r) => ({ ...r, running: false, label: t('game.console.run.turn_complete'), detail: '', completedAt: Date.now(), completedElapsed: Date.now() - startedAt }));
         if (runRef.current.doneTimer) clearTimeout(runRef.current.doneTimer);
         runRef.current.doneTimer = setTimeout(() => { runRef.current.doneTimer = null; setRunState((r) => (r.running ? r : { ...r, publicStage: null, completedAt: 0, label: '' })); }, 1800);
-        setPendingWrites((arr) => arr.some((w) => w.id === 'pw-3') ? arr : [...arr, { id: 'pw-3', field: 'memory.facts', from: null, to: '韩司直已抵达北港', risk: 'low', reason: 'GM 提议加入事实库（低风险）' }]);
+        setPendingWrites((arr) => arr.some((w) => w.id === 'pw-3') ? arr : [...arr, { id: 'pw-3', field: 'memory.facts', from: null, to: 'Inspector Han has reached the north harbor', risk: 'low', reason: 'GM proposes adding to the fact base (low risk)' }]);
         return;
       }
       const step = MOCK_PHASES[i];
@@ -1357,7 +1358,7 @@ function App() {
       }
       return;
     }
-    const fixtures = { chapter: { name: '第 314 章 · 北港', kind: 'chapter' }, world: { name: '世界书 · 残页', kind: 'world' }, mcp: { name: 'MCP · 文件检索', kind: 'mcp' }, skill: { name: 'Skill · 角色一致性', kind: 'skill' }, plan: { name: '计划模式', kind: 'skill' } };
+    const fixtures = { chapter: { name: 'Chapter 314 · North Harbor', kind: 'chapter' }, world: { name: 'Worldbook · Torn Pages', kind: 'world' }, mcp: { name: 'MCP · File search', kind: 'mcp' }, skill: { name: 'Skill · Character consistency', kind: 'skill' }, plan: { name: 'Plan mode', kind: 'skill' } };
     setAttachments((a) => [...a, fixtures[item.id] || { name: item.label, kind: 'file' }]);
   };
   const onFilePicked = (e) => {
@@ -1662,7 +1663,7 @@ function App() {
                 }
                 await window.api.game.acceptanceChoice({ alt_id: rewriteAlt.alt_id, choice, message_index: idx });
               } catch (e) {
-                window.__apiToast?.(t('game.console.acceptance_ab.save_failed', '选择保存失败'), { kind: 'warn', detail: e?.message });
+                window.__apiToast?.(t('game.console.acceptance_ab.save_failed'), { kind: 'warn', detail: e?.message });
               } finally {
                 setAbBusy(false);
                 setRewriteAlt(null);

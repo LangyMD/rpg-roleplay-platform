@@ -94,6 +94,18 @@
       "include_label": "重嵌哪些类型",
       "include_help": "重做 = 先把选中类型的向量清空再全部重嵌;未勾选的类型原样保留。零 LLM,只消耗嵌入模型配额。",
       "include_empty": "至少选一个类型。"
+    },
+    "facts_refine": {
+      "title": "章节摘要 LLM 精炼",
+      "desc": "把确定性残句摘要升级为 LLM 真摘要 + 故事内时间"
+    },
+    "worldbook_enrich": {
+      "title": "世界书核心条目充实",
+      "desc": "对力量体系/核心设定类条目做机制级充实"
+    },
+    "world_key": {
+      "title": "世界观切分回填",
+      "desc": "多世界书(无限流/穿越)按世界切段,LLM 确认边界"
     }
   },
   "common": {
@@ -118,7 +130,16 @@
     "image_preview": "图片预览",
     "info_hint": "说明",
     "settings": "设置",
-    "remove": "移除"
+    "remove": "移除",
+    "next": "下一步",
+    "prev": "上一步",
+    "done": "完成",
+    "no_data": "暂无数据",
+    "collapse_details": "收起详情",
+    "space_sep": "　",
+    "label_sep": "：",
+    "comma_sep": "，",
+    "period": "。"
   },
   "settings": {
     "title": "设置",
@@ -133,7 +154,9 @@
       "autosave": "自动存档",
       "autosave_desc": "每个回合结束写回一次存档与备份。",
       "autosave_on": "开启 · 每回合一次",
-      "autosave_off": "关闭"
+      "autosave_off": "关闭",
+      "story_lang": "故事语言",
+      "story_lang_desc": "GM 叙事(游戏与酒馆)使用的语言,也包括生成的摘要与 NPC 对白。"
     },
     "black_swan": {
       "title": "黑天鹅事件",
@@ -815,7 +838,8 @@
         "pat_revoked_badge": "已撤销",
         "pat_revoke_btn": "撤销",
         "auth_incomplete": "授权未完成（状态：{{status}}）",
-        "device_start_fail": "启动 Device Flow 失败"
+        "device_start_fail": "启动 Device Flow 失败",
+        "browse_import_detail": "「{{title}}」→ {{local}} #{{id}}"
       }
     },
     "migrate": {
@@ -963,7 +987,9 @@
       "no_results": "未匹配「{{q}}」 · 试试 GPT、雾港、记忆、claude、API",
       "kbd_select": "选择",
       "kbd_open": "打开",
-      "kbd_close": "关闭"
+      "kbd_close": "关闭",
+      "unit_k_chars": "{{n}}k 字",
+      "footer_mode": "全文 · 模糊"
     },
     "menu": {
       "all_modules": "全部功能",
@@ -1009,7 +1035,9 @@
     "autosave": {
       "saved": "已保存",
       "failed": "保存失败",
-      "network_error": "网络错误"
+      "network_error": "网络错误",
+      "saved_label": "{{label}}已保存",
+      "failed_label": "{{label}}保存失败"
     },
     "achv": {
       "link_copied": "链接已复制",
@@ -1120,7 +1148,13 @@
         "reset_avatar_confirm": "恢复默认",
         "saved": "已保存资料",
         "upload_title": "上传新头像",
-        "use_default": "使用默认"
+        "use_default": "使用默认",
+        "load_failed": "加载资料失败,请检查网络后重试",
+        "pronoun_she": "她/她",
+        "pronoun_he": "他/他",
+        "tz_shanghai": "UTC+8 · 上海",
+        "tz_tokyo": "UTC+9 · 东京",
+        "tz_la": "UTC-8 · 洛杉矶"
       },
       "settings": {
         "label": "用户设置",
@@ -1247,7 +1281,8 @@
         "pw_change_failed": "修改失败",
         "save_failed": "保存失败",
         "session_revoke_failed": "下线失败",
-        "session_revoked": "已下线"
+        "session_revoked": "已下线",
+        "export_hint": "POST /api/account/export · 生成后通过邮件发送下载链接（链接 7 天有效）"
       },
       "activity_empty": "暂无活动。开始游戏、开辟分支或导入剧本后,这里会显示真实记录。",
       "activity_loading": "正在加载活动…",
@@ -1273,7 +1308,10 @@
       "stat_streak": "连续登录",
       "stat_streak_longest": "最长 {{n}} 天",
       "stat_streak_unit": "天",
-      "stat_words": "共 {{n}} 字"
+      "stat_words": "共 {{n}} 字",
+      "user_fallback": "用户",
+      "avatar_prompt_named": "{{name}} 的用户头像",
+      "avatar_prompt": "用户头像"
     },
     "profile": {
       "greeting_late": "夜深了",
@@ -1306,7 +1344,48 @@
       "no_saves_empty": "暂无存档",
       "tavern_no_id": "未返回对话 id",
       "tavern_create_failed": "新建对话失败"
-    }
+    },
+    "admin_guard": {
+      "checking": "正在校验权限…",
+      "title": "需要管理员权限",
+      "desc": "系统管理(部署配置等站点级设置)仅平台管理员可访问。",
+      "role_prefix": "当前账号角色为",
+      "role_suffix": "。如需权限请联系管理员。",
+      "back_home": "返回主页"
+    },
+    "refresh": {
+      "ok": "已刷新",
+      "fail": "刷新失败"
+    },
+    "feedback_reviewed": {
+      "title_one": "管理员已处理你的 {{count}} 条反馈",
+      "title_other": "管理员已处理你的 {{count}} 条反馈",
+      "detail": "点右上\"提交反馈\"查看详情",
+      "view": "查看"
+    },
+    "open_save": {
+      "none": "没有可进入的存档",
+      "switch_chat_fail": "切换对话失败",
+      "loading": "正在加载存档…",
+      "cannot_open": "无法打开存档",
+      "deleted_or_network": "存档已被删除或网络异常",
+      "back_to_list": "返回存档列表",
+      "switch_fail": "切换存档失败"
+    },
+    "new_save_title": "新存档",
+    "create_save_rejected": "后端拒绝创建",
+    "sidebar": {
+      "collapse": "折叠侧栏",
+      "expand": "展开侧栏"
+    },
+    "coming_soon": {
+      "label": "敬请期待",
+      "script_settings_title": "剧本设置",
+      "script_settings_desc": "剧本级设定覆盖(script_overrides)。迁移中。",
+      "play_settings_title": "游戏设置",
+      "play_settings_desc": "全局游玩默认(元知识/引导/防剧透)。迁移中。"
+    },
+    "loading_editor": "加载编辑器…"
   },
   "admin_page": {
     "common": {
@@ -2039,7 +2118,9 @@
       "merge_prev_btn": "合并上一章",
       "merge_prev_msg": "把第 {{a}} 章合并进当前的第 {{b}} 章(保留当前章标题)?",
       "promote_npc": "转为用户角色卡",
-      "set_protagonist": "设为主角"
+      "set_protagonist": "设为主角",
+      "extract_full_desc": "重新跑一遍全量 LLM 抽取(章节摘要/知识库人物/世界书/锚点全刷新)。单模块重做请用上面的矩阵卡片。",
+      "extract_full_title": "全量重新提取"
     },
     "review": {
       "eyebrow": "设定核对 · AI 提取结果",
@@ -2430,8 +2511,11 @@
       "need_key_hint": "去「设置 → API 与模型」配置后重试,或在上面换一个已配置的模型。",
       "run": "开始复核",
       "title": "AI 复核 NPC 角色卡",
-      "started": "已开始 AI 复核,可在右下角后台任务查看进度"
-    }
+      "started": "已开始 AI 复核,可在右下角后台任务查看进度",
+      "desc_short": "合并同人多卡、锁定真主角、删非人名卡——按需触发,不进导入流水线。",
+      "section_title": "NPC 角色卡 · AI 复核"
+    },
+    "kb_center": "知识库中心"
   },
   "auth": {
     "login_tab": "登录",
@@ -2781,7 +2865,8 @@
       "role_mode_script_npc": "本剧本 NPC",
       "script_npc_desc": "直接扮演本剧本里的原著 NPC —— 选定后出身会自动锁为「本世界人」(你就是这个角色本人,GM 严格守世界观)。",
       "script_npc_empty": "该剧本暂无 NPC 角色卡(可在剧本编辑器里生成 / 提取人物)。",
-      "script_npc_pick_script": "请先在上方选择剧本。"
+      "script_npc_pick_script": "请先在上方选择剧本。",
+      "title_with_note": "{{title}}（{{note}}）"
     },
     "identity": {
       "intro": "身份卡是叠加在角色卡之上的「定位 overlay」（卧底 / 流亡贵族 / 避难所逃亡者 …），和具体姓名外貌无关，与下方「玩家出身」设定独立。此项可不选 —— 不挂身份卡时，直接使用所选角色开局。",
@@ -3509,7 +3594,9 @@
         "perm_read_only": "只读 · 纯叙事",
         "perm_default": "默认权限",
         "perm_review": "自动审查",
-        "perm_full": "完全访问"
+        "perm_full": "完全访问",
+        "ab_label": "AI 改写建议",
+        "ab_desc": "AI 偶尔漏掉本回合该体现的剧情点时,并排给你一个改写版本供选择(最多每 5 回合一次)。关掉则始终只用首稿。"
       },
       "history": {
         "aria_label": "历史回顾",
@@ -3695,10 +3782,38 @@
       },
       "resize_rail_tip": "拖动调整宽度 · 双击恢复默认",
       "resize_panel_tip": "拖动调整宽度 · 双击恢复默认",
-      "open_panel_tip": "打开状态面板"
+      "open_panel_tip": "打开状态面板",
+      "weekday": {
+        "item": "{{rel}}应为{{expected}}(写成了{{claimed}})",
+        "sep": "；",
+        "title": "本轮星期算错了(今天{{base}})",
+        "detail": "{{detail}}。可点「重新生成」。"
+      },
+      "acceptance_ab": {
+        "save_failed": "选择保存失败"
+      }
     },
     "panels": {
       "rules_request_failed": "请求失败: {{fn}}"
+    },
+    "regex": {
+      "need_find": "匹配正则不能为空",
+      "saved": "已保存正则脚本",
+      "save_failed": "保存失败（正则可能无效）",
+      "delete_confirm": "删除该正则脚本？",
+      "title": "输出正则",
+      "subtitle": "对 AI 输出 find→replace（$1 捕获组）",
+      "add_tip": "新增正则",
+      "ph_name": "名称（可空）",
+      "ph_find": "匹配正则，如 \\*{2,}(.+?)\\*{2,}",
+      "ph_replace": "替换为，支持 $1 $& （留空=删除匹配）",
+      "flag_i": "忽略大小写",
+      "flag_m": "多行",
+      "flag_s": ". 匹配换行",
+      "toggle_tip": "启用/停用",
+      "delete_match": "（删除）",
+      "delete_tip": "删除",
+      "empty": "暂无正则脚本。点右上「+」添加，对 AI 输出做替换（如把 **强调** 转成书名号）。"
     }
   },
   "cards": {
@@ -4149,7 +4264,14 @@
       "new": "新建",
       "new_item": "新建{{label}}",
       "new_name_placeholder": "新{{label}}名称",
-      "search_placeholder": "搜索全部资源…"
+      "search_placeholder": "搜索全部资源…",
+      "kind": {
+        "chapter": "章节",
+        "card": "角色卡",
+        "worldbook": "世界书",
+        "anchor": "时间线",
+        "canon": "设定"
+      }
     },
     "ws": {
       "label": "工作区",
@@ -4178,7 +4300,8 @@
       "go": "搜索",
       "hint": "输入关键词,回车搜全书",
       "none": "0 命中",
-      "count": "{{total}} 处命中 · {{n}} 章"
+      "count": "{{total}} 处命中 · {{n}} 章",
+      "failed": "搜索失败"
     },
     "history": {
       "btn": "版本历史",
@@ -4213,7 +4336,8 @@
     },
     "ghost": {
       "btn": "AI 续写",
-      "tip": "内联续写:打字停顿后给灰色续写建议,Tab 采纳(用你自己的模型)"
+      "tip": "内联续写:打字停顿后给灰色续写建议,Tab 采纳(用你自己的模型)",
+      "on": " ·开"
     },
     "review": {
       "btn": "AI 复审本章",
@@ -4255,7 +4379,8 @@
         "row_worldbook": "世界书",
         "row_canon": "知识库人物",
         "empty": "暂无数据"
-      }
+      },
+      "tip": "本剧本知识库健康度与重建(摘要精炼/世界书充实/复核卡/嵌入)"
     },
     "conflict": {
       "merge_prompt": "本章已被 AI/他处改动:请逐块取舍(全部批准=采用对方,全部拒绝=保留你的)",
@@ -6215,6 +6340,10 @@
       "plus": {
         "aria": "附加功能",
         "title": "附加功能"
+      },
+      "slash": {
+        "aria": "斜杠命令",
+        "title": "斜杠命令"
       }
     },
     "new_game": {
@@ -6950,7 +7079,12 @@
         "apis": "API",
         "wall": "成就墙"
       },
-      "page_placeholder": "页面占位"
+      "page_placeholder": "页面占位",
+      "restricted": {
+        "checking": "正在校验权限…",
+        "desc": "该页面仅平台管理员可访问。",
+        "title": "需要管理员权限"
+      }
     },
     "home": {
       "wan_suffix": "万字",
@@ -7057,7 +7191,8 @@
       "submit_error": "提交失败，请稍后重试",
       "aup_warning": {
         "header": "反馈渠道内容限制",
-        "body": "反馈渠道不得包含性、露骨性、NSFW 或其他成人专属材料（无论你是否年满 18 周岁）。违反将导致永久终止账号并加入禁注表。详见"
+        "body": "反馈渠道不得包含性、露骨性、NSFW 或其他成人专属材料（无论你是否年满 18 周岁）。违反将导致永久终止账号并加入禁注表。详见",
+        "end": "。"
       },
       "reviewed_notice": {
         "header": "管理员已处理你的 {{count}} 条反馈",
@@ -7290,7 +7425,59 @@
       "ref": {
         "add": "@ 引用",
         "add_tip": "引用章节/角色卡/世界书作为上下文",
-        "placeholder": "引用:章节 / 角色卡 / 世界书…"
+        "placeholder": "引用:章节 / 角色卡 / 世界书…",
+        "chapter_n": "第{{n}}章",
+        "card_n": "卡#{{id}}",
+        "worldbook_n": "世界书#{{id}}",
+        "kind_chapter": "章",
+        "kind_card": "卡",
+        "kind_worldbook": "书"
+      },
+      "rewrite": {
+        "selected": "已选中 {{n}} 字",
+        "ctx_tip": "把选中正文作为下方聊天的上下文(助手即知「这段」指什么)",
+        "ctx_off": "○ 不带选中正文",
+        "ctx_on": "● 已带选中正文",
+        "by_instruction_tip": "用下方输入框里的要求改写选中正文",
+        "by_instruction": "按指令改写 →",
+        "tighten": "精简",
+        "expand": "扩写",
+        "polish": "润色",
+        "vivid": "画面感"
+      },
+      "skills": {
+        "group": "写作技能",
+        "review": "审稿",
+        "outline": "梳理大纲",
+        "voice": "角色嗓音",
+        "foreshadow": "伏笔线索"
+      },
+      "tool_label": {
+        "get_chapter_text": "读章节正文",
+        "get_script_chapters": "列出章节",
+        "search_manuscript": "全书检索",
+        "list_worldbook_entries": "列出世界书",
+        "list_canon_entities": "列出设定实体",
+        "list_anchors": "列出时间线",
+        "list_script_npcs": "列出角色卡",
+        "get_script_character_card": "读角色卡",
+        "get_chapter_context": "读本章上下文",
+        "update_script_chapter": "改写章节",
+        "create_script_chapter": "新建章节",
+        "upsert_worldbook_entry": "写入世界书",
+        "upsert_worldbook_entries": "批量写世界书",
+        "delete_worldbook_entry": "删除世界书条目",
+        "update_npc_card": "编辑角色卡",
+        "create_npc_card": "新建角色卡",
+        "update_anchor": "编辑时间线",
+        "create_anchor": "新建时间线节点",
+        "delete_anchor": "删除时间线节点",
+        "upsert_canon_entity": "写入设定实体",
+        "extract_from_selection": "抽取选区设定",
+        "read_uploaded_document": "读取拖入文档",
+        "preview_document_split": "预览拆章",
+        "import_document_as_chapters": "导入为章节",
+        "delegate_writing_task": "委派子模型写作"
       }
     },
     "generate_image_modal": {
@@ -7466,7 +7653,9 @@
   "help_drawer": {
     "help": "帮助",
     "no_slug": "请指定帮助主题。",
-    "not_found": "未找到帮助文档: {{slug}}"
+    "not_found": "未找到帮助文档: {{slug}}",
+    "open_external": "在新标签打开",
+    "load_failed": "文档加载失败(需联网访问文档站)。"
   },
   "image_size": {
     "aria_group": "生图尺寸",
@@ -7528,7 +7717,8 @@
     "time_days_ago": "{{count}} 天前",
     "time_hours_ago": "{{count}} 小时前",
     "time_just_now": "刚刚",
-    "time_minutes_ago": "{{count}} 分钟前"
+    "time_minutes_ago": "{{count}} 分钟前",
+    "protagonist_badge_char": "主"
   },
   "policy_banner": {
     "days_until_effective": "{{count}} 天后生效",
@@ -7575,5 +7765,388 @@
     "minutes_ago": "{{n}} 分钟前",
     "hours_ago": "{{n}} 小时前",
     "days_ago": "{{n}} 天前"
+  },
+  "error_boundary": {
+    "title": "页面出错了",
+    "desc": "页面渲染失败。请刷新重试;若反复出现,联系",
+    "desc_end": "。",
+    "details": "开发者信息(技术细节)",
+    "reload": "刷新页面"
+  },
+  "tavern_run": {
+    "chat_title": "对话 #{{id}}",
+    "pick_chat": "请先选择或新建一个对话",
+    "idle_error": "超过 120 秒没有新输出,已断开。请重试。",
+    "idle_title": "生成停滞",
+    "idle_detail": "120 秒无响应,已中断",
+    "request_failed": "请求失败",
+    "aborted": "连接被取消,上一条输入已保留,请重试。",
+    "receipt_partial": "设定已应用 {{ok}} 项，{{fail}} 项未生效",
+    "receipt_ok": "设定已更新（{{count}}）",
+    "updated": "已更新",
+    "interrupted_restored": "本轮已中断,已恢复你的输入。",
+    "empty_restored": "本轮没有收到回复,已恢复你的输入。请重试。",
+    "interrupted": "生成中断",
+    "empty": "空回复",
+    "gen_failed": "生成失败",
+    "retry": "请重试",
+    "closed": "连接中断:流式连接关闭但没有收到完成事件。上一条输入已保留,可重试。"
+  },
+  "api_client": {
+    "network_error": "网络异常：{{message}}",
+    "bad_json": "服务器返回了无法解析的响应(可能含非法字符),请重试;若反复出现请联系管理员。",
+    "detail_sep": "；",
+    "http_failed": "请求失败 (HTTP {{status}})",
+    "rate_limited_after": "请求过于频繁，请 {{seconds}} 秒后重试",
+    "rate_limited": "请求过于频繁，请稍后重试",
+    "unavailable": "服务暂不可用",
+    "cancelled": "请求已取消",
+    "stream_read_failed": "流式读取失败",
+    "chunk_read_failed": "分片读取失败",
+    "unknown_error": "未知错误",
+    "request_failed": "请求失败"
+  },
+  "feedback": {
+    "decision": {
+      "pending": "待处理",
+      "ok": "已采纳",
+      "spam": "未采纳",
+      "nsfw_terminate": "违规处理"
+    }
+  },
+  "media": {
+    "drop_title": "拖入图片 · 粘贴 · 或点击选择",
+    "drop_overlay": "拖到这里上传"
+  },
+  "cap": {
+    "builtin_plugin": "平台内置插件",
+    "status_off": "未启用",
+    "status_on": "已启用",
+    "status_connected": "已连接",
+    "status_disconnected": "未连接",
+    "status_deployed": "已部署",
+    "fetch_failed": "拉取失败",
+    "empty_mcp": "尚未配置 MCP 服务器。点击「新增服务器」添加。",
+    "empty_skills": "尚未导入 Skill 包。点击「导入 Skill」上传。",
+    "empty_plugins": "暂无插件。",
+    "validate": "校验",
+    "add_server": "新增服务器",
+    "import_skill": "导入 Skill",
+    "add_plugin": "新增插件",
+    "plugins": "插件",
+    "mcp_servers": "MCP 服务器",
+    "skill_packs": "Skill 包",
+    "loading": "加载中…",
+    "add_mcp_server": "新增 MCP 服务器",
+    "configure_mcp": "配置一个 MCP 端点",
+    "choose_skill": "选择 Skill 包",
+    "add_platform_plugin": "添加一个平台插件",
+    "f_name": "名称",
+    "ph_mcp_name": "例：filesystem · 本地",
+    "f_transport": "传输",
+    "opt_stdio": "stdio · 本地命令",
+    "opt_http": "http · 远程 HTTP",
+    "f_command_url": "命令 / URL",
+    "f_env_headers": "环境变量 / Headers",
+    "ph_env": "每行一个：KEY=VALUE",
+    "f_github": "GitHub 链接",
+    "ph_github": "https://github.com/owner/repo（人格 skill → 角色卡 + 人设图）",
+    "f_local_file": "本地文件",
+    "hint_local_file": ".md → 角色卡 / .zip · .tar.gz → 可执行 Skill 包(管理员)",
+    "f_plugin_id": "插件 ID",
+    "ph_plugin_id": "例：timeline-viz",
+    "f_display_name": "显示名",
+    "ph_display_name": "例：时间线可视化",
+    "f_desc": "说明",
+    "ph_desc": "做什么，何时触发",
+    "submit_mcp": "校验并启用",
+    "submit_skill": "导入并部署",
+    "submit_add": "添加",
+    "need_repo_or_file": "请填 GitHub 链接或选择文件",
+    "import_failed": "导入失败",
+    "card": "角色卡",
+    "skill_imported": "Skill 已导入",
+    "plugins_preset": "插件由平台预置 · 暂不支持自定义新增",
+    "add_failed": "添加失败",
+    "disabled_toast": "已停用",
+    "toggle_failed": "切换失败",
+    "skills_always_on": "Skill 默认全部启用 · 暂不支持单独停用",
+    "plugins_managed": "插件状态由平台管理 · 暂不支持手动切换",
+    "delete_unsupported": "暂不支持删除该类型",
+    "delete_failed": "删除失败",
+    "log_no_instance": "（运行时未发现该服务器实例 · 可能未启用 / 未启动）",
+    "log_unsupported": "（该类型暂不支持运行时日志查询，仅 MCP 走 /api/mcp/runtime）",
+    "f_command": "命令",
+    "f_env": "环境变量",
+    "f_version": "版本",
+    "f_manifest": "manifest 配置",
+    "edit": "编辑",
+    "view_log": "查看日志",
+    "delete": "删除",
+    "no_edit_api": "暂未提供编辑接口",
+    "save": "保存",
+    "saved": "已保存",
+    "save_failed": "保存失败",
+    "edit_unsupported": "该类型暂不支持后端编辑",
+    "recent_50": "最近 50 条",
+    "log_hint_mcp": "GET /api/mcp/runtime · admin 可见 stderr",
+    "log_hint_none": "本类型暂无运行时日志",
+    "close": "关闭",
+    "export_failed": "导出失败",
+    "confirm_delete_eyebrow": "删除确认",
+    "delete_mcp_title": "删除 MCP 服务器",
+    "cancel": "取消",
+    "api": {
+      "d_home": "文字 RPG 主游戏界面",
+      "g_home": "主页",
+      "d_app": "多用户平台 / 创作平台界面",
+      "d_state": "读取当前可玩存档状态",
+      "g_saves": "存档",
+      "d_new": "创建新游戏并保留旧档备份",
+      "d_chat": "发送玩家行动，返回 SSE 流",
+      "d_stop": "打断当前生成",
+      "d_save": "手动保存当前游戏",
+      "d_permissions": "设置 LLM 写入权限",
+      "g_permissions": "权限",
+      "d_mem_add": "新增长期记忆条目",
+      "g_memory": "记忆",
+      "d_mem_remove": "移除长期记忆条目",
+      "d_models": "读取 API / 模型清单",
+      "g_models": "模型",
+      "d_models_select": "选择当前前端模型",
+      "d_scripts": "剧本列表",
+      "g_scripts": "剧本",
+      "d_scripts_import": "导入 TXT / MD 剧本并自动识别章节",
+      "d_chapters": "读取剧本章节目录与预览",
+      "d_saves": "游戏存档目录",
+      "g_platform": "平台",
+      "d_saves_create": "基于剧本创建新存档",
+      "d_branches": "读取分支树",
+      "g_branches": "分支",
+      "d_branches_continue": "从节点继续并创建新分支",
+      "d_branches_delete": "删除某条连线下的整条分支",
+      "d_library": "库文件列表",
+      "g_library": "库",
+      "d_upload": "上传文件",
+      "d_mkdir": "创建文件夹",
+      "d_download": "下载文件",
+      "d_mcp": "新增 / 更新 MCP 服务器配置",
+      "g_caps": "能力",
+      "d_skills": "本地部署导入 Skill 包",
+      "search_ph": "搜索路径或描述...",
+      "search_aria": "搜索路径或描述",
+      "copy_path": "复制路径",
+      "copy_failed": "复制失败",
+      "clipboard_denied": "浏览器拒绝访问剪贴板",
+      "title": "稳定接口",
+      "count": "v1 · {{n}} 条 · {{g}} 组",
+      "col_path": "路径",
+      "col_desc": "说明",
+      "copied": "已复制 {{path}}"
+    },
+    "validate_done": "校验完成 · {{ok}} ok / {{fail}} fail",
+    "load_failed": "加载失败：{{err}}",
+    "counter": "({{total}} 项 · {{on}} 已启用)",
+    "persona_img_queued": "(人设图生成中)",
+    "card_generated": "已生成角色卡「{{name}}」{{img}}",
+    "deleted_name": "已删除 {{name}}",
+    "log_read_failed": "读取日志失败：{{err}}",
+    "edit_mcp": "编辑 MCP 服务器",
+    "edit_skill": "编辑 Skill",
+    "edit_plugin": "编辑 插件",
+    "log_eyebrow": "日志 · {{name}}",
+    "export": "导出",
+    "deleting": "删除中…",
+    "confirm_delete_pre": "确定要删除 ",
+    "confirm_delete_post": " 吗？此操作不可撤销。",
+    "log_empty": "（暂无内容）",
+    "log_no_stderr": "（无 stderr 输出，可能 admin 权限不足 / 日志为空）"
+  },
+  "usage": {
+    "fetch_failed": "拉取用量失败",
+    "loading": "加载中…",
+    "refresh": "刷新",
+    "requests_count": "请求数",
+    "tokens_in": "Token 输入",
+    "cost": "成本",
+    "window_total": "本窗口累计",
+    "cached_tokens": "缓存输入 Token",
+    "cache_savings": "缓存节省估算",
+    "discount_75": "75% 折扣估算",
+    "forecast_desc": "基于过去 7 天平均日消耗（固定窗口，不随时间范围切换器变化）",
+    "forecast": "消费预测",
+    "forecast_no_data": "暂无足够数据（需至少 1 天用量记录）",
+    "by_scenario_desc": "按场景统计本窗口请求分布",
+    "by_scenario": "按场景拆分",
+    "daily": "每日聚合",
+    "trend": "趋势",
+    "no_recent_usage": "近期没有用量记录",
+    "requests": "请求",
+    "cost_usd": "成本 $",
+    "token_trend": "Token 趋势",
+    "input_tokens": "输入 Token",
+    "output_tokens": "输出 Token",
+    "by_api": "按 API 拆分",
+    "tokens_in_out": "Token (入 / 出)",
+    "share": "占比",
+    "no_calls": "暂无调用记录",
+    "by_requests": "按请求数",
+    "export_csv": "导出 CSV",
+    "top_models": "Top 模型",
+    "model": "模型",
+    "recent_requests": "最近请求",
+    "time": "时间",
+    "go_to_save": "点击跳转至存档",
+    "cached_in": "缓存 in",
+    "context": "上下文",
+    "no_recent_calls": "暂无最近调用",
+    "range_24h": "24 小时",
+    "range_7d": "7 天",
+    "range_30d": "30 天",
+    "range_90d": "90 天",
+    "title": "用量",
+    "last_range": "最近 {{range}}",
+    "daily_avg": "日均 {{n}}",
+    "output_ratio": "输出 {{out}} · 比 1 : {{ratio}}",
+    "output_none": "输出 —",
+    "share_of_input": "占输入 {{pct}}%",
+    "alert_high": "🔴 显著超出常规消费速率（30 天投影 ${{amount}}）",
+    "alert_warn": "⚠️ 较高消费速率（30 天投影 ${{amount}}）",
+    "per_day": " / 日",
+    "projected_30d": "预计 30 天 ",
+    "vs_prev_7d": " vs 前 7 天",
+    "pct_share": "{{pct}}% 占比",
+    "recent_range": "显示第 {{from}}–{{to}} 条（共 {{total}} 条）",
+    "page_of": "第 {{page}} / {{pages}} 页",
+    "csv": {
+      "rank": "排名",
+      "model": "模型",
+      "requests": "请求数",
+      "input_tokens": "输入Token",
+      "output_tokens": "输出Token",
+      "cost": "成本",
+      "time": "时间",
+      "cached_input": "缓存输入",
+      "context_used": "上下文used",
+      "context_max": "上下文max",
+      "save_id": "存档ID"
+    },
+    "scenario": {
+      "chat": "对话",
+      "opening": "开场",
+      "extract": "提取",
+      "embedding": "向量化",
+      "assistant": "助手",
+      "tool": "工具"
+    }
+  },
+  "auth_page": {
+    "need_credentials": "请填写用户名和密码",
+    "request_failed": "请求失败",
+    "subtitle": "长篇小说拆书 · RPG 续写 · 多用户创作平台",
+    "login": "登录",
+    "register": "注册",
+    "username": "用户名",
+    "username_ph": "字母 / 数字 / 下划线",
+    "password": "密码",
+    "password_ph": "至少 8 位",
+    "display_name": "显示名",
+    "display_name_ph": "例：用户名",
+    "first_admin": "首个注册用户会成为管理员。",
+    "forgot_notice": "请联系管理员重置密码（暂未提供自助找回流程）",
+    "forgot_toast": "请联系管理员重置密码",
+    "forgot": "忘记密码",
+    "register_ok": "注册成功",
+    "login_ok": "登录成功",
+    "submitting": "正在提交…",
+    "create_account": "创建账号"
+  },
+  "modules_page": {
+    "api_missing": "window.api.rules 未注册，请刷新页面或重启 dev server",
+    "load_failed": "加载模组失败",
+    "launch_failed": "launch_module 失败",
+    "start_failed": "启动模组失败",
+    "desc": "5E compatible / 五版规则兼容",
+    "title": "5E 兼容冒险模组",
+    "loading": "加载中…",
+    "col_module": "模组",
+    "col_ruleset": "规则集",
+    "col_level": "等级",
+    "col_duration": "预计时长",
+    "started": "已开始：{{name}}（独立存档 #{{id}}）",
+    "minutes": "{{n}} 分钟",
+    "starting": "启动中…",
+    "start": "开始模组",
+    "empty_pre": "当前没有内置冒险模组。模组数据位于 ",
+    "empty_post": " 目录。",
+    "disclaimer": "本页所有模组使用原创地名、角色、怪物。规则层为 5E-compatible（五版规则兼容），不引入任何官方 Dungeons & Dragons 商标或非 SRD IP。LLM 仅负责叙事，所有掷骰、检定、战斗、HP/AC 计算由确定性 RulesEngine 完成；GM 直写 HP/AC/initiative 会被 State Gate 拒绝。"
+  },
+  "acceptance_ab": {
+    "aria": "改写版本对比",
+    "title": "本轮生成了一个改写版本",
+    "subtitle_one": "依据 {{count}} 条未覆盖的剧情要点重写 · 你更想保留哪一版?",
+    "subtitle_other": "依据 {{count}} 条未覆盖的剧情要点重写 · 你更想保留哪一版?",
+    "keep_current_tip": "关掉对比,保留你当前读到的这一版",
+    "keep_current": "保留当前",
+    "current_version": "当前版本(你刚读到的)",
+    "empty": "(空)",
+    "keep_this": "保留这一版",
+    "rewrite_version": "改写版本",
+    "use_this": "换成这一版",
+    "why": "为什么会有改写(未覆盖的剧情要点)"
+  },
+  "md_ai": {
+    "busy": "AI 生成中…  Esc 取消",
+    "done": "AI 续写完成 —  Tab 接受   Esc 放弃",
+    "gen_failed": "生成失败",
+    "failed": "AI 续写失败",
+    "empty": "AI 没有返回续写内容",
+    "empty_detail": "该模型对当前上下文没有给出补全。试试:把光标放进正文段落里、先选中一段再「改写」、或在右栏切换一个模型重试。",
+    "error": "AI 续写出错",
+    "cmdk_continue": "AI 续写(光标处)",
+    "cmdk_rewrite": "AI 改写选中段",
+    "cmdk_label": "指令(可空;续写直接回车=顺势写)",
+    "hunk_label": "本段 +{{add}} / -{{del}}",
+    "accept": "接受",
+    "reject": "拒绝",
+    "panel_pending": "AI 改动 · {{pending}} 段待审 · +{{add}} / -{{del}} 行",
+    "panel_done": "AI 改动 · 全部已处理",
+    "accept_all": "全部批准",
+    "reject_all": "全部拒绝"
+  },
+  "data_loader": {
+    "signed_out": "未登录",
+    "untitled": "未命名",
+    "untitled_script": "未命名剧本",
+    "save_n": "存档 #{{id}}",
+    "demo_title": "示例数据预览模式",
+    "demo_body": "：当前显示的存档 / 角色 / 剧本均为内置示例，不会落库。登录后可创建自己的真实数据。",
+    "demo_login": "立即登录",
+    "demo_hide": "隐藏",
+    "refresh_unreachable": "暂时连不上后端,已保留当前页面数据,请稍后再刷新"
+  },
+  "achievements": {
+    "unlocked_toast": "🏆 解锁成就:{{name}}"
+  },
+  "image_gen": {
+    "op_failed": "操作失败",
+    "empty_poll": "轮询返回空响应",
+    "gen_failed": "生成失败",
+    "poll_error": "轮询出错",
+    "request_failed": "请求失败"
+  },
+  "model_overlay": {
+    "admin_only": "平台内置的模型只有管理员能改"
+  },
+  "mobile_launch": {
+    "no_save": "没有可进入的存档",
+    "switch_failed": "切换存档失败",
+    "switch_failed_detail": "切换存档失败 · {{error}}"
+  },
+  "wb_toast": {
+    "consulting": "GM 正在翻阅设定",
+    "no_anchor": "翻阅未找到精确锚点 (GM 将谨慎处理)",
+    "consulted": "已翻阅 · {{phase}}",
+    "done": "翻阅完成"
   }
 }

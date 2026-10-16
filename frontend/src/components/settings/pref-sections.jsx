@@ -6,15 +6,19 @@ import AgentModelPicker from '../AgentModelPicker.jsx';
 import { useAutoSave } from '../../platform-app.jsx';
 import { SetGroup, SetRow, SetSelect } from './shared.jsx';
 import CSToggle from '@cloudscape-design/components/toggle';
-import { changeLanguage } from '../../i18n/index.js';
+import i18n, { changeLanguage, DEFAULT_LANGUAGE } from '../../i18n/index.js';
 
 function PrefSection() {
   // task 52：从 user_preferences 拉真实初值，改动直接 patch /api/me/preference。
   const { t } = useTranslation();
-  const [interfaceLang, setInterfaceLang] = useStatePL("zh-CN");
+  const [interfaceLang, setInterfaceLang] = useStatePL(() => i18n.resolvedLanguage || i18n.language || DEFAULT_LANGUAGE);
+  // 故事语言:GM / 酒馆叙事与后台微任务的输出语言。后端 core/language.py 读 user_preferences 的
+  // 顶层 key `narration_language`(不带 pref. 前缀),缺省 en。
+  const [storyLang, setStoryLang] = useStatePL(DEFAULT_LANGUAGE);
   const [serif, setSerif] = useStatePL(true);
   const [auto, setAuto] = useStatePL(true);
   const save = useAutoSave(t('settings.nav.preferences'), "pref");
+  const saveTop = useAutoSave(t('settings.nav.preferences'), "");
   useEffectPL(() => {
     let cancelled = false;
     (async () => {
@@ -22,6 +26,7 @@ function PrefSection() {
         const r = await window.api.account.profile();
         if (cancelled) return;
         const p = (r && r.preferences) || {};
+        if (p.narration_language === 'zh-CN' || p.narration_language === 'en') setStoryLang(p.narration_language);
         if (p["pref.ui_language"]) setInterfaceLang(p["pref.ui_language"]);
         else if (p.ui_language) setInterfaceLang(p.ui_language);
         if (typeof p["pref.serif"] === "boolean") setSerif(p["pref.serif"]);
@@ -39,9 +44,17 @@ function PrefSection() {
           options={[
             { value: 'zh-CN', label: '简体中文' },
             { value: 'zh-TW', label: '繁體中文' },
-            { value: 'en', label: 'English (Beta)' },
+            { value: 'en', label: 'English' },
           ]}
           onChange={(v) => { setInterfaceLang(v); save("ui_language", v); changeLanguage(v); }} />
+      </SetRow>
+      <SetRow label={t('settings.preferences.story_lang')} description={t('settings.preferences.story_lang_desc')}>
+        <SetSelect value={storyLang}
+          options={[
+            { value: 'en', label: 'English' },
+            { value: 'zh-CN', label: '简体中文' },
+          ]}
+          onChange={(v) => { setStoryLang(v); saveTop("narration_language", v); }} />
       </SetRow>
       <SetRow label={t('settings.preferences.serif_font')} description={t('settings.preferences.serif_font_desc')}>
         <CSToggle checked={serif} onChange={({ detail }) => { setSerif(detail.checked); save("serif", detail.checked); }}>

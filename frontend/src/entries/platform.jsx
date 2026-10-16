@@ -1,5 +1,6 @@
 // Platform 页面入口 — Vite ESM 版
 import '../web-vitals-rum.js';
+import '../fonts.js';
 import React from 'react';
 import { useState, useEffect } from 'react';
 import * as ReactDOM from 'react-dom/client';
@@ -15,7 +16,8 @@ import '../state-event-bridge.js';
 import '../worldbook-status-toast.js';
 import '../ui-atlas.js';
 import '../console-assistant-navigation.jsx';
-import '../i18n/index.js';   // 初始化 i18next + 接 interfaceLang
+import i18n from '../i18n/index.js';   // 初始化 i18next + 接 interfaceLang
+import { useTranslation } from 'react-i18next';
 import { lsGet, lsSet, lsRemove } from '../lib/storage.js';
 import { isMobileV2Enabled } from '../lib/mobile-gate.js';
 
@@ -61,12 +63,13 @@ const SPLASH_VERSION = 'v1.0-2026-05-31';
 // ── 挂载 ──
 
 function ComingSoon({ title, desc }) {
+  const { t } = useTranslation();
   return (
     <section className="pl-sec">
       <div className="pl-sec-head"><h2>{title}</h2></div>
       <div style={{ padding: '36px 20px', textAlign: 'center' }}>
         <div style={{ fontSize: 26, marginBottom: 10, opacity: 0.7 }}>🚧</div>
-        <div style={{ fontSize: 14, color: 'var(--text-quiet)', marginBottom: 6 }}>敬请期待</div>
+        <div style={{ fontSize: 14, color: 'var(--text-quiet)', marginBottom: 6 }}>{t('platform.coming_soon.label')}</div>
         <div style={{ fontSize: 13, color: 'var(--muted)' }}>{desc}</div>
       </div>
     </section>
@@ -168,11 +171,11 @@ function PlatformApp() {
   else if (page === 'scripts-library') body = <ScriptsPage subPage="library" />;
   // iter#41: scripts-editor / scripts-settings 占位 route 删除 — 兼容旧 hash 重定向到 #scripts list
   else if (page === 'scripts-editor') body = <ScriptsPage subPage="list" />;
-  else if (page === 'scripts-settings') body = <ComingSoon title="剧本设置" desc="剧本级设定覆盖(script_overrides)。迁移中。" />;
+  else if (page === 'scripts-settings') body = <ComingSoon title={i18n.t('platform.coming_soon.script_settings_title')} desc={i18n.t('platform.coming_soon.script_settings_desc')} />;
   else if (page === 'modules') body = <ModulesPage />;
   else if (page === 'saves') body = <SavesPage subPage="list" />;
   else if (page === 'saves-branches') body = <SavesPage subPage="branches" />;
-  else if (page === 'play-settings') body = <ComingSoon title="游戏设置" desc="全局游玩默认(元知识/引导/防剧透)。迁移中。" />;
+  else if (page === 'play-settings') body = <ComingSoon title={i18n.t('platform.coming_soon.play_settings_title')} desc={i18n.t('platform.coming_soon.play_settings_desc')} />;
   else if (page === 'library') body = <LibraryPage />;
   else if (page === 'cards') body = <CardsPage subPage="user" />;
   else if (page === 'cards-npc') body = <CardsPage subPage="npc" />;
@@ -213,7 +216,7 @@ function PlatformApp() {
   else if (page === 'feedback') body = <FeedbackPage />;
   else if (page === 'device') body = <DeviceAuthorizePage />;
   else if (page === 'md-editor') body = (
-    <React.Suspense fallback={<section className="pl-sec"><div style={{ padding: 40, color: 'var(--muted)' }}>加载编辑器…</div></section>}>
+    <React.Suspense fallback={<section className="pl-sec"><div style={{ padding: 40, color: 'var(--muted)' }}>{i18n.t('platform.loading_editor')}</div></section>}>
       <LazyMdEditorPage />
     </React.Suspense>
   );
