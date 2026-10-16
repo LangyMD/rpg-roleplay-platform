@@ -166,7 +166,7 @@ def test_vertex_call_403_attaches_status_code_and_classifies_auth():
     classified = classify_provider_error(exc)
     assert classified is not None and classified[0] == "auth"
     # 友好文案保留(可行动引导)
-    assert "Vertex AI 调用被拒" in str(exc)
+    assert "Vertex AI call was rejected" in str(exc)
 
 
 # ── 修4:openai_compat 阶梯化收敛到 _tiered(load→call 闭环) ────────────────

@@ -154,11 +154,11 @@ class Retest_Bug5_FullListSetOverwrites(unittest.TestCase):
         # 不带 append=True / overwrite=True flag。
         result = g.apply_state_write_typed("memory.resources", new_list,
                                             source="gm", overwrite=False, append=False)
-        self.assertIn("待审", result)
+        self.assertIn("pending approval", result)
         pw = g.data["permissions"]["pending_writes"][0]
         # 审批
         approve_result = g.approve_pending_write(id=pw["id"])
-        self.assertIn("状态写入", approve_result)
+        self.assertIn("State write", approve_result)
         final = g.data["memory"]["resources"]
         self.assertEqual(final, new_list,
             f"Bug 5 retest：set 全量 list 应覆盖；实际={final}\n"

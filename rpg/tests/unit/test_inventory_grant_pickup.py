@@ -237,7 +237,7 @@ class GrantConsistentAcrossPermissionModes(unittest.TestCase):
         g.data["permissions"]["mode"] = "read_only"
         bogus = ["Shortsword ×1", "Shortbow ×1"]
         out = g.apply_state_write_typed("memory.resources", bogus, source="gm")
-        self.assertIn("待审", out)
+        self.assertIn("pending approval", out)
         pw = g.data["permissions"]["pending_writes"][0]
 
         # 审批通过 → 触发 sync_resources_from_inventory 从 canonical 重派生

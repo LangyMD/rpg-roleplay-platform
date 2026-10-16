@@ -63,6 +63,18 @@ describe('ForcedSetSection — 玩家强制设定管理', () => {
     await waitFor(() => expect(memoryRemove).toHaveBeenCalledWith({ bucket: 'pinned', index: 1 }));
   });
 
+  it('also removes the paired pinned entry written with the English prefix', async () => {
+    const { removeVar, memoryRemove } = installApiMocks();
+    const state = {
+      worldline: { user_variables: { set_2_1: { value: 'The giant cannot be killed yet', source: 'user:/set', turn: 2 } } },
+      memory: { pinned: ['unrelated', 'other', 'Player forced setting: The giant cannot be killed yet'] },
+    };
+    render(<ForcedSetSection state={state} />);
+    fireEvent.click(screen.getByLabelText('删除这条强制设定'));
+    await waitFor(() => expect(removeVar).toHaveBeenCalledWith({ key: 'set_2_1' }));
+    await waitFor(() => expect(memoryRemove).toHaveBeenCalledWith({ bucket: 'pinned', index: 2 }));
+  });
+
   it('单条时无「清空全部」;≥2 条才出现', () => {
     const one = { worldline: { user_variables: { set_1_1: { value: 'A', turn: 1 } } }, memory: { pinned: [] } };
     const { rerender } = render(<ForcedSetSection state={one} />);

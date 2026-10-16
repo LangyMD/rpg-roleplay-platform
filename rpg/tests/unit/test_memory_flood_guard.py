@@ -203,7 +203,7 @@ class TestParallelPathClosed(unittest.TestCase):
         for i in range(memory_append_per_turn_max()):
             s.apply_state_write_typed("memory.abilities", f"能力{i}", source="gm", append=True)
         out = s.apply_state_write_typed("memory.abilities", "溢出的一条", source="gm", append=True)
-        self.assertIn("拒绝", out)
+        self.assertIn("rejected", out)
         self.assertIn("abilities", out)
         self.assertEqual(len(s.data["memory"]["abilities"]), memory_append_per_turn_max())
 

@@ -107,7 +107,7 @@ class RegisterConsequenceTests(unittest.TestCase):
             self.assertTrue(ok, msg)
         ok, msg = register_consequence(data, text="第21条", due_turns=1)
         self.assertFalse(ok)
-        self.assertIn("上限", msg)
+        self.assertIn("maximum", msg)
         self.assertEqual(len(data["consequence_ledger"]), MAX_PENDING)
 
     def test_duplicate_fingerprint_rejected(self):
@@ -117,7 +117,7 @@ class RegisterConsequenceTests(unittest.TestCase):
         self.assertTrue(ok1)
         ok2, msg2 = register_consequence(data, text="欠钱不还", due_turns=5)
         self.assertFalse(ok2)
-        self.assertIn("重复", msg2)
+        self.assertIn("duplicate", msg2)
         self.assertEqual(len(data["consequence_ledger"]), 1)
 
     def test_same_text_different_due_not_duplicate(self):
@@ -263,7 +263,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         updates = s.apply_structured_updates(gm_response)
         self.assertEqual(len(s.data["consequence_ledger"]), 1)
         self.assertEqual(s.data["consequence_ledger"][0]["text"], "答应帮铁匠找矿石")
-        self.assertTrue(any("状态写入" in u for u in updates), updates)
+        self.assertTrue(any("State write" in u for u in updates), updates)
 
     def test_json_op_location_variant(self):
         s = _new_state(turn=1)
@@ -284,7 +284,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         )
         updates = s.apply_structured_updates(gm_response)
         self.assertEqual(s.data.get("consequence_ledger", []), [])
-        self.assertTrue(any("缺文本" in u or "忽略" in u for u in updates), updates)
+        self.assertTrue(any("no text" in u or "ignored" in u for u in updates), updates)
 
     def test_json_op_missing_due_rejected_no_crash(self):
         s = _new_state(turn=1)

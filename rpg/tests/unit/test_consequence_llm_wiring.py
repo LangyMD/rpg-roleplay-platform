@@ -88,7 +88,7 @@ def test_fingerprint_dedup_survives_punctuation_drift():
     sd = {"turn": 8}
     ok1, _ = register_consequence(sd, text="两日期限约定——后天正午前若不撤离，将再次对峙", due_turns=4)
     ok2, msg2 = register_consequence(sd, text="两日期限约定——后天正午前若不撤离,将再次对峙", due_turns=4)
-    assert ok1 and not ok2 and "重复" in msg2
+    assert ok1 and not ok2 and "duplicate" in msg2
 
 
 def test_recorder_user_prompt_lists_pending_ledger():

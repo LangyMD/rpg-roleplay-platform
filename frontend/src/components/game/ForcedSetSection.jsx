@@ -24,7 +24,8 @@ function ForcedSetSection({ state }) {
     try {
       const pins = (state && state.memory && state.memory.pinned) || [];
       const idx = pins.findIndex(
-        (p) => typeof p === "string" && p.indexOf("玩家强制设定") === 0 && (value ? p.indexOf(value) >= 0 : true),
+        (p) => typeof p === "string" && (p.indexOf("Player forced setting") === 0 || p.indexOf("玩家强制设定") === 0)
+          && (value ? p.indexOf(value) >= 0 : true),
       );
       if (idx >= 0) await window.api.game.memoryRemove({ bucket: "pinned", index: idx });
     } catch (_) {}

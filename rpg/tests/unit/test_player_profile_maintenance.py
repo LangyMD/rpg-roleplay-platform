@@ -76,7 +76,7 @@ class PlayerProfileApplyOpsGuard(unittest.TestCase):
         state = GameState.new()
         state.mark_user_locked("player.appearance")
         r = state.apply_state_write_typed("player.appearance", "GM 想改", source="gm")
-        self.assertIn("状态写入拒绝", r)
+        self.assertIn("State write rejected", r)
         self.assertNotEqual(state.data["player"].get("appearance"), "GM 想改")
 
     def test_user_force_write_allowed_when_locked(self):
@@ -85,7 +85,7 @@ class PlayerProfileApplyOpsGuard(unittest.TestCase):
         r = state.apply_state_write_typed(
             "player.appearance", "玩家自己改", source="user:/set", force=True,
         )
-        self.assertNotIn("拒绝", r)
+        self.assertNotIn("rejected", r)
         self.assertEqual(state.data["player"]["appearance"], "玩家自己改")
 
 

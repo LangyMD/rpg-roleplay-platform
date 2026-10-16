@@ -96,7 +96,7 @@ class PendingMixin:
             "turn": self.data.get("turn", 0),
         })
         permissions["audit_log"] = permissions["audit_log"][-200:]
-        return f"状态写入拒绝：{item.get('path', '')}"
+        return f"State write rejected: {item.get('path', '')}"
 
     def add_pending_narrative_op(self, op: str, value: dict, *, source: str, display: str) -> str:
         """把 GM 自主叙事记忆写入(consequence/npc_agenda/hypothesis/confirm_/reject_
@@ -127,7 +127,7 @@ class PendingMixin:
         }
         permissions.setdefault("pending_writes", []).append(pending)
         permissions["pending_writes"] = permissions["pending_writes"][-20:]
-        return f"状态写入待审：{display}"
+        return f"State write pending approval: {display}"
 
     def _approve_narrative_op_pending(self, item: dict) -> str:
         """审批通过一条 GM 叙事记忆写入 pending(add_pending_narrative_op 入队的)。
@@ -142,7 +142,7 @@ class PendingMixin:
                 due_location=value.get("due_location"),
                 origin="gm",
             )
-            return f"状态写入：{msg}" if ok else msg
+            return f"State write: {msg}" if ok else msg
         if op == "npc_agenda":
             extra = value.get("extra_known") or []
             ok, msg = self.upsert_npc_agenda(
@@ -151,7 +151,7 @@ class PendingMixin:
                 stance=value.get("stance"),
                 extra_known=set(extra) if extra else None,
             )
-            return f"状态写入：{msg}" if ok else msg
+            return f"State write: {msg}" if ok else msg
         if op == "hypothesis":
             mid = self.add_hypothesis(
                 text=value.get("text", ""),
@@ -159,17 +159,17 @@ class PendingMixin:
                 time_label=value.get("time_label"),
                 characters=value.get("characters"),
             )
-            return f"推测登记：{mid}"
+            return f"Hypothesis recorded: {mid}"
         if op == "confirm_hypothesis":
             hid = value.get("id", "")
             if hid and self.confirm_hypothesis(hid, source=src):
-                return f"推测确认：{hid}"
-            return f"推测确认失败（id 不存在或非 active）：{hid}"
+                return f"Hypothesis confirmed: {hid}"
+            return f"Failed to confirm hypothesis (id not found or not active): {hid}"
         if op == "reject_hypothesis":
             hid = value.get("id", "")
             if hid and self.reject_hypothesis(hid):
-                return f"推测拒绝：{hid}"
-            return f"推测拒绝失败（id 不存在）：{hid}"
+                return f"Hypothesis rejected: {hid}"
+            return f"Failed to reject hypothesis (id not found): {hid}"
         return f"Failed: unknown pending op: {op}"
 
     def add_pending_question(self, text: str, source: str = "gm", options: list | None = None) -> bool:

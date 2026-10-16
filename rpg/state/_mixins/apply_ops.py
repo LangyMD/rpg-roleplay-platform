@@ -139,7 +139,7 @@ class ApplyOpsMixin:
         validation = self._scan_worldline_validation(tags)
         if validation["status"] != "none":
             self._set_worldline_validation(validation["status"], validation["message"])
-            updates.append(f"设定校验：{_validation_label(validation['status'])}")
+            updates.append(f"Setting check: {_validation_label(validation['status'])}")
 
         # task 22：先看一眼有没有 pending_jump + 询问/待确认语境。
         #   - 玩家用自然语言发起的时间跳跃会调 request_time_jump → 设 pending_jump=awaiting_gm_confirmation。
@@ -206,7 +206,7 @@ class ApplyOpsMixin:
             applied = self.apply_state_write_typed(
                 path, value, source="gm", append=append, overwrite=overwrite,
             )
-            if applied.startswith("状态写入：") and label_for_update:
+            if applied.startswith(("State write: ", "状态写入：")) and label_for_update:
                 updates.append(label_for_update)
             else:
                 updates.append(applied)
@@ -219,13 +219,13 @@ class ApplyOpsMixin:
                 # update_location 内部还会写 worldline.location_history，
                 # apply_state_write kind=="location" 也会路由到 update_location，
                 # 所以走 gate 行为一致。
-                _gm_write_via_gate("player.current_location", value, label_for_update=f"位置：{value}")
+                _gm_write_via_gate("player.current_location", value, label_for_update=f"Location: {value}")
             elif is_time_key(key):
                 # 待确认中 + GM 正文在询问 → 不要锁；目标如果和 pending 一致就视为复述
                 if pending_jump and asking_for_confirm:
-                    updates.append(f"时间提案保留待确认：{value}")
+                    updates.append(f"Time proposal held for confirmation: {value}")
                     continue
-                _gm_write_via_gate("world.time", value, label_for_update=f"时间线锁定：{value}")
+                _gm_write_via_gate("world.time", value, label_for_update=f"Timeline locked: {value}")
             elif "时间跳跃确认" in key:
                 # task 32：GM 真实输出会出现【时间跳跃确认：待确认（当前处于 pending_confirmation 状态）】
                 # 这种"标签 key 是确认，但 value 在说还在等"的混合形态。直接 confirm_time_jump
@@ -237,20 +237,20 @@ class ApplyOpsMixin:
                 _value_pending = any(m in (value or "") for m in ("待确认", "未确认", "暂不", "暂缓")) \
                                  or any(m in _val_low for m in ("pending", "awaiting"))
                 if pending_jump and (asking_for_confirm or _value_pending):
-                    updates.append(f"时间跳跃确认保留待确认：{value or key}")
+                    updates.append(f"Time jump confirmation held pending: {value or key}")
                     continue
                 self.confirm_time_jump(value or key)
-                updates.append(f"时间跳跃确认：{self.data['world']['time']}")
+                updates.append(f"Time jump confirmed: {self.data['world']['time']}")
             elif "时间跳跃拒绝" in key:
                 self.reject_time_jump(value)
-                updates.append(f"时间跳跃拒绝：{value}")
+                updates.append(f"Time jump refused: {value}")
             elif "设定校验" in key or "设定冲突" in key:
                 continue
             elif "世界线推演" in key or "世界线预测" in key or "推演结果" in key:
                 if self._store_worldline_projection(value, validation["status"] == "passed"):
-                    updates.append("世界线推演：已写回")
+                    updates.append("Worldline projection: written back")
                 else:
-                    updates.append("世界线推演：待用户确认")
+                    updates.append("Worldline projection: awaiting user confirmation")
             elif "用户变量" in key or key in {"变量", "设定变量", "玩家变量"}:
                 var_key, var_value = _parse_assignment(value)
                 if var_key:
@@ -259,7 +259,7 @@ class ApplyOpsMixin:
                     # 别再直调 set_user_variable 绕过 gate(read_only 也拦不住)。
                     _gm_write_via_gate(
                         f"worldline.user_variables.{var_key}", var_value,
-                        label_for_update=f"用户变量：{var_key}={var_value}",
+                        label_for_update=f"User variable: {var_key}={var_value}",
                     )
             elif "询问玩家" in key or "向玩家提问" in key or "澄清问题" in key:
                 if self.add_pending_question(value or key, source="gm"):
@@ -274,17 +274,17 @@ class ApplyOpsMixin:
                 applied = self.apply_state_write(value, source="gm", overwrite=True)
                 updates.append(applied)
             elif "当前目标" in key or key == "目标":
-                _gm_write_via_gate("memory.current_objective", value, label_for_update=f"目标：{value}")
+                _gm_write_via_gate("memory.current_objective", value, label_for_update=f"Objective: {value}")
             elif "主线任务更新" in key or "主线" in key:
                 # 主线同时写两个 path，按白名单都允许（在 default 模式下都自动）
-                _gm_write_via_gate("memory.main_quest", value, label_for_update=f"主线：{value}")
+                _gm_write_via_gate("memory.main_quest", value, label_for_update=f"Main quest: {value}")
                 _gm_write_via_gate("memory.current_objective", value)
             elif "当前可支配资源" in key or "资源" in key:
                 # 列表追加，apply_state_write kind="list" + append=False（不 overwrite）会去重追加
                 for part in _split_items(value):
-                    _gm_write_via_gate("memory.resources", part, append=True, label_for_update=f"资源：{part}")
+                    _gm_write_via_gate("memory.resources", part, append=True, label_for_update=f"Resource: {part}")
             elif "能力" in key or "技能" in key or "掌握" in key:
-                _gm_write_via_gate("memory.abilities", value, append=True, label_for_update=f"能力：{value}")
+                _gm_write_via_gate("memory.abilities", value, append=True, label_for_update=f"Ability: {value}")
             elif "关系" in key:
                 rel_name, rel_status = _split_relation(value)
                 if rel_name and rel_status:
@@ -297,24 +297,24 @@ class ApplyOpsMixin:
                             rel_name = _rn
                     except Exception:
                         pass
-                    _gm_write_via_gate(f"relationships.{rel_name}", rel_status, label_for_update=f"关系：{rel_name} -> {rel_status}")
+                    _gm_write_via_gate(f"relationships.{rel_name}", rel_status, label_for_update=f"Relationship: {rel_name} -> {rel_status}")
                 elif self.add_memory("facts", item):
                     # facts 是低风险积累，仍走 add_memory 但记到 updates
-                    updates.append(f"事实：{item}")
+                    updates.append(f"Fact: {item}")
             elif "获得新身份" in key or "身份" in key or item.startswith("你已获得"):
-                _gm_write_via_gate("memory.facts", item, append=True, label_for_update=f"事实：{item}")
+                _gm_write_via_gate("memory.facts", item, append=True, label_for_update=f"Fact: {item}")
             else:
-                _gm_write_via_gate("memory.facts", item, append=True, label_for_update=f"事实：{item}")
+                _gm_write_via_gate("memory.facts", item, append=True, label_for_update=f"Fact: {item}")
 
         for value in _extract_explicit_time_updates(gm_response or ""):
             if value == self.data["world"]["time"]:
                 continue
             # task 22 兜底：待确认 + 询问语境时，不要把询问句里出现的目标时间当成确认
             if pending_jump and asking_for_confirm:
-                updates.append(f"时间提案保留待确认：{value}")
+                updates.append(f"Time proposal held for confirmation: {value}")
                 continue
             # task 54：走 gate（之前直接 update_time 绕过 read_only 权限）
-            _gm_write_via_gate("world.time", value, label_for_update=f"时间线锁定：{value}")
+            _gm_write_via_gate("world.time", value, label_for_update=f"Timeline locked: {value}")
 
         # 历史遗留（已彻底移除，不再回退此路径）：此处曾有「作者写死 regex 兜底」——
         # 只要 GM 叙事正文里出现「重力控制/肉身飞行/悬浮/特殊小队」等关键词，就无条件给
@@ -359,7 +359,7 @@ class ApplyOpsMixin:
                     else:
                         # task 60：缺 question 文本时不静默
                         _log_op_parse_error("question op 缺 'question' 或 'text' 字段", op)
-                        updates.append(f"JSON op 忽略（询问缺文本）：{op}")
+                        updates.append(f"JSON op ignored (question has no text): {op}")
                     continue
                 # 后果账本 v1（docs/design/consequence_ledger_v1.md）：登记一条待兑现的
                 # 后果。触发扫描/注入在 context provider 侧做，这里只负责写入登记。
@@ -367,7 +367,7 @@ class ApplyOpsMixin:
                     c_text = op.get("text") or ""
                     if not c_text:
                         _log_op_parse_error("consequence op 缺 'text' 字段", op)
-                        updates.append(f"JSON op 忽略（后果缺文本）：{op}")
+                        updates.append(f"JSON op ignored (consequence has no text): {op}")
                         continue
                     # 权限闸门:GM 自主写后果账本(consequence_echo provider 注入 GM
                     # 上下文,有真实叙事影响)。read_only/default 入 pending 不直写。
@@ -377,7 +377,7 @@ class ApplyOpsMixin:
                             {"text": c_text, "due_turns": op.get("due_turns"),
                              "due_location": op.get("due_location")},
                             source="gm:json",
-                            display=f"后果登记：{c_text[:40]}",
+                            display=f"Consequence recorded: {c_text[:40]}",
                         ))
                         continue
                     ok, msg = self.register_consequence(
@@ -386,7 +386,7 @@ class ApplyOpsMixin:
                         due_location=op.get("due_location"),
                         origin="gm",
                     )
-                    updates.append(f"状态写入：{msg}" if ok else msg)
+                    updates.append(f"State write: {msg}" if ok else msg)
                     continue
                 # NPC 议程 v0（docs/design/npc_agenda_v0.md）：登记/更新一条 NPC
                 # 当下议程（想要什么/对玩家什么态度）。goal/stance 至少给一，部分
@@ -395,7 +395,7 @@ class ApplyOpsMixin:
                     a_name = op.get("name") or ""
                     if not a_name:
                         _log_op_parse_error("agenda op 缺 'name' 字段", op)
-                        updates.append(f"JSON op 忽略（议程缺 name）：{op}")
+                        updates.append(f"JSON op ignored (agenda has no name): {op}")
                         continue
                     # 测玩实证修复:首次登场 NPC 尚未进 relationships/active_entities,会被
                     # 白名单误拒(最该登议程的「角色初登场」恰恰失败)。放行条件放宽:名字
@@ -415,7 +415,7 @@ class ApplyOpsMixin:
                              "stance": op.get("stance"),
                              "extra_known": list(_agenda_extra) if _agenda_extra else None},
                             source="gm:json",
-                            display=f"NPC议程：{a_name}",
+                            display=f"NPC agenda: {a_name}",
                         ))
                         continue
                     ok, msg = self.upsert_npc_agenda(
@@ -424,14 +424,14 @@ class ApplyOpsMixin:
                         stance=op.get("stance"),
                         extra_known=_agenda_extra,
                     )
-                    updates.append(f"状态写入：{msg}" if ok else msg)
+                    updates.append(f"State write: {msg}" if ok else msg)
                     continue
                 # task 75：hypothesis op 路由到独立 namespace，不污染 facts
                 if kind == "hypothesis":
                     text = op.get("text") or op.get("value") or ""
                     if not text:
                         _log_op_parse_error("hypothesis op 缺 'text' 或 'value' 字段", op)
-                        updates.append(f"JSON op 忽略（推测缺文本）：{op}")
+                        updates.append(f"JSON op ignored (hypothesis has no text): {op}")
                         continue
                     # 权限闸门:GM 自主写推测(memory provider 以「未确认推测」注入 GM
                     # 上下文)。read_only/default 入 pending。
@@ -441,7 +441,7 @@ class ApplyOpsMixin:
                             {"text": text, "time_label": op.get("time_label"),
                              "characters": op.get("characters")},
                             source="gm:json",
-                            display=f"推测登记：{text[:40]}",
+                            display=f"Hypothesis recorded: {text[:40]}",
                         ))
                         continue
                     mid = self.add_hypothesis(
@@ -450,7 +450,7 @@ class ApplyOpsMixin:
                         time_label=op.get("time_label"),
                         characters=op.get("characters"),
                     )
-                    updates.append(f"推测登记：{mid} {text[:40]}")
+                    updates.append(f"Hypothesis recorded: {mid} {text[:40]}")
                     continue
                 # task 75：confirm/reject hypothesis（玩家或 GM 后续轮可触发）
                 # 权限闸门:confirm 升级推测为 runtime_fact(注入 GM 上下文的叙事事实),
@@ -461,33 +461,33 @@ class ApplyOpsMixin:
                     if hid and self._gm_narrative_needs_pending():
                         updates.append(self.add_pending_narrative_op(
                             "confirm_hypothesis", {"id": hid},
-                            source="gm:json", display=f"确认推测：{hid}",
+                            source="gm:json", display=f"Confirm hypothesis: {hid}",
                         ))
                         continue
                     if hid and self.confirm_hypothesis(hid, source="gm:json"):
-                        updates.append(f"推测确认：{hid}")
+                        updates.append(f"Hypothesis confirmed: {hid}")
                     else:
-                        updates.append(f"推测确认失败（id 不存在或非 active）：{hid}")
+                        updates.append(f"Failed to confirm hypothesis (id not found or not active): {hid}")
                     continue
                 if kind == "reject_hypothesis":
                     hid = op.get("id") or ""
                     if hid and self._gm_narrative_needs_pending():
                         updates.append(self.add_pending_narrative_op(
                             "reject_hypothesis", {"id": hid},
-                            source="gm:json", display=f"拒绝推测：{hid}",
+                            source="gm:json", display=f"Reject hypothesis: {hid}",
                         ))
                         continue
                     if hid and self.reject_hypothesis(hid):
-                        updates.append(f"推测拒绝：{hid}")
+                        updates.append(f"Hypothesis rejected: {hid}")
                     else:
-                        updates.append(f"推测拒绝失败（id 不存在）：{hid}")
+                        updates.append(f"Failed to reject hypothesis (id not found): {hid}")
                     continue
                 path = (op.get("path") or "").strip()
                 value = op.get("value", "")
                 if not path:
                     # task 60：写 audit，让下轮 LLM 看见
                     _log_op_parse_error("set/append op 缺 'path' 字段", op)
-                    updates.append(f"JSON op 忽略（缺 path）：{op}")
+                    updates.append(f"JSON op ignored (no path): {op}")
                     continue
                 _gm_write_via_gate(
                     path, value,
@@ -497,7 +497,7 @@ class ApplyOpsMixin:
                 )
             except Exception as e:
                 _log_op_parse_error(f"运行时异常：{e}", op)
-                updates.append(f"JSON op 失败：{e}")
+                updates.append(f"JSON op failed: {e}")
 
         memory["last_structured_updates"] = updates[-12:]
         return updates
@@ -522,13 +522,13 @@ class ApplyOpsMixin:
                 _sec_list = _pp.setdefault("secrets", [])
                 if _reveal_text not in _sec_list:
                     _sec_list.append(_reveal_text)
-                updates.append(f"玩家揭示秘密(本轮)：{_reveal_text[:40]}")
+                updates.append(f"Player revealed a secret (this turn): {_reveal_text[:40]}")
         updates.extend(self.apply_set_directive(player_input or ""))
         for directive in detect_time_directives(player_input or ""):
             value = directive.target
             if value != self.data["world"]["time"]:
                 self.request_time_jump(value, player_input)
-                updates.append(f"时间跳跃待确认：{value}")
+                updates.append(f"Time jump pending confirmation: {value}")
         self.data["memory"]["last_structured_updates"] = updates[-12:] or self.data["memory"].get("last_structured_updates", [])
         return updates
 
@@ -545,14 +545,14 @@ class ApplyOpsMixin:
                     "kind": "parse_error",
                     "raw_spec": str(spec)[:160],
                     "source": source,
-                    "hint": "无法解析 path=value；检查冒号是否是半角 `:` 或 `=`，path 不要含空格",
+                    "hint": "could not parse path=value; check that the separator is an ASCII `:` or `=` and that the path has no spaces",
                     "turn": self.data.get("turn", 0),
                 })
                 if len(audit) > 200:
                     self.data["permissions"]["audit_log"] = audit[-200:]
             except Exception:
                 pass
-            return f"状态写入忽略（解析失败）：{spec[:60]}"
+            return f"State write ignored (parse failed): {spec[:60]}"
         return self.apply_state_write_typed(path, value, source=source, append=append, overwrite=overwrite, force=force)
 
     def _deny_write(self, path, value, source, blocked, reason_tag, hint=None) -> str:
@@ -575,7 +575,7 @@ class ApplyOpsMixin:
                 self.data["permissions"]["audit_log"] = audit[-200:]
         except Exception:
             pass
-        return f"状态写入拒绝（{reason_tag}）：{path}"
+        return f"State write rejected ({reason_tag}): {path}"
 
     def apply_state_write_typed(self, path: str, value, source: str = "gm",
                                 append: bool = False, overwrite: bool = False, force: bool = False) -> str:
@@ -598,12 +598,12 @@ class ApplyOpsMixin:
             _cur_name = str((self.data.get("player") or {}).get("name") or "").strip()
             _new_name = str(value or "").strip()
             if _new_name != _cur_name:  # 含 空→郑吒;仅同值 no-op 放行(不刷拒绝噪音)
-                return f"状态写入拒绝:玩家姓名只由玩家本人设定,GM/史官 不可写(拦截「{_cur_name or '(空)'}」→「{_new_name}」)"
+                return f"State write rejected: only the player sets the player's name; the GM/chronicler cannot write it (blocked '{_cur_name or '(empty)'}' -> '{_new_name}')"
         # 玩家人设卡锁闸(纵深防御):map_op_to_tool 路由失败 fall-through 到老路径时,GM/史官
         # 仍可能直写玩家手动定制过的 appearance/personality/speech_style/background。与工具执行器内
         # _set_player_profile_field 同语义:玩家锁定过就拒 gm 写入。/set(source=user*/force)不受此闸。
         if path in _PLAYER_PROFILE_LOCK_PATHS and str(source or "").startswith("gm") and self._is_user_locked(path):
-            return f"状态写入拒绝:{path} 已被玩家手动定制(锁定),GM/史官不可自动改写"
+            return f"State write rejected: {path} was customised (locked) by the player; the GM/chronicler cannot change it automatically"
         # 1-c fork 收编:/set story_intent=X 之前写到顶层 data["story_intent"](没人读),而
         # WorldlineProvider 读的是 player_private.story_intent(建档 dual-write 的字段)→ 游戏中
         # 改 story_intent 对 GM 导演层无效。统一路由到 player_private.story_intent(与建档+读取同源)。
@@ -645,11 +645,11 @@ class ApplyOpsMixin:
                         )
                         result = _disp.dispatch_sync(env)
                         if result.ok:
-                            return f"状态写入: {tool_name} → {(result.result or '')[:60]}"
+                            return f"State write: {tool_name} -> {(result.result or '')[:60]}"
                         # dispatcher 拒了 (destructive / origin / rate) — 不走老路径,
                         # 直接返回错误,让 audit_log 留下 rejected 记录
                         if "destructive_blocked" in (result.error or "") or "origin_forbidden" in (result.error or ""):
-                            return f"状态写入拒绝（dispatcher）: {result.error}"
+                            return f"State write rejected (dispatcher): {result.error}"
                         # 其它错误 (rate_limited / depth_exceeded) → fall through 到老路径
             except Exception as _exc:
                 # dispatcher 路由失败不阻塞,fall through 老路径
@@ -660,20 +660,20 @@ class ApplyOpsMixin:
         # /set permissions.mode=full_access （force=True）直接落地，玩家可一句话
         # 关闭整套权限审批 + 篡改 audit_log + 改 history。
         if _write_path_hard_forbidden(path):
-            return self._deny_write(path, value, source, "hard_forbidden", "硬黑名单")
+            return self._deny_write(path, value, source, "hard_forbidden", "hard blacklist")
         # 5E-compatible：受规则引擎管理的硬数值（HP/AC/initiative/dice_log）只能由
         # RulesEngine 修改。LLM/GM 自由写入或用户 /set 都拒绝并记入 audit。
         if _write_path_rules_managed(path) and not str(source or "").startswith("rules_engine"):
             return self._deny_write(
                 path, value, source, "rules_managed", "rules_managed",
-                hint="受规则引擎管理的硬数值（HP/AC/initiative/dice_log）只能由 RulesEngine 写入",
+                hint="hard values managed by the rules engine (HP/AC/initiative/dice_log) can only be written by the RulesEngine",
             )
         # 规则模组运行时，玩家所在房间由 RulesEngine / rules_bridge 的移动结果维护。
         # GM 只能叙事，不能把自然语言里的“当前位置”反写成另一套状态。
         if _write_path_module_managed(path) and _module_scene_active(self.data) and str(source or "").startswith("gm"):
             return self._deny_write(
                 path, value, source, "module_managed", "module_managed",
-                hint="规则模组运行时当前位置由 RulesEngine 房间状态维护，GM 不得写入",
+                hint="while a rules module is running, the current location is maintained by the RulesEngine room state; the GM must not write it",
             )
         permissions = self.data.setdefault("permissions", {})
         mode = _normalize_permission_mode(permissions.get("mode", "full_access"))
@@ -699,7 +699,7 @@ class ApplyOpsMixin:
             }
             permissions.setdefault("pending_writes", []).append(pending)
             permissions["pending_writes"] = permissions["pending_writes"][-20:]
-            return f"状态写入待审：{path}"
+            return f"State write pending approval: {path}"
 
         kind = _write_path_kind(path)
         if kind == "location":
@@ -743,7 +743,7 @@ class ApplyOpsMixin:
                         # 逐条继续,不因一条被拦就丢掉同批次里其它合法条目
                         _blocked.append(_why)
                 if _blocked:
-                    return f"状态写入部分拒绝({bucket}·{len(_blocked)} 条): {_blocked[0]}"
+                    return f"State write partly rejected ({bucket}, {len(_blocked)} entries): {_blocked[0]}"
             else:
                 target = _get_path(self.data, path)
                 if not isinstance(target, list):
@@ -786,7 +786,7 @@ class ApplyOpsMixin:
         }
         permissions.setdefault("audit_log", []).append(audit)
         permissions["audit_log"] = permissions["audit_log"][-30:]
-        return f"状态写入：{path}"
+        return f"State write: {path}"
 
     # ── 规则引擎专用入口 ────────────────────────────────────────
     # 这些方法走 source="rules_engine"，因此能通过 State Gate 写入受保护字段。

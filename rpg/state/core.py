@@ -71,6 +71,9 @@ from timeline_state import (
 BASE = Path(__file__).parent.parent  # state/core.py 比原 state.py 深一层,SAVE_FILE 必须回到 rpg/saves/
 SAVE_FILE = BASE / "saves" / "game_state.json"
 CURRENT_SCHEMA_VERSION = 6
+# /set 写进 pinned 的「玩家强制设定」前缀。英文为当前写法;老存档 pinned 里是「玩家强制设定：」,
+# 前端 ForcedSetSection 解除时两种前缀都认。
+FORCED_SETTING_PIN_PREFIX = "Player forced setting: "
 
 # task 138: 剥离 markdown 角色卡里的"秘密 / 隐藏 / 内心 / 元知识 / 真实身份 / 来历"段。
 # user_card 详细字段(personality/appearance/background)由玩家自定义,经常把秘密段
@@ -1229,9 +1232,9 @@ Current location: {p['current_location']}
         updates: list[str] = []
         set_key = f"set_{self.data.get('turn', 0) + 1}_{len(self.data.setdefault('worldline', {}).setdefault('user_variables', {})) + 1}"
         if self.set_user_variable(set_key, directive, source="user:/set"):
-            updates.append(f"强制设定：{directive}")
-        if self.add_memory("pinned", f"玩家强制设定：{directive}"):
-            updates.append("固定记忆：玩家强制设定")
+            updates.append(f"Forced setting: {directive}")
+        if self.add_memory("pinned", f"{FORCED_SETTING_PIN_PREFIX}{directive}"):
+            updates.append("Pinned memory: player forced setting")
 
         # task 28：调整应用顺序——时间/位置等自动派生的更新先做，
         # 显式 path=value 最后兜底覆盖。
@@ -1242,12 +1245,12 @@ Current location: {p['current_location']}
         for target in _extract_set_time_targets(directive):
             if target and target != self.data["world"]["time"]:
                 self.update_time(target, source="user_set")
-                updates.append(f"时间线强制设定：{target}")
+                updates.append(f"Timeline forced: {target}")
 
         location = _extract_location_override(directive)
         if location:
             self.update_location(location)
-            updates.append(f"位置强制设定：{location}")
+            updates.append(f"Location forced: {location}")
 
         for spec in _extract_set_assignments(directive):
             result = self.apply_state_write(spec, source="user:/set", force=True, overwrite=True)

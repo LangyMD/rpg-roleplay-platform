@@ -88,18 +88,18 @@ def upsert_agenda(
     """
     name = _clean_item(name or "")
     if not name:
-        return False, "议程登记忽略（缺 name）"
+        return False, "Agenda ignored (no name)"
 
     goal_clean = _clean_item(goal or "")[:MAX_FIELD_LEN] if goal else ""
     stance_clean = _clean_item(stance or "")[:MAX_FIELD_LEN] if stance else ""
     if not goal_clean and not stance_clean:
-        return False, f"议程登记忽略（{name} 缺 goal 与 stance，至少给一个）"
+        return False, f"Agenda ignored ({name}: give at least one of goal / stance)"
 
     known = _known_npc_names(state_data)
     if extra_known:
         known |= {str(n) for n in extra_known if n}
     if name not in known:
-        return False, f"议程登记拒绝（{name} 不在场上已知角色名单，防臆造路人）"
+        return False, f"Agenda rejected ({name} is not a known character in the scene; invented bystanders are not allowed)"
 
     agendas = _agendas(state_data)
     turn_int = int(turn if turn is not None else state_data.get("turn", 0) or 0)
@@ -135,7 +135,7 @@ def upsert_agenda(
                 second_oldest = min(candidates, key=lambda k: agendas[k].get("updated_turn", 0))
                 del agendas[second_oldest]
 
-    return True, f"议程更新：{name}（{goal_clean or stance_clean}）"
+    return True, f"Agenda updated: {name} ({goal_clean or stance_clean})"
 
 
 def agendas_for_injection(

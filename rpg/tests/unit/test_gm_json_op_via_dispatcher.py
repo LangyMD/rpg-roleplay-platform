@@ -159,7 +159,7 @@ class GMJsonOpRoutesToDispatcher(unittest.TestCase):
         """GM 写 op {path:player.name, value:X} 应被 dispatcher 拒绝
         (set_player_name 是 destructive,llm_chat_json_op 不在 origins 里)。"""
         result = self.state.apply_state_write_typed("player.name", "新名", source="gm")
-        self.assertIn("拒绝", result, f"应被拒绝;实际 {result}")
+        self.assertIn("rejected", result, f"应被拒绝;实际 {result}")
         # state 不变
         self.assertNotEqual(self.state.data["player"]["name"], "新名")
 
@@ -180,7 +180,7 @@ class GMJsonOpRoutesToDispatcher(unittest.TestCase):
             "memory.main_quest", "测试主线", source="gm",
         )
         # 老路径返回 "状态写入：memory.main_quest"
-        self.assertIn("状态写入", result)
+        self.assertIn("State write", result)
         self.assertEqual(self.state.data["memory"]["main_quest"], "测试主线")
         # 重设 context for tearDown
         self._token = set_context(None)

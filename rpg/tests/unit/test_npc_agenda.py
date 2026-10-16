@@ -267,7 +267,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         entry = s.data["npc_agendas"]["雷纳德"]
         self.assertEqual(entry["goal"], "查清东林兽伤的真相")
         self.assertEqual(entry["stance"], "信任但保留观察")
-        self.assertTrue(any("状态写入" in u for u in updates), updates)
+        self.assertTrue(any("State write" in u for u in updates), updates)
 
     def test_json_op_goal_only_variant(self):
         s = _new_state(turn=1)
@@ -290,7 +290,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         )
         updates = s.apply_structured_updates(gm_response)
         self.assertEqual(s.data.get("npc_agendas", {}), {})
-        self.assertTrue(any("缺 name" in u or "忽略" in u for u in updates), updates)
+        self.assertTrue(any("no name" in u or "ignored" in u for u in updates), updates)
 
     def test_json_op_missing_goal_and_stance_rejected_no_crash(self):
         s = _new_state(turn=1)
@@ -338,7 +338,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         )
         updates = s.apply_structured_updates(gm_response)
         self.assertEqual(len(s.data["consequence_ledger"]), 1)
-        self.assertTrue(any("状态写入" in u for u in updates), updates)
+        self.assertTrue(any("State write" in u for u in updates), updates)
 
 
 # ────────────────────────────────────────────────────────────

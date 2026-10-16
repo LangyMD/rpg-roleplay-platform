@@ -207,11 +207,11 @@ class ApprovalRoutesToCanonicalInventory(unittest.TestCase):
         result = g.apply_state_write_typed(
             "memory.resources", bogus_list, source="gm", overwrite=False,
         )
-        self.assertIn("待审", result)
+        self.assertIn("pending approval", result)
         pw = g.data["permissions"]["pending_writes"][0]
 
         approve_result = g.approve_pending_write(id=pw["id"])
-        self.assertIn("状态写入", approve_result)
+        self.assertIn("State write", approve_result)
 
         # 关键：审批后，memory.resources 应回归 canonical inventory（Torch ×1），
         # 而不是 GM 那条 Torch ×99
