@@ -80,6 +80,9 @@ def _match_user_id_by_email(db, contact_email: str) -> int | None:
 # POST /api/feedback — 用户提交
 # ──────────────────────────────────────────────────────────────────────────────
 
+_CENTRAL_DISABLED_VALUES = frozenset({"off", "0", "none", "disabled", "false"})
+
+
 async def _forward_feedback_to_central(body: dict, ua: str):
     """自部署(local/desktop)模式:本机没有「中央 admin」处理反馈 →
     把反馈转发到我的中央服务器(/api/feedback/anon),让自部署用户的反馈 + 邮件回执闭环走通。
@@ -88,7 +91,15 @@ async def _forward_feedback_to_central(body: dict, ua: str):
 
     import httpx
 
-    central = (os.environ.get("RPG_CENTRAL_URL") or "https://rpg-roleplay.stellatrix.icu").rstrip("/")
+    raw_central = (os.environ.get("RPG_CENTRAL_URL") or "").strip()
+    # 隐私开关:RPG_CENTRAL_URL=off(或 0/none/disabled/false)→ 反馈绝不出本机。
+    # 未设置时仍默认转发到正式站(行为不变)。
+    if raw_central.lower() in _CENTRAL_DISABLED_VALUES:
+        raise HTTPException(
+            status_code=503,
+            detail="Feedback forwarding is disabled on this install (RPG_CENTRAL_URL=off).",
+        )
+    central = (raw_central or "https://rpg-roleplay.stellatrix.icu").rstrip("/")
     url = f"{central}/api/feedback/anon"
     payload = {
         "free_text": body.get("free_text", "") or "",
