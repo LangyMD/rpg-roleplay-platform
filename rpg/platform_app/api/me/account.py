@@ -65,7 +65,7 @@ async def api_account_import(request: Request, user=Depends(require_user)):
             form = await request.form()
             file = form.get("file")
             if not file or not hasattr(file, "read"):
-                raise HTTPException(status_code=400, detail="缺 file 字段")
+                raise HTTPException(status_code=400, detail="Missing file field")
             raw = await file.read()
         else:
             raw = await request.body()

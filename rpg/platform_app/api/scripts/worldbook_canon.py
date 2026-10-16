@@ -73,7 +73,7 @@ async def api_script_canon_entities(
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         if fetch_all:
             rows = db.execute(
                 f"""
@@ -110,11 +110,11 @@ async def api_script_canon_entity(script_id: int, logical_key: str, user=Depends
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         row = db.execute(
             f"select {_CANON_LIST_COLS} from kb_canon_entities where script_id = %s and logical_key = %s",
             (script_id, logical_key),
         ).fetchone()
     if not row:
-        return json_response({"ok": False, "error": "这个设定实体不存在(可能已被删除),刷新列表后再试"}, status_code=404)
+        return json_response({"ok": False, "error": "This lore entity does not exist (it may have been deleted); refresh the list and try again"}, status_code=404)
     return json_response({"ok": True, "entity": dict(row)})

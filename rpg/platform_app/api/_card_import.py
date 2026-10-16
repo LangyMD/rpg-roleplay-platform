@@ -46,7 +46,7 @@ async def parse_card_import_request(request: Request) -> tuple[dict[str, Any], b
         ai_split = truthy(form.get("ai_split"))
         file_field = form.get("file")
         if file_field is None:
-            raise ValueError("multipart 中缺少 file 字段")
+            raise ValueError("multipart request is missing the file field")
         blob = await file_field.read()
         if len(blob) > MAX_IMPORT_PAYLOAD_BYTES:
             raise ValueError(f"文件过大（上限 {MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
@@ -75,7 +75,7 @@ async def parse_card_import_request(request: Request) -> tuple[dict[str, Any], b
         except Exception as exc:
             raise ValueError(f"png_base64 不合法：{exc}") from exc
         if len(blob) > _MAX_PNG_DECODED_BYTES:
-            raise ValueError("PNG 文件过大（解码后最大 10MB）")
+            raise ValueError("PNG file is too large (max 10MB after decoding)")
         v2 = tavern_cards.parse_png_card(blob)
         image_bytes = blob  # PNG 卡本身即头像图
     elif body.get("json") is not None:
@@ -85,5 +85,5 @@ async def parse_card_import_request(request: Request) -> tuple[dict[str, Any], b
     elif body.get("base64"):
         v2 = tavern_cards.parse_card(body["base64"])
     else:
-        raise ValueError("需要 file(multipart) / json / json_string / base64 / png_base64 之一")
+        raise ValueError("One of file (multipart) / json / json_string / base64 / png_base64 is required")
     return v2, image_bytes, ai_split

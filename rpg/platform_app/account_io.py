@@ -405,7 +405,7 @@ def _import_preferences(user_id: int, prefs: dict[str, Any]) -> None:
 # ──────────────────────────────────────────────────────────────────────────
 #  异步作业:账号导入(复用 import_jobs/SSE,前端 streamImport 看真实进度)
 # ──────────────────────────────────────────────────────────────────────────
-_STAGE_LABELS = {"scripts": "导入剧本", "saves": "导入存档", "cards": "导入角色卡"}
+_STAGE_LABELS = {"scripts": "Imported script", "saves": "Imported save", "cards": "Imported character card"}
 
 
 def import_account_job(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
@@ -422,9 +422,9 @@ def import_account_job(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
             "insert into import_jobs(job_id, user_id, script_id, kind, status, stage, "
             "overall_total, stages) values (%s, %s, null, 'account_import', 'pending', 'pending', 3, %s)",
             (job_id, user_id, Jsonb([
-                {"id": "scripts", "label": "导入剧本", "status": "pending"},
-                {"id": "saves", "label": "导入存档", "status": "pending"},
-                {"id": "cards", "label": "导入角色卡", "status": "pending"},
+                {"id": "scripts", "label": "Imported script", "status": "pending"},
+                {"id": "saves", "label": "Imported save", "status": "pending"},
+                {"id": "cards", "label": "Imported character card", "status": "pending"},
             ])),
         )
     th = threading.Thread(target=_run_account_import_job, args=(job_id, user_id, zip_bytes), daemon=True)

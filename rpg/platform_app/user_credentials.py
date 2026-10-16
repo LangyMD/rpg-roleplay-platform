@@ -311,7 +311,7 @@ def set_credential(user_id: int, api_id: str, plaintext_key: str, base_url_overr
     init_db()
     api_id = normalize_api_id(api_id)
     if not api_id:
-        raise ValueError("api_id 不能为空")
+        raise ValueError("api_id cannot be empty")
     auth_mode = (auth_mode or "api_key").strip() or "api_key"
     if auth_mode not in ("api_key", "none"):
         raise ValueError("auth_mode 只能是 api_key 或 none")
@@ -441,7 +441,7 @@ def _update_credential_meta(user_id: int, api_id: str, base_url_override: str | 
              proxy is not None, Jsonb(new_meta), user_id, _credential_aliases(canonical)),
         ).fetchone()
     if not row:
-        raise ValueError("尚未配置该供应商的 API Key，请先填写 Key")
+        raise ValueError("No API key configured for this provider yet; please enter a key first")
     return {"ok": True, **(expose(row) or {}), "has_credential": True}
 
 
@@ -478,7 +478,7 @@ def set_credential_enabled(user_id: int, api_id: str, enabled: bool) -> dict[str
     init_db()
     canonical = normalize_api_id(api_id)
     if not canonical:
-        raise ValueError("api_id 不能为空")
+        raise ValueError("api_id cannot be empty")
     with connect() as db:
         row = db.execute(
             """
@@ -489,7 +489,7 @@ def set_credential_enabled(user_id: int, api_id: str, enabled: bool) -> dict[str
             (bool(enabled), user_id, _credential_aliases(canonical)),
         ).fetchone()
     if not row:
-        raise ValueError("尚未配置该供应商的 API Key，请先填写 Key")
+        raise ValueError("No API key configured for this provider yet; please enter a key first")
     return {"ok": True, **(expose(row) or {})}
 
 

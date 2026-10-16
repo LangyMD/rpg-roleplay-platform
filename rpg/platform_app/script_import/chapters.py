@@ -19,7 +19,7 @@ def list_chapters(user_id: int, script_id: int, limit: int | str | None = None, 
         # 仍走 script_owned,不受影响。
         script = script_readable(db, script_id, user_id)
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         rows = db.execute(
             """
             select id, public_id, chapter_index, title, word_count, volume_title,
@@ -114,7 +114,7 @@ def update_chapter(user_id: int, script_id: int, chapter_index: int, *,
     init_db()
     with connect() as db:
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         if base_updated_at:
             cur = db.execute(
                 "select id, public_id, chapter_index, title, volume_title, word_count, "
@@ -243,7 +243,7 @@ def merge_chapters(user_id: int, script_id: int, first_index: int,
     with connect() as db:
         _lock_chapter_struct(db, script_id)
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         a = db.execute(
             "select * from script_chapters where script_id = %s and chapter_index = %s",
             (script_id, first_index),
@@ -306,7 +306,7 @@ def delete_chapters(user_id: int, script_id: int, chapter_indexes: list[int]) ->
     with connect() as db:
         _lock_chapter_struct(db, script_id)
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         total = int(db.execute(
             "select count(*) as n from script_chapters where script_id = %s", (script_id,),
         ).fetchone()["n"])
@@ -344,7 +344,7 @@ def split_chapter(user_id: int, script_id: int, chapter_index: int,
     with connect() as db:
         _lock_chapter_struct(db, script_id)
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         ch = db.execute(
             "select * from script_chapters where script_id = %s and chapter_index = %s",
             (script_id, chapter_index),

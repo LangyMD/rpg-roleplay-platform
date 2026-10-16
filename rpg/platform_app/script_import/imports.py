@@ -62,14 +62,14 @@ def import_script(
     text, encoding = chapter_splitter.decode_bytes(raw)
     cleaned = chapter_splitter.clean_text(text)
     if not cleaned:
-        raise ValueError("剧本文本为空")
+        raise ValueError("Script text is empty")
 
     script_title = (title or Path(original_name).stem or "未命名剧本").strip()[:160]
 
     # 自定义正则提前校验，避免坏正则被静默回退到 auto
     if (split_rule or "").strip() == "custom":
         if not (custom_pattern or "").strip():
-            raise ValueError("split_rule=custom 时必须提供 custom_pattern")
+            raise ValueError("custom_pattern is required when split_rule=custom")
         _validate_custom_pattern(custom_pattern)
 
     chapters, report = chapter_splitter.split_chapters_with_report(
@@ -242,11 +242,11 @@ def preview_split(
     text, encoding = chapter_splitter.decode_bytes(raw)
     cleaned = chapter_splitter.clean_text(text)
     if not cleaned:
-        raise ValueError("剧本文本为空")
+        raise ValueError("Script text is empty")
 
     if (split_rule or "").strip() == "custom":
         if not (custom_pattern or "").strip():
-            raise ValueError("split_rule=custom 时必须提供 custom_pattern")
+            raise ValueError("custom_pattern is required when split_rule=custom")
         _validate_custom_pattern(custom_pattern)
 
     chapters, report = chapter_splitter.split_chapters_with_report(

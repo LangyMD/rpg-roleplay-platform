@@ -41,7 +41,7 @@ async def api_script_search(script_id: int, q: str = "", regex: bool = False,
         where += " and content ILIKE %s"; params.append(f"%{query}%")
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         rows = db.execute(
             f"select chapter_index, title, content from script_chapters where {where} order by chapter_index",
             tuple(params),

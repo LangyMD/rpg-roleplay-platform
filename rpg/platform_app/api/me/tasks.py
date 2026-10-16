@@ -18,7 +18,7 @@ _TASK_IMPORT_KIND_LABELS = {
     "full_pipeline": "导入流水线",
     "llm_extract": "LLM 二次提取",
     "knowledge_sync": "知识库同步",
-    "account_import": "账号迁移导入",
+    "account_import": "Account migration import",
     "rebuild_chunks": "切块重建",
     "rebuild_facts": "章节事实重建",
     "rebuild_canon": "规范实体重建",
@@ -94,7 +94,7 @@ async def api_active_tasks(user=Depends(require_user)):
             if stitle:
                 title = f"{stitle} · {label}"
             elif kind == "account_import":
-                title = "账号迁移导入"
+                title = "Account migration import"
             else:
                 title = label
             nst = _task_norm_status(r["status"])

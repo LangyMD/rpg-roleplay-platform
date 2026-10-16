@@ -261,7 +261,7 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
 
     # ── excerpts 结构简单校验 ──────────────────────────────────────────────────
     if not isinstance(excerpts, list):
-        raise HTTPException(status_code=400, detail="excerpts 须为数组")
+        raise HTTPException(status_code=400, detail="excerpts must be an array")
     for i, ex in enumerate(excerpts):
         if not isinstance(ex, dict):
             raise HTTPException(status_code=400, detail=f"excerpts[{i}] 须为对象")
@@ -426,7 +426,7 @@ async def submit_feedback_anon(request: Request):
         except ValueError:
             raise HTTPException(status_code=400, detail="consent_token 不是合法 hex")
     if not isinstance(excerpts, list):
-        raise HTTPException(status_code=400, detail="excerpts 须为数组")
+        raise HTTPException(status_code=400, detail="excerpts must be an array")
 
     excerpts_raw = json.dumps(excerpts, ensure_ascii=False)
     env_raw = json.dumps(env_snapshot or {}, ensure_ascii=False)
@@ -630,7 +630,7 @@ async def delete_my_feedback(
         ).fetchone()
 
         if not row:
-            raise HTTPException(status_code=404, detail="反馈不存在")
+            raise HTTPException(status_code=404, detail="Feedback not found")
         # 匿名反馈 user_id 为 NULL;Python 中 None != <id> 恒 True 会让归属校验形同虚设,
         # 任何登录用户都能删他人匿名反馈。NULL 视为无主,一律禁删。
         if row["user_id"] is None or row["user_id"] != user["id"]:
@@ -751,7 +751,7 @@ async def admin_feedback_decision(
             (feedback_id,),
         ).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="反馈不存在")
+            raise HTTPException(status_code=404, detail="Feedback not found")
 
         db.execute(
             """
@@ -808,7 +808,7 @@ async def admin_feedback_reply(
             (feedback_id,),
         ).fetchone()
         if not row:
-            raise HTTPException(status_code=404, detail="反馈不存在")
+            raise HTTPException(status_code=404, detail="Feedback not found")
         if reply:
             db.execute(
                 "update feedback set admin_reply = %s, replied_at = now() where id = %s",

@@ -259,7 +259,7 @@ def import_persona_skill(
     use_llm=True 时再在映射结果上叠一层 LLM 归类整理(可选、要 BYOK)。返回 {ok, skill_id, card_id, card, image_status}。
     """
     if not user_id:
-        raise ValueError("需要登录")
+        raise ValueError("Login required")
     init_db()
 
     # 1) 取 markdown 文件 + 溯源

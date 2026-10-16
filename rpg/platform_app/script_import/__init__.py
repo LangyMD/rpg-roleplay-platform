@@ -109,7 +109,7 @@ def delete_script(user_id: int, script_id: int, *, force: bool = False) -> dict[
     with connect() as db:
         owned = script_owned(db, script_id, user_id)
         if not owned:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         save_count = int(db.execute(
             "select count(*) as n from game_saves where script_id = %s", (script_id,)
         ).fetchone()["n"])
@@ -179,7 +179,7 @@ def resplit_script(
     with connect() as db:
         script = script_owned(db, script_id, user_id)
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         src = (script.get("source_path") or "").strip()
         if not src:
             raise ValueError("剧本源文件路径丢失")
@@ -192,7 +192,7 @@ def resplit_script(
 
     if (split_rule or "").strip() == "custom":
         if not (custom_pattern or "").strip():
-            raise ValueError("split_rule=custom 时必须提供 custom_pattern")
+            raise ValueError("custom_pattern is required when split_rule=custom")
         _validate_custom_pattern(custom_pattern)
 
     text, encoding = chapter_splitter.decode_bytes(raw)

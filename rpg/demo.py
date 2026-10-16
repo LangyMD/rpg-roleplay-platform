@@ -54,7 +54,7 @@ def setup_character(state: GameState) -> None:
 
     name = input("你叫什么名字？\n> ").strip()
     if not name:
-        name = "无名者"
+        name = "Nameless"
 
     print()
     print("你在这个故事里扮演什么角色？")

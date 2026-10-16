@@ -199,7 +199,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
             """,
             (user["id"], limit),
         ).fetchall():
-            save_title = r["save_title"] or "未命名存档"
+            save_title = r["save_title"] or "Untitled save"
             events.append({
                 "type": "turn", "tag": "回合", "icon": "play",
                 "text": f"在《{save_title}》推进到第 {int(r['turn_index'])} 回合",
@@ -224,7 +224,7 @@ async def api_my_activity(limit: int = 25, user=Depends(require_user)):
             """,
             (user["id"], limit),
         ).fetchall():
-            save_title = r["save_title"] or "未命名存档"
+            save_title = r["save_title"] or "Untitled save"
             events.append({
                 "type": "branch", "tag": "分支", "icon": "branch",
                 "text": f"在《{save_title}》第 {int(r['turn_index'])} 回合开辟新分支",

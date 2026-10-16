@@ -227,7 +227,7 @@ def save_to_chat_jsonl(save_id: int, user_id: int | None = None) -> str:
                 (int(save_id),),
             ).fetchone()
         if not save:
-            raise ValueError("存档不存在")
+            raise ValueError("Save not found")
     # 完整导出从 state_snapshot.history 取(权威全量转录:含 create_tavern_save seed 的开场
     # first_mes + 后续每轮)。旧实现从 branch_commits 取会漏掉 seed 开场(它只进 history、不是
     # commit)→ 仅有开场、未发言的对话导出只剩 header → parse_chat_jsonl 报「不含有效消息」→

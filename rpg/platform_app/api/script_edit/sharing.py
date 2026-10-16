@@ -27,7 +27,7 @@ async def api_pin_script(request: Request, script_id: int, user=Depends(require_
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     mode = str(body.get("mode") or "")
     if mode not in ("pinned-snapshot", "floating-latest"):

@@ -42,7 +42,7 @@ async def api_worldbook_update(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     _WB_COLS = (
         "id, title, content, priority, enabled, metadata, "
@@ -63,7 +63,7 @@ async def api_worldbook_update(
             (entry_id, script_id),
         ).fetchone()
         if not before_row:
-            return json_response({"ok": False, "error": "worldbook entry 不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Worldbook entry not found"}, status_code=404)
 
         before = dict(before_row)
 
@@ -81,7 +81,7 @@ async def api_worldbook_update(
                 reveal = _reveal_chapter(body["first_revealed_chapter"])
             except (TypeError, ValueError):
                 return json_response(
-                    {"ok": False, "error": "first_revealed_chapter 必须是整数(章节号)"}, status_code=400)
+                    {"ok": False, "error": "first_revealed_chapter must be an integer (chapter number)"}, status_code=400)
             sets.append("first_revealed_chapter=%s")
             args.append(reveal)
         if "probability" in body:
@@ -110,7 +110,7 @@ async def api_worldbook_update(
             sets.append("embedded_at=NULL")
 
         if not sets:
-            return json_response({"ok": False, "error": "无可更新字段"}, status_code=400)
+            return json_response({"ok": False, "error": "No fields to update"}, status_code=400)
 
         sets.append("updated_at=now()")
         args.extend([entry_id, script_id])
@@ -158,7 +158,7 @@ async def api_worldbook_add(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     title = str(body.get("title") or "").strip()
     content = str(body.get("content") or "")
@@ -168,7 +168,7 @@ async def api_worldbook_add(
         reveal_chapter = _reveal_chapter(body.get("first_revealed_chapter"))
     except (TypeError, ValueError):
         return json_response(
-            {"ok": False, "error": "first_revealed_chapter 必须是整数(章节号)"}, status_code=400)
+            {"ok": False, "error": "first_revealed_chapter must be an integer (chapter number)"}, status_code=400)
 
     def _strlist(v: Any) -> list[str]:
         return [str(x) for x in v] if isinstance(v, list) else []
@@ -266,7 +266,7 @@ async def api_worldbook_delete(
             (entry_id, script_id),
         ).fetchone()
         if not before_row:
-            return json_response({"ok": False, "error": "worldbook entry 不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Worldbook entry not found"}, status_code=404)
 
         before = dict(before_row)
         db.execute(
@@ -317,7 +317,7 @@ async def api_worldbook_batch(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     action = str(body.get("action") or "").strip()
     if action not in _WB_BATCH_ACTIONS:

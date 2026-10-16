@@ -46,7 +46,7 @@ def owns_save(db, save_id: int, user_id: int) -> bool:
 def require_save(db, save_id: int, user_id: int) -> None:
     """save 不属于 user_id 时抛统一 PermissionError。"""
     if not owns_save(db, save_id, user_id):
-        raise PermissionError("无权访问该存档")
+        raise PermissionError("No access to this save")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ def require_script(db, script_id: int, user_id: int) -> dict[str, Any]:
     """不可读时抛统一 PermissionError;可读则返回 scripts 整行。"""
     row = script_readable(db, script_id, user_id)
     if not row:
-        raise PermissionError("无权访问该剧本")
+        raise PermissionError("No access to this script")
     return row
 
 

@@ -104,7 +104,7 @@ async def admin_achv_update(achievement_id: str, request: Request, admin=Depends
             "select 1 from achievement_defs where id = %s", (achievement_id,)
         ).fetchone()
         if not exists:
-            return json_response({"ok": False, "error": "未找到"}, status_code=404)
+            return json_response({"ok": False, "error": "Not found"}, status_code=404)
         row = db.execute(
             "update achievement_defs set "
             "name=%s, description=%s, icon=%s, category=%s, tier=%s, rule=%s, "
@@ -129,5 +129,5 @@ async def admin_achv_delete(achievement_id: str, admin=Depends(_require_admin)):
             (achievement_id,),
         ).fetchone()
         if not row:
-            return json_response({"ok": False, "error": "未找到"}, status_code=404)
+            return json_response({"ok": False, "error": "Not found"}, status_code=404)
     return json_response({"ok": True, "disabled": achievement_id})

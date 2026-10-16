@@ -49,7 +49,7 @@ _TEXT_FIELDS = ("full_name", "summary", "identity", "background", "entity_subtyp
 # 整数列(NOT NULL default 0):null / 空串 → 0;非整数 → 400 可读报错。
 _INT_FIELDS = {"importance": "重要度", "first_revealed_chapter": "首次出现章节"}
 _EDITOR_SOURCE = {"source": "editor"}
-_NOT_FOUND = "这个设定实体不存在(可能已被删除),刷新列表后再试"
+_NOT_FOUND = "This lore entity does not exist (it may have been deleted); refresh the list and try again"
 
 
 def _type_label(entity_type: str) -> str:
@@ -151,13 +151,13 @@ async def api_canon_update(
     """
     body = await _read_body(request)
     if body is None:
-        return json_response({"ok": False, "error": "请求内容不是合法的 JSON 对象"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body is not a valid JSON object"}, status_code=400)
     try:
         fields = _parse_canon_fields(body, creating=False)
     except _CanonInputError as exc:
         return value_error_response(exc)
     if fields.get("parent_logical_key") == logical_key:
-        return json_response({"ok": False, "error": "不能把实体自己设为上级"}, status_code=400)
+        return json_response({"ok": False, "error": "An entity cannot be its own parent"}, status_code=400)
     if not fields:
         return json_response(
             {"ok": False, "error": "没有可更新的字段(可改:名称、类型、摘要、身份、背景、别名、上级、重要度等)"},
@@ -250,7 +250,7 @@ async def api_canon_add(
     """
     body = await _read_body(request)
     if body is None:
-        return json_response({"ok": False, "error": "请求内容不是合法的 JSON 对象"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body is not a valid JSON object"}, status_code=400)
     try:
         fields = _parse_canon_fields(body, creating=True)
     except _CanonInputError as exc:
@@ -260,7 +260,7 @@ async def api_canon_add(
     if key_problem:
         return json_response({"ok": False, "error": key_problem}, status_code=400)
     if explicit_key and fields.get("parent_logical_key") == explicit_key:
-        return json_response({"ok": False, "error": "不能把实体自己设为上级"}, status_code=400)
+        return json_response({"ok": False, "error": "An entity cannot be its own parent"}, status_code=400)
 
     with connect() as db:
         try:

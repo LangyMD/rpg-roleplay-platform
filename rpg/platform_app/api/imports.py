@@ -31,7 +31,7 @@ async def api_script_knowledge_sync(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     return json_response({
         "ok": False,
         "code": "endpoint_gone",
@@ -74,7 +74,7 @@ async def api_script_llm_extract_usage(script_id: int, days: int = 30, user=Depe
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         # 汇总
         tot = db.execute(
             "select coalesce(sum(input_tokens),0) in_tok, "
@@ -160,7 +160,7 @@ async def api_script_llm_extract_estimate(request: Request, script_id: int, user
             (script_id, user["id"], user["id"]),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     body = {}
     try:
         body = await request.json()
@@ -285,7 +285,7 @@ async def api_script_llm_extract(request: Request, script_id: int, user=Depends(
             status = 200 if (result.get("ok") or result.get("needs_confirm")) else 400
             # 只认「无权访问该剧本」这类以「无权」开头的归属错误:提取失败的 error 现在带着分类后的
             # 服务商原因(如「该 key 无权访问此模型」),按子串匹配会把它误报成 403。
-            if str(result.get("error") or "").startswith("无权"):
+            if str(result.get("error") or "").startswith(("无权", "No access", "Not allowed")):
                 status = 403
             return json_response(result, status_code=status)
 
@@ -295,7 +295,9 @@ async def api_script_llm_extract(request: Request, script_id: int, user=Depends(
         return json_response({**result, "async": True}, status_code=200)
     except ValueError as exc:
         msg = str(exc)
-        status = 403 if "无权" in msg else 409 if "在跑" in msg else 400
+        _low = msg.lower()
+        status = (403 if ("无权" in msg or _low.startswith(("no access", "not allowed")))
+                  else 409 if ("在跑" in msg or "already running" in _low) else 400)
         return json_response({"ok": False, "error": msg}, status_code=status)
 
 
@@ -329,7 +331,7 @@ async def api_script_import_budget(request: Request, script_id: int, user=Depend
             (script_id, user["id"], user["id"]),
         ).fetchone()
     if not script:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     return json_response(import_pipeline.estimate_budget(
         chapter_count=int(script["chapter_count"]),
         total_words=int(script["word_count"]),

@@ -108,7 +108,7 @@ async def api_device_lookup(user_code: str, user=Depends(require_user)):
     _require_provider()
     info = federation.device_lookup(user_code)
     if not info:
-        return json_response({"ok": False, "error": "授权码不存在或已失效"}, status_code=404)
+        return json_response({"ok": False, "error": "Authorization code not found or no longer valid"}, status_code=404)
     return json_response({"ok": True, "device": info})
 
 
@@ -167,7 +167,7 @@ async def api_ext_pack(script_id: int, request: Request, pat=Depends(require_pat
     try:
         zip_bytes, filename = federation.ext_export_pack(script_id)
     except PermissionError:
-        return json_response({"ok": False, "error": "该剧本未公开"}, status_code=403)
+        return json_response({"ok": False, "error": "This script is not public"}, status_code=403)
     except ValueError as exc:
         return value_error_response(exc, status_code=404)
     ascii_fallback = filename.encode("ascii", "ignore").decode("ascii") or f"script-{script_id}.zip"
@@ -183,7 +183,7 @@ async def api_ext_publish(request: Request, pat=Depends(require_pat_publish)):
     form = await request.form()
     file = form.get("file")
     if not file or not hasattr(file, "read"):
-        raise HTTPException(status_code=400, detail="缺 file 字段")
+        raise HTTPException(status_code=400, detail="Missing file field")
     raw = await file.read()
     if raw[:4] != b"PK\x03\x04":
         raise HTTPException(status_code=400, detail="不是合法的剧本包 zip")

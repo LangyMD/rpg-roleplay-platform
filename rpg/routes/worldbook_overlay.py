@@ -68,7 +68,7 @@ async def api_worldbook_overlay_list(api_user: dict[str, Any] = Depends(get_curr
     init_db()
     with connect() as db:
         if not owns_save(db, int(save_id), uid):
-            return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
         rows = db.execute(
             "select id, kind, title, content, keys, priority, retired_entry_id, retired_reason, introduced_turn "
             "from save_worldbook_overlays where save_id=%s order by id asc",
@@ -136,7 +136,7 @@ async def api_worldbook_overlay_update(request: Request, api_user: dict[str, Any
     try:
         oid = int(body.get("id"))
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "id 无效"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid id"}, status_code=400)
 
     sets: list[str] = []
     params: list[Any] = []
@@ -184,7 +184,7 @@ async def api_worldbook_overlay_remove(request: Request, api_user: dict[str, Any
     try:
         oid = int((body or {}).get("id"))
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "id 无效"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid id"}, status_code=400)
     uid = _uid(api_user)
     init_db()
     with connect() as db:

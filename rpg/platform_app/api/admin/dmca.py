@@ -104,7 +104,7 @@ async def admin_dmca_action(
             (new_status, f"\n[{action}] {reason}", admin.get("id"), takedown_id),
         ).fetchone()
         if not result:
-            raise HTTPException(status_code=404, detail="下架记录不存在")
+            raise HTTPException(status_code=404, detail="Takedown record not found")
         _write_audit(db, admin, f"dmca.takedown.{action}",
                      target_type="dmca_takedown", target_id=str(takedown_id),
                      details={"reason": reason, "new_status": new_status}, ip=ip)
@@ -136,7 +136,7 @@ async def admin_dmca_counter(
             (f"\n[counter-notice] {body.get('notes', '')}", takedown_id),
         ).fetchone()
         if not result:
-            raise HTTPException(status_code=404, detail="下架记录不存在")
+            raise HTTPException(status_code=404, detail="Takedown record not found")
         _write_audit(db, admin, "dmca.takedown.counter_notice",
                      target_type="dmca_takedown", target_id=str(takedown_id),
                      details=body, ip=ip)
@@ -187,7 +187,7 @@ async def admin_dmca_strike_increment(
     ip = _client_ip(request)
     reason = body.get("reason", "")
     if not reason:
-        raise HTTPException(status_code=400, detail="reason 不能为空")
+        raise HTTPException(status_code=400, detail="reason cannot be empty")
 
     with connect() as db:
         result = increment_strike(db, user_id, reason)

@@ -26,7 +26,7 @@ async def api_agent_doc_upload(request: Request, script_id: int, user=Depends(re
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     filename = str(body.get("filename") or "").strip()
     if filename and not (filename.lower().endswith(".txt") or filename.lower().endswith(".md")):
         return json_response({"ok": False, "error": "只支持 .txt / .md 文档"}, status_code=400)

@@ -106,7 +106,7 @@ async def api_rath_detail(exp_id: int, active: int = 0, user=Depends(get_current
     with connect() as db:
         exp = _own_exp(db, exp_id, user["id"])
         if not exp:
-            return json_response({"ok": False, "error": "实验不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Experiment not found"}, status_code=404)
         # A5:只有前台"我正盯着这个实验"的主动请求(?active=1)才续 72h 无人看的命,
         # 被动轮询(前端每隔几秒刷一次详情)不算"看"。
         if active == 1:
@@ -231,7 +231,7 @@ async def api_rath_tick(exp_id: int, user=Depends(get_current_user)):
     init_db()
     with connect() as db:
         if not _own_exp(db, exp_id, user["id"]):
-            return json_response({"ok": False, "error": "实验不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Experiment not found"}, status_code=404)
         # A5:POST 交互端点一律 bump(手动点了"推进"就是主动在看)。
         db.execute("update rath_experiments set last_viewed_at=now() where id=%s", (int(exp_id),))
         if hasattr(db, "commit"):
@@ -262,7 +262,7 @@ async def api_rath_action(exp_id: int, action: str, request: Request, user=Depen
     with connect() as db:
         exp = _own_exp(db, exp_id, user["id"])
         if not exp:
-            return json_response({"ok": False, "error": "实验不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Experiment not found"}, status_code=404)
         if action == "directive":
             # 引导=插入日志的节点事件:从插入点开始引导其后的演化,最新一条生效。
             # 历史全部留在 rath_events(kind=directive),日志可查。

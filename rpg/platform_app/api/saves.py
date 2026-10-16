@@ -121,7 +121,7 @@ async def api_save_import(request: Request, user=Depends(require_user)):
             form = await request.form()
             file = form.get("file")
             if not file or not hasattr(file, "read"):
-                raise HTTPException(status_code=400, detail="缺 file 字段")
+                raise HTTPException(status_code=400, detail="Missing file field")
             raw = await file.read()
             # 自包含存档包(zip:剧本+知识库[+向量]+per-save) → bundle 导入路径
             # (大小由 import_script_pack 的 MAX_ZIP_BYTES / 解压炸弹预检把关)
@@ -146,7 +146,7 @@ async def api_save_import(request: Request, user=Depends(require_user)):
                 raise HTTPException(status_code=400, detail=f"JSON 解析失败: {exc}") from exc
             payload = body.get("payload") if isinstance(body, dict) and isinstance(body.get("payload"), dict) else body
         if not isinstance(payload, dict):
-            return json_response({"ok": False, "error": "payload 必须是对象"}, status_code=400)
+            return json_response({"ok": False, "error": "payload must be an object"}, status_code=400)
         return json_response(save_io.import_save(user["id"], payload))
     except HTTPException:
         raise
@@ -176,7 +176,7 @@ async def api_create_save(request: Request, user=Depends(require_user)):
     # 校验 script 归属(task 74: 接受 owner OR subscriber)— 读级:owner ∪ subscription
     with connect() as db:
         if not script_readable(db, script_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     # 前置校验:新存档实际会用哪个 api_id(与 app.py._ensure_loaded 同一优先级链:
     # gm.* 用户偏好 → 该用户已配凭据的第一个模型 → 全局 catalog 默认),若解析到
     # vertex_ai 且该用户在生产鉴权模式下没上传 SA → 现在就拒,别等玩家写完人设、
@@ -245,7 +245,7 @@ async def api_create_save(request: Request, user=Depends(require_user)):
         # 复核闸/权限校验等业务级错误 → 400(带 review_status,前端能引导用户去复核页)
         msg = str(exc)
         out = {"ok": False, "error": msg}
-        if "复核" in msg:
+        if "复核" in msg or "kb review" in msg.lower():
             out["needs_review"] = True
             out["script_id"] = script_id
         return json_response(out, status_code=400)
@@ -258,7 +258,7 @@ async def api_branches(save_id: int, limit: int | None = None, cursor: str | Non
     with connect() as db:
         ok = owns_save(db, save_id, user["id"])
     if not ok:
-        return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
     return json_response(branches.tree(user["id"], save_id, limit, cursor))
 
 
@@ -318,7 +318,7 @@ async def api_activate_branch(request: Request, user=Depends(require_user)):
     try:
         nid = body.get("node_id")
         if nid is None:
-            return json_response({"ok": False, "error": "node_id 必填"}, status_code=400)
+            return json_response({"ok": False, "error": "node_id is required"}, status_code=400)
         result = branches.activate_node(user["id"], int(nid))
     except (TypeError, ValueError) as exc:
         return json_response({"ok": False, "error": str(exc)}, status_code=400)
@@ -339,7 +339,7 @@ async def api_delete_branch(request: Request, user=Depends(require_user)):
     body = await request.json()
     nid = body.get("node_id")
     if nid is None:
-        return json_response({"ok": False, "error": "node_id 必填"}, status_code=400)
+        return json_response({"ok": False, "error": "node_id is required"}, status_code=400)
     try:
         return json_response(branches.delete_subtree(user["id"], int(nid)))
     except (TypeError, ValueError) as exc:
@@ -398,7 +398,7 @@ async def api_save_anchors(save_id: int, user=Depends(require_user)):
     """
     with connect() as db:
         if not owns_save(db, save_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
     try:
         from agents.anchor_seed_agent import (
             drift_by_phase,
@@ -458,7 +458,7 @@ async def api_save_anchors(save_id: int, user=Depends(require_user)):
     except Exception:
         log.exception("save anchors error")
         return json_response(
-            {"ok": False, "error": "服务内部错误，请稍后重试"},
+            {"ok": False, "error": "Internal server error; please try again later"},
             status_code=500,
         )
 
@@ -470,7 +470,7 @@ async def api_save_anchors_reseed(request: Request, save_id: int, user=Depends(r
     """
     with connect() as db:
         if not owns_save(db, save_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
     body = {}
     try:
         body = await request.json()
@@ -484,7 +484,7 @@ async def api_save_anchors_reseed(request: Request, save_id: int, user=Depends(r
     except Exception:
         log.exception("save anchors reseed error")
         return json_response(
-            {"ok": False, "error": "服务内部错误，请稍后重试"},
+            {"ok": False, "error": "Internal server error; please try again later"},
             status_code=500,
         )
 
@@ -515,7 +515,7 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
         # SEC: 整 read-modify-write 在 (user,save) 锁内,与 command_tools_anchors 同锁。
         with _get_sync_scope_lock((user_id, save_id)), connect() as db:
             if not owns_save(db, save_id, user_id):
-                return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+                return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
             row = db.execute(
                 """
                 select id, status, is_fatal, summary, source_chapter
@@ -579,7 +579,7 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
                   updated_at = now()
                 where save_id = %s and id = %s
                 """,
-                ("玩家在世界线面板手动标记已到达", occurred_turn, save_id, row["id"]),
+                ("Player manually marked as reached in the world line panel", occurred_turn, save_id, row["id"]),
             )
             # 同步玩家进度到该锚点章节(advance_progress 取 max 只增不减,幂等)。
             if isinstance(src_ch, int) and src_ch >= 1:
@@ -595,7 +595,7 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
                 cascade_history_from_anchor(
                     save_id, anchor_key=anchor_key or (row.get("anchor_key") or ""),
                     anchor_summary=row.get("summary") or "", new_status="occurred",
-                    detail="玩家在世界线面板手动标记已到达",
+                    detail="Player manually marked as reached in the world line panel",
                     turn_occurred=occurred_turn, source="player_declared",
                     via="worldline_panel", db=db)
             except Exception:
@@ -611,7 +611,7 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
     except Exception:
         log.exception("save anchor satisfy error")
         return json_response(
-            {"ok": False, "error": "服务内部错误，请稍后重试"}, status_code=500)
+            {"ok": False, "error": "Internal server error; please try again later"}, status_code=500)
 
 
 @router.post("/api/saves/{save_id}/progress/rewind")
@@ -637,7 +637,7 @@ async def api_save_progress_rewind(save_id: int, request: Request, user=Depends(
     try:
         with _get_sync_scope_lock((user_id, save_id)), connect() as db:
             if not owns_save(db, save_id, user_id):
-                return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+                return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
             # 上界 clamp:不允许回退目标超过剧本真实章数
             _cc_row = db.execute(
                 "SELECT s.chapter_count FROM game_saves gs JOIN scripts s ON s.id = gs.script_id "
@@ -675,7 +675,7 @@ async def api_save_progress_rewind(save_id: int, request: Request, user=Depends(
     except Exception:
         log.exception("save progress rewind error")
         return json_response(
-            {"ok": False, "error": "服务内部错误，请稍后重试"}, status_code=500)
+            {"ok": False, "error": "Internal server error; please try again later"}, status_code=500)
 
 
 # ── Phase F/W6: 创建引导 + 游戏内设置(读 schema/设置,写 apply 锁死 enforcement)──
@@ -685,7 +685,7 @@ async def api_save_settings_get(save_id: int, user=Depends(require_user)):
     from gm_serving import settings as _set
     with connect() as db:
         if not owns_save(db, save_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
         current = _set.read_settings(db, save_id)
     return json_response({"ok": True, "settings": current, "schema": _set.schema()})
 
@@ -700,10 +700,10 @@ async def api_save_settings_patch(request: Request, save_id: int, user=Depends(r
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     with connect() as db:
         if not owns_save(db, save_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
         updates = body.get("updates") if isinstance(body.get("updates"), dict) else {}
         res = _set.apply_settings(db, save_id, updates, is_create=bool(body.get("is_create")))
     return json_response({"ok": True, **res})

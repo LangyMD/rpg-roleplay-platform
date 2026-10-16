@@ -9,7 +9,7 @@ def test_classify_model_not_found_by_status():
         status_code = 404
     cat, msg = classify_provider_error(_E("no such route"))
     assert cat == "model_unavailable"
-    assert "不可用" in msg
+    assert "unavailable" in msg
     assert "no such route" not in msg
 
 
@@ -30,7 +30,7 @@ def test_classify_model_not_found_for_account_marker():
         RuntimeError("Model claude-x-max not found for account")
     )
     assert cat == "model_unavailable"
-    assert "设置" in msg
+    assert "Settings" in msg
 
 
 def test_classify_feature_unsupported_gemini_system_instruction():
@@ -40,7 +40,7 @@ def test_classify_feature_unsupported_gemini_system_instruction():
         _E("Developer instruction is not enabled for models/gemini-legacy")
     )
     assert cat == "feature_unsupported"
-    assert "工具调用" in msg or "系统指令" in msg
+    assert "tool calls" in msg or "system instructions" in msg
     assert "gemini-legacy" not in msg
 
 

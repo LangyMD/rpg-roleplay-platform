@@ -34,7 +34,7 @@ async def api_change_password(request: Request):
     with connect() as db:
         row = db.execute("select password_hash from users where id = %s", (user["id"],)).fetchone()
         if not row:
-            return _bad("用户不存在", status=404)
+            return _bad("User does not exist", status=404)
         has_existing_password = bool(row["password_hash"])
         if has_existing_password and not verify_password(cur_pw, row["password_hash"]):
             return _bad("当前密码错误")

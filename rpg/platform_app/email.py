@@ -444,9 +444,9 @@ def build_feedback_reply_email(
         else ""
     )
     html = _render_email(
-        preheader="你的反馈有回复了" if is_zh else "We replied to your feedback",
+        preheader="We replied to your feedback" if is_zh else "We replied to your feedback",
         eyebrow="Feedback Reply",
-        title="你的反馈有回复了" if is_zh else "We replied to your feedback",
+        title="We replied to your feedback" if is_zh else "We replied to your feedback",
         lead_html=lead,
         main_html=main,
         secondary_html=secondary,

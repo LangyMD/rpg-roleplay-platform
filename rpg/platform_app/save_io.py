@@ -90,7 +90,7 @@ def export_save(user_id: int, save_id: int) -> dict[str, Any]:
     with connect() as db:
         # 归属判定收敛到 perms.owns_save;通过后再取整行(导出用)。
         if not owns_save(db, save_id, user_id):
-            raise ValueError("无权访问该存档")
+            raise ValueError("No access to this save")
         save = db.execute(
             "select * from game_saves where id = %s",
             (save_id,),
@@ -184,10 +184,10 @@ def export_transcript_txt(user_id: int, save_id: int) -> tuple[str, str]:
     init_db()
     with connect() as db:
         if not owns_save(db, save_id, user_id):
-            raise ValueError("无权访问该存档")
+            raise ValueError("No access to this save")
         save = db.execute("select * from game_saves where id = %s", (save_id,)).fetchone()
         if not save:
-            raise ValueError("存档不存在")
+            raise ValueError("Save not found")
         active_cid = save.get("active_commit_id") or save.get("active_branch_node_id")
         history: list[Any] = []
         snap: dict[str, Any] = {}
@@ -340,7 +340,7 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     """
     init_db()
     if not isinstance(payload, dict):
-        raise ValueError("payload 必须是对象")
+        raise ValueError("payload must be an object")
     pv = int(payload.get("export_version") or 0)
     if pv not in (1, 2):
         raise ValueError(f"export_version 不支持({pv}),需 1 或 2")
@@ -348,7 +348,7 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     if not save_data:
         raise ValueError("payload.save 缺失")
 
-    new_title = (save_data.get("title") or "导入存档")[:200]  # 限标题长度,防超长 title
+    new_title = (save_data.get("title") or "Imported save")[:200]  # 限标题长度,防超长 title
     script_id_raw = save_data.get("script_id")
     # 酒馆模式(Tavern):save_kind='tavern' 的存档无剧本(script_id=NULL)。CHECK 约束
     # chk_game_save_needs_script 允许非 game 存档 script_id 为 NULL。必须跳过下面的

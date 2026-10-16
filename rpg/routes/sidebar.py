@@ -128,7 +128,7 @@ async def api_player_profile_set(
     if field not in _PLAYER_PROFILE_FIELD_ALLOWLIST:
         return json_response({"ok": False, "error": f"field 非法(允许 {sorted(_PLAYER_PROFILE_FIELD_ALLOWLIST)})"}, status_code=400)
     if not value:
-        return json_response({"ok": False, "error": "value 不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "value cannot be empty"}, status_code=400)
     state = _ensure_loaded(api_user)
     from tools_dsl.ui_dispatch_helper import dispatch_ui_tool
     result = dispatch_ui_tool(
@@ -191,7 +191,7 @@ async def api_world_set(
     if not key:
         return json_response({"ok": False, "error": "key 不能为空"}, status_code=400)
     if not value:
-        return json_response({"ok": False, "error": "value 不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "value cannot be empty"}, status_code=400)
     tool_name, args = _world_dispatch(key, value)
     if not tool_name:
         return json_response(

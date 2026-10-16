@@ -12,7 +12,7 @@ def test_classify_balance():
         status_code = 402
     cat, msg = classify_provider_error(_E("Insufficient Balance"))
     assert cat == "balance"
-    assert "充值" in msg
+    assert "Top up" in msg
     assert "Insufficient" not in msg
 
 
@@ -38,7 +38,7 @@ def test_classify_context_length():
             "Please reduce the length of either one\", 'code': 400}}")
     cat, msg = classify_provider_error(_E(real))
     assert cat == "context"
-    assert "上下文" in msg and "更大" in msg
+    assert "context" in msg and "larger" in msg
     assert "34964" not in msg  # 不回显原始异常细节
     # 跨提供商措辞
     assert classify_provider_error(RuntimeError("prompt is too long: 250000 tokens > 200000"))[0] == "context"

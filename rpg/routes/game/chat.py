@@ -255,7 +255,7 @@ async def api_chat(
     body_dict = body.model_dump(exclude_none=True)
     # task 31：前端历史上同时存在 {message:...} 和 {text:...} 两套契约。
     # 老的 Game Console.html 发 text，新的 game-app.jsx 也偶尔走 message。
-    # 后端必须两边兼容，否则用户输入直接被 "空消息" error 吞掉。
+    # 后端必须两边兼容，否则用户输入直接被 "Empty message" error 吞掉。
     message = (body_dict.get("message") or body_dict.get("text") or "").strip()
     # 输入上限:nginx client_max_body_size=50m 是外层兜底,但 app 层缺单条消息上限 →
     # 超长消息会进上下文撑爆 LLM(困惑的 context overflow)并膨胀 history/DB。给清晰 400。
@@ -269,7 +269,7 @@ async def api_chat(
     attachments = _save_attachments(body_dict.get("attachments") or [], user_id=api_user["id"] if api_user else None)
     message_for_model = _message_with_attachments(message, attachments)
     if not message_for_model.strip():
-        return StreamingResponse(iter([_sse("error", {"message": "空消息"})]), media_type="text/event-stream")
+        return StreamingResponse(iter([_sse("error", {"message": "Empty message"})]), media_type="text/event-stream")
 
     # F#1:把本轮所有上传附件的落盘路径挂到 state.data["_uploaded_files"],供 agent 工具按需读取:
     #   · import_character_card  → 选最近一张卡片类(.png/.json/.webp)

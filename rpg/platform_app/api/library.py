@@ -56,7 +56,7 @@ async def api_library_asset(asset_id: int, user=Depends(require_user)):
     """查单个资产，owner 校验。不存在或不属于该用户返回 404。"""
     asset = _library.get_asset(user["id"], asset_id)
     if asset is None:
-        raise HTTPException(status_code=404, detail="资产不存在或无权访问")
+        raise HTTPException(status_code=404, detail="Asset not found or not accessible")
     return json_response({"ok": True, "asset": asset})
 
 
@@ -76,7 +76,7 @@ async def api_library_download(asset_id: int, user=Depends(require_user)):
     except ValueError as exc:
         err = str(exc)
         if err == "not_found":
-            raise HTTPException(status_code=404, detail="资产不存在或无权访问")
+            raise HTTPException(status_code=404, detail="Asset not found or not accessible")
         if err == "file_missing":
             raise HTTPException(status_code=404, detail="物理文件已丢失")
         raise HTTPException(status_code=400, detail=err)

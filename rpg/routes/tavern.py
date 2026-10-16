@@ -175,7 +175,7 @@ async def api_tavern_import_character(
             form = await request.form()
             file_field = form.get("file")
             if file_field is None:
-                return _bad("multipart 中缺少 file 字段")
+                return _bad("multipart request is missing the file field")
             blob = await file_field.read()
             if len(blob) > _MAX_IMPORT_PAYLOAD_BYTES:
                 raise ValueError(f"文件过大（上限 {_MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
@@ -199,7 +199,7 @@ async def api_tavern_import_character(
                 except Exception as exc:
                     raise ValueError(f"png_base64 不合法：{exc}") from exc
                 if len(blob) > 10 * 1024 * 1024:
-                    raise ValueError("PNG 文件过大（解码后最大 10MB）")
+                    raise ValueError("PNG file is too large (max 10MB after decoding)")
                 v2 = tavern_cards.parse_png_card(blob)
             elif body.get("json") is not None:
                 v2 = tavern_cards.parse_card(body["json"])
@@ -208,7 +208,7 @@ async def api_tavern_import_character(
             elif body.get("base64"):
                 v2 = tavern_cards.parse_card(body["base64"])
             else:
-                return _bad("需要 file(multipart) / json / json_string / base64 / png_base64 之一")
+                return _bad("One of file (multipart) / json / json_string / base64 / png_base64 is required")
 
         payload = tavern_cards.tavern_to_user_card(v2)
         card = user_cards.upsert_user_card(user_id, payload)
@@ -309,7 +309,7 @@ async def api_tavern_activate(
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
     try:
         branches.activate_save(user_id, chat_id)
     except ValueError as exc:
@@ -333,7 +333,7 @@ async def api_tavern_archive(
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
         if archived:
             row = db.execute(
                 "update game_saves set archived_at = now(), updated_at = now() "
@@ -363,11 +363,11 @@ async def api_tavern_rename(
     body = await request.json()
     title = (body.get("title") or "").strip()
     if not title:
-        return _bad("标题不能为空")
+        return _bad("Title cannot be empty")
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
         db.execute(
             "update game_saves set title = %s, updated_at = now() "
             "where id = %s and user_id = %s and save_kind = 'tavern'",
@@ -398,7 +398,7 @@ async def api_tavern_bind_card(
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
         _card_row = None
         if raw is not None:
             cid = int(raw)
@@ -468,7 +468,7 @@ async def api_tavern_set_system_prompt(
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
         # tavern 存档的 state_snapshot.tavern 一定存在(create_tavern_save 建好),jsonb_set 直接落键。
         # 这是【读侧兜底 + 管理面板可见】;kb_native 档真正生效靠下方 runtime 写穿(见 F#94 说明)。
         db.execute(
@@ -527,7 +527,7 @@ async def api_tavern_set_immersive(
     )
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
         # 持久列(真相源:activate_save 重建工作树/快照不会碰列,故跨重开对话不丢)。
         db.execute(
             "update game_saves set tavern_immersive = %s, updated_at = now() "
@@ -577,7 +577,7 @@ async def api_tavern_ai_reply(
     with connect() as db:
         row = _require_tavern_save(db, chat_id, user_id)
         if not row:
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
     ss = row.get("state_snapshot")
     if isinstance(ss, str):
         ss = _j.loads(ss or "{}")
@@ -626,7 +626,7 @@ async def api_tavern_ai_reply(
         backend = getattr(gm, "_backend", None)
         model = getattr(backend, "model_name", None)
         if not (api_id and model):
-            return _bad("未配置可用模型", 400)
+            return _bad("No usable model configured", 400)
         text, _usage = call_agent_json_guarded(
             api_id, model, _AI_REPLY_SYS, user_block, user_id,
             no_think=True, log_tag="tavern_ai_reply",
@@ -662,7 +662,7 @@ _TITLE_SYS = (
 def _is_default_title(t: str) -> bool:
     """create_tavern_save 起的占位名(可被自动标题覆盖);用户自定义名则不覆盖。"""
     t = (t or "").strip()
-    if not t or t == "新对话":
+    if not t or t in ("New conversation", "新对话"):
         return True
     return bool(re.match(r"^与 .+ 的对话$", t))
 
@@ -708,7 +708,7 @@ async def api_tavern_autotitle(
             (chat_id, user_id),
         ).fetchone()
     if not row:
-        return _bad("无权操作该对话", 403)
+        return _bad("Not allowed to modify this conversation", 403)
     existing = (row.get("title") or "").strip()
     if existing and not _is_default_title(existing):
         return _json({"ok": True, "title": existing, "skipped": "already_titled"})
@@ -747,7 +747,7 @@ async def api_tavern_autotitle(
         db.execute(
             "update game_saves set title = %s, updated_at = now() "
             "where id = %s and user_id = %s and save_kind = 'tavern' "
-            "and (title is null or title = '' or title = '新对话' or title like '与 %% 的对话')",
+            "and (title is null or title = '' or title = 'New conversation' or title like '与 %% 的对话')",
             (title, chat_id, user_id),
         )
     return _json({"ok": True, "title": title})
@@ -766,7 +766,7 @@ async def api_tavern_delete(
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
         db.execute(
             "delete from game_saves where id = %s and user_id = %s and save_kind = 'tavern'",
             (chat_id, user_id),
@@ -794,7 +794,7 @@ async def api_tavern_import_jsonl(
             form = await request.form()
             file_field = form.get("file")
             if file_field is None:
-                return _bad("multipart 中缺少 file 字段")
+                return _bad("multipart request is missing the file field")
             blob = await file_field.read()
             if len(blob) > _MAX_IMPORT_PAYLOAD_BYTES:
                 raise ValueError(f"文件过大（上限 {_MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
@@ -858,7 +858,7 @@ async def api_tavern_export_jsonl(
     init_db()
     with connect() as db:
         if not _require_tavern_save(db, chat_id, user_id):
-            return _bad("无权操作该对话", 403)
+            return _bad("Not allowed to modify this conversation", 403)
     text = tavern_chats.save_to_chat_jsonl(chat_id, user_id=user_id)
     return Response(
         content=text,

@@ -83,11 +83,11 @@ def create_save(
         # 读级归属判定收敛到 perms.script_readable(返 select s.* 整行)。
         script = script_readable(db, script_id, user_id)
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         # 复核闸:KB 提取/复核未完成的剧本不允许开局,避免 GM 拿到错章节/未审实体/未消歧别名
         # 直接喂玩家(治"复核机制完全孤立于导入流程"的架构裂缝)。重切后会自动回 unreviewed。
         if (script.get("review_status") or "unreviewed") == "unreviewed":
-            raise ValueError("剧本尚未通过 KB 复核,请先在剧本复核页 (script-review) 检查实体/时间线/世界观无误后点击「标记已复核」")
+            raise ValueError("This script has not passed KB review yet. Check its entities / timeline / world setting on the script review page (script-review), then click \"Mark as reviewed\"")
         snapshot = _build_initial_snapshot(user_id, script_id, new_card, character, birthpoint=birthpoint, identity=identity, story_intent=story_intent, player_origin=player_origin, identity_known=identity_known)
         save = db.execute(
             """
@@ -363,7 +363,7 @@ def create_tavern_save(
     if card is not None:
         save_title = (title or "").strip() or f"与 {character_snapshot.get('name') or '角色'} 的对话"
     else:
-        save_title = (title or "").strip() or "新对话"
+        save_title = (title or "").strip() or "New conversation"
 
     with connect() as db:
         save = db.execute(

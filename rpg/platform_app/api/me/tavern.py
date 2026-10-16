@@ -68,7 +68,7 @@ async def api_export_tavern_card(card_id: int, user=Depends(require_user)):
     from ... import tavern_cards, user_cards
     card = user_cards.get_user_card(user["id"], card_id)
     if not card:
-        return json_response({"ok": False, "error": "card 不存在"}, status_code=404)
+        return json_response({"ok": False, "error": "Card not found"}, status_code=404)
     v2 = tavern_cards.user_card_to_tavern_v2(card)
     return json_response({"ok": True, "card": v2, "spec": "chara_card_v2"})
 
@@ -81,7 +81,7 @@ async def api_export_tavern_png(card_id: int, user=Depends(require_user)):
     from ... import tavern_cards, user_cards
     card = user_cards.get_user_card(user["id"], card_id)
     if not card:
-        return json_response({"ok": False, "error": "card 不存在"}, status_code=404)
+        return json_response({"ok": False, "error": "Card not found"}, status_code=404)
     v2 = tavern_cards.user_card_to_tavern_v2(card)
     # 用角色头像作 PNG 底图(旧实现总输出 1x1 透明像素,酒馆里看不到立绘)。
     # 仅当头像是本地已存的 PNG 时嵌入(无 PIL 不转码);非 PNG / 取不到 → 退回最小 PNG,不报错。

@@ -68,7 +68,7 @@ async def api_get_character_card(card_id: int, user=Depends(require_user)):
     from ... import user_cards
     c = user_cards.get_user_card(user["id"], card_id)
     if not c:
-        return json_response({"ok": False, "error": "card 不存在"}, status_code=404)
+        return json_response({"ok": False, "error": "Card not found"}, status_code=404)
     return json_response({"ok": True, "card": c})
 
 

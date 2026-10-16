@@ -21,7 +21,7 @@ async def admin_suspend_user(
     duration_days = body.get("duration_days")  # None = 无限期
 
     if not reason:
-        raise HTTPException(status_code=400, detail="reason 不能为空")
+        raise HTTPException(status_code=400, detail="reason cannot be empty")
 
     suspend_until = None
     if duration_days is not None:
@@ -96,7 +96,7 @@ async def admin_terminate_user(
     reason = body.get("reason", "")
 
     if not reason:
-        raise HTTPException(status_code=400, detail="reason 不能为空")
+        raise HTTPException(status_code=400, detail="reason cannot be empty")
 
     # 管理员不能终止自己
     if admin.get("id") == user_id:

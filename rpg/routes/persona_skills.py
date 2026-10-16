@@ -38,7 +38,7 @@ async def api_persona_skill_import(
     """
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     body = await request.json() or {}
     source = str(body.get("source") or "upload")
     if source not in ("upload", "github"):
@@ -76,7 +76,7 @@ async def api_persona_skills_list(
 ) -> JSONResponse:
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     from platform_app.persona_skills import list_persona_skills
     return json_response(await asyncio.to_thread(list_persona_skills, uid))
 
@@ -88,6 +88,6 @@ async def api_persona_skill_delete(
 ) -> JSONResponse:
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     from platform_app.persona_skills import delete_persona_skill
     return json_response(await asyncio.to_thread(delete_persona_skill, uid, int(skill_id)))

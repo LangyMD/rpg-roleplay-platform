@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 def _require_admin(request: Request):
     user = current_user(request)
     if not is_admin(user):
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise HTTPException(status_code=403, detail="Administrator privileges required")
     return user
 
 

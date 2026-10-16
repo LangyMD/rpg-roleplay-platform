@@ -46,7 +46,7 @@ async def api_script_modules_status(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         script_updated = owned.get("updated_at")
         chapter_count = int(owned.get("chapter_count") or 0)
 
@@ -167,7 +167,7 @@ async def api_script_embed_status(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     return json_response({"ok": True, "status": _embed.embed_status(script_id)})
 
 
@@ -198,7 +198,7 @@ async def api_script_timeline(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         rows = db.execute(
             """
             select id, story_phase, story_time_label, chapter_min, chapter_max,
@@ -258,7 +258,7 @@ async def api_script_birthpoints(script_id: int, user=Depends(require_user)):
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
 
         # 全部锚点(按章序)。真实锚点是唯一可靠数据源 —— phase_digests 的 chapter_min/max
         # 在历史迁移后常与锚点的章号不在同一标尺(实测多剧本:phase 范围覆盖全书但锚点只落早章,
@@ -380,7 +380,7 @@ async def api_script_recommend_identity(request: Request, script_id: int, user=D
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
     # 调 recommend_player_identity 工具
     try:
         import secrets as _sec

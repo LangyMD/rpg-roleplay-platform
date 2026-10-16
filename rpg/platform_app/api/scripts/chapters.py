@@ -32,7 +32,7 @@ async def api_script_chapters(
                     (script_id, user["id"], user["id"]),
                 ).fetchone()
                 if not owned:
-                    return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+                    return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
                 rows = db.execute(
                     """
                     select id, chapter_index, title, volume_title, word_count,
@@ -63,7 +63,7 @@ async def api_chapter_detail(script_id: int, chapter_index: int, user=Depends(re
             (script_id, user["id"], user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         row = db.execute(
             """
             select id, public_id, chapter_index, title, volume_title,

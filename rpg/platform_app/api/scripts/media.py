@@ -35,7 +35,7 @@ async def api_set_script_cover_url(request: Request, script_id: int, user=Depend
     raw_url = str(body.get("url") or "").strip()
     safe_url = _safe_avatar_path(raw_url)
     if not safe_url:
-        return json_response({"ok": False, "error": "不合法的图片 URL（仅允许站内资产路径）"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid image URL (only on-site asset paths are allowed)"}, status_code=400)
 
     with connect() as db:
         owned = db.execute(
@@ -43,7 +43,7 @@ async def api_set_script_cover_url(request: Request, script_id: int, user=Depend
             (script_id, user_id),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权操作该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "Not allowed to modify this script"}, status_code=403)
         db.execute(
             "update scripts set cover_image_url = %s where id = %s and owner_id = %s",
             (safe_url, script_id, user_id),
@@ -66,16 +66,16 @@ async def api_set_npc_card_avatar_url(request: Request, script_id: int, card_id:
     body = await request.json()
     safe_url = _safe_avatar_path(str(body.get("url") or "").strip())
     if not safe_url:
-        return json_response({"ok": False, "error": "不合法的图片 URL（仅允许站内资产路径）"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid image URL (only on-site asset paths are allowed)"}, status_code=400)
     with connect() as db:
         if not _require_script_owner(db, script_id, user_id):
-            return json_response({"ok": False, "error": "无权操作该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "Not allowed to modify this script"}, status_code=403)
         res = db.execute(
             "update character_cards set avatar_path = %s where id = %s and script_id = %s",
             (safe_url, card_id, script_id),
         )
     if getattr(res, "rowcount", 0) == 0:
-        return json_response({"ok": False, "error": "角色卡不属于该剧本"}, status_code=404)
+        return json_response({"ok": False, "error": "Character card does not belong to this script"}, status_code=404)
     return json_response({"ok": True, "url": safe_url})
 
 
@@ -85,7 +85,7 @@ async def api_upload_npc_card_avatar(script_id: int, card_id: int, file: UploadF
     user_id = int(user["id"])
     with connect() as db:
         if not _require_script_owner(db, script_id, user_id):
-            return json_response({"ok": False, "error": "无权操作该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "Not allowed to modify this script"}, status_code=403)
     data = await file.read()
     if len(data) > _MAX_COVER_BYTES:
         return json_response({"ok": False, "error": f"文件过大（上限 {_MAX_COVER_BYTES // 1024 // 1024} MB）"}, status_code=400)
@@ -102,7 +102,7 @@ async def api_upload_npc_card_avatar(script_id: int, card_id: int, file: UploadF
             (url, card_id, script_id),
         )
     if getattr(res, "rowcount", 0) == 0:
-        return json_response({"ok": False, "error": "角色卡不属于该剧本"}, status_code=404)
+        return json_response({"ok": False, "error": "Character card does not belong to this script"}, status_code=404)
     try:
         from ... import assets_registry as _reg
         _reg.register_asset(user_id=user_id, kind="card_image", storage_key=storage_key, url=url,
@@ -128,7 +128,7 @@ async def api_upload_script_cover(script_id: int, file: UploadFile = File(...), 
             (script_id, user_id),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "无权操作该剧本"}, status_code=403)
+        return json_response({"ok": False, "error": "Not allowed to modify this script"}, status_code=403)
 
     # 2. 读取文件
     data = await file.read()

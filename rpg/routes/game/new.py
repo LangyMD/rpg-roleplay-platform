@@ -77,19 +77,19 @@ async def api_new(
 
     if source_meta:
         # 字段映射：script_card / user_card 用 identity 作 role，persona 用 role 字段
-        name = source_meta.get("name") or "无名者"
+        name = source_meta.get("name") or "Nameless"
         if source_kind == "persona":
-            role = source_meta.get("role") or "未指定"
-            background = source_meta.get("background") or "（无背景）"
+            role = source_meta.get("role") or "Unspecified"
+            background = source_meta.get("background") or "(no background)"
         else:
-            role = source_meta.get("identity") or "未指定"
+            role = source_meta.get("identity") or "Unspecified"
             background = source_meta.get("appearance") or source_meta.get("personality") or "（来自角色卡）"
     else:
         # 通用 RPG 底座：默认 role 不再 fallback 到《我蕾穆丽娜不爱你》的『穿越者·魔女』。
         # ROLES 字典里有该剧本的 role label，作为兼容映射保留，但不再当默认值。
-        role_label = (body_dict.get("role") or "").strip() or "未指定"
+        role_label = (body_dict.get("role") or "").strip() or "Unspecified"
         role = ROLES.get(role_label, role_label)
-        name = (body_dict.get("name") or "无名者").strip()
+        name = (body_dict.get("name") or "Nameless").strip()
         background = (body_dict.get("background") or "").strip()
 
     state = GameState.new()

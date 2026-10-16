@@ -76,7 +76,7 @@ async def api_message_edit(
             # [安全] 存档归属校验:原 PR 直接用请求体 save_id 改 messages,无归属校验 = IDOR
             # (任何登录用户可改他人存档的消息)。与全平台 save 端点统一走 perms.owns_save。
             if not owns_save(db, int(save_id), int(api_user["id"])):
-                return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+                return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
             # 并发锁(与 record_runtime_turn / persist_runtime_state / 分支写操作同 key 的事务级
             # advisory lock):_amend_history_message 对 branch_commits/game_saves/runtime_checkouts
             # 三表读改写,不持锁会与并发回合提交 / autosave / 另一 tab 的编辑互相覆盖快照(同类操作

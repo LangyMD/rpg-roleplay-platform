@@ -59,10 +59,10 @@ async def api_console_assistant_conversation_messages(
     跳过工具结果中间态(避免一堆裸 tool 文本)。Redis 兜底,跨 worker / 重启(6h 内)可还原。"""
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     cid = str(conversation_id or "").strip()
     if not cid:
-        return json_response({"ok": False, "error": "conversation_id 必填"}, status_code=400)
+        return json_response({"ok": False, "error": "conversation_id is required"}, status_code=400)
     from console_assistant.conversations import _get_or_create_conversation
     _cid, conv = _get_or_create_conversation(user_id, cid)
     # 优先用 ui_turns(含每轮工具调用:名/参数/状态/结果)→ 刷新后工具历史不丢、可还原折叠块。
@@ -99,7 +99,7 @@ async def api_console_assistant_new_conversation(
     """task 111: 开新对话, 返新 conversation_id。"""
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     from console_assistant import new_conversation
     new_id = new_conversation(user_id)
     return json_response({"ok": True, "conversation_id": new_id})
@@ -113,11 +113,11 @@ async def api_console_assistant_delete_conversation(
     """task 111: 删除某对话。"""
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     body_dict = body.model_dump(exclude_none=True)
     cid = str(body_dict.get("conversation_id") or "").strip()
     if not cid:
-        return json_response({"ok": False, "error": "conversation_id 必填"}, status_code=400)
+        return json_response({"ok": False, "error": "conversation_id is required"}, status_code=400)
     from console_assistant import delete_conversation
     ok = delete_conversation(user_id, cid)
     return json_response({"ok": ok})
@@ -145,14 +145,14 @@ async def api_console_assistant_chat(
 
     if not message:
         return StreamingResponse(
-            iter([f"event: error\ndata: {json.dumps({'message':'空消息'}, ensure_ascii=False)}\n\n"]),
+            iter([f"event: error\ndata: {json.dumps({'message':'Empty message'}, ensure_ascii=False)}\n\n"]),
             media_type="text/event-stream",
         )
 
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
         return StreamingResponse(
-            iter([f"event: error\ndata: {json.dumps({'message':'需要登录'}, ensure_ascii=False)}\n\n"]),
+            iter([f"event: error\ndata: {json.dumps({'message':'Login required'}, ensure_ascii=False)}\n\n"]),
             media_type="text/event-stream",
         )
 
@@ -230,10 +230,10 @@ async def api_console_assistant_autocomplete(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     before = str(body.get("before") or "")[-1500:]
     if not before.strip():
         return json_response({"ok": True, "text": ""})
@@ -244,7 +244,7 @@ async def api_console_assistant_autocomplete(
         try:
             sid = int(script_id)
         except (TypeError, ValueError):
-            return json_response({"ok": False, "error": "script_id 无效"}, status_code=400)
+            return json_response({"ok": False, "error": "Invalid script_id"}, status_code=400)
         try:
             from platform_app.db import connect, init_db
             from platform_app.perms import script_owned
@@ -268,9 +268,9 @@ async def api_console_assistant_autocomplete(
             api_id_override=_ov_api, model_override=_ov_model,
         )
     except Exception:
-        return json_response({"ok": False, "error": "未配置可用模型"}, status_code=200)
+        return json_response({"ok": False, "error": "No usable model configured"}, status_code=200)
     if not api_id or not model_real:
-        return json_response({"ok": False, "error": "未配置可用模型"}, status_code=200)
+        return json_response({"ok": False, "error": "No usable model configured"}, status_code=200)
 
     try:
         from agents.gm import GameMaster
@@ -357,7 +357,7 @@ async def api_console_assistant_confirm(
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
         return StreamingResponse(
-            iter([f"event: error\ndata: {json.dumps({'message':'需要登录'}, ensure_ascii=False)}\n\n",
+            iter([f"event: error\ndata: {json.dumps({'message':'Login required'}, ensure_ascii=False)}\n\n",
                   "event: done\ndata: {}\n\n"]),
             media_type="text/event-stream",
             status_code=401,
@@ -497,7 +497,7 @@ async def api_console_assistant_continue(
 
     user_id = int((api_user or {}).get("id") or 0)
     if not user_id:
-        return _err("需要登录")
+        return _err("Login required")
 
     # 截断:before 取末尾,after 取开头(光标处上下文最相关)
     before = before[-_CONTINUE_BEFORE_CAP:]
@@ -509,7 +509,7 @@ async def api_console_assistant_continue(
         try:
             sid = int(script_id)
         except (TypeError, ValueError):
-            return _err("script_id 无效")
+            return _err("Invalid script_id")
         try:
             from platform_app.db import connect, init_db
             from platform_app.perms import script_owned
@@ -552,11 +552,11 @@ async def api_console_assistant_continue(
         )
     except Exception:
         return _err(
-            "未找到可用的模型。请到「设置 → API 设置」配置并测试一个模型后重试。"
+            "No usable model found. Configure and test a model under Settings -> API settings, then try again."
         )
     if not api_id or not model_real:
         return _err(
-            "未找到可用的模型。请到「设置 → API 设置」配置并测试一个模型后重试。"
+            "No usable model found. Configure and test a model under Settings -> API settings, then try again."
         )
 
     # 构造 backend(复用 GM 的 backend 抽象);纯文本流式只用 backend.stream(无工具)

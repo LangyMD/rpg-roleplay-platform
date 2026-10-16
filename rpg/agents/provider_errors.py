@@ -196,7 +196,8 @@ _STREAM_NON_TRANSIENT_TYPES = frozenset({
 
 # 与空回合分诊(chat_pipeline/persist._empty_turn_diagnosis 的 content_filter 分支)同一口径:
 # 同一个原因以 finish_reason 到达还是以报错到达,玩家看到的是同一句话、同一条建议。
-_CONTENT_POLICY_ADVICE = "可以换个说法重述,或在设置的「模型」页换一个对该题材更宽松的模型。"
+_CONTENT_POLICY_ADVICE = ("You can rephrase it, or switch to a model that is more permissive with this kind of "
+                          "content on the Models page in Settings. ")
 
 # 代理这一跳就被拒了:urllib 的 http.client._tunnel 抛 OSError("Tunnel connection failed: 403 Forbidden"),
 # 被包成 URLError;httpx 是 ProxyError("403 Forbidden")(httpcore 拿 CONNECT 响应的状态行做消息)。
@@ -529,23 +530,23 @@ def classify_provider_error(exc: Exception) -> tuple[str, str] | None:
     # 都不重叠,且"请重试"对它绝对无效。
     if status is None and any(m in raw_lower for m in _CREDENTIAL_MISSING_MARKERS):
         return ("auth",
-                "这个模型所属的供应商还没有可用的 API Key(请求没能发出去)。"
-                "请到「设置 → 模型与密钥」为该供应商填入 API Key 并测试凭证;"
-                "若用的是本地模型(Ollama / LM Studio / vLLM 等),请把该供应商的鉴权方式"
-                "选为「无需 API Key」并填好接口地址。")
+                "The provider of this model has no usable API key yet (the request was never sent). "
+                "Go to Settings -> Models & Keys, enter an API key for this provider and test the credential; "
+                "if you are using a local model (Ollama / LM Studio / vLLM, etc.), set this provider's auth mode "
+                "to \"No API key required\" and fill in the endpoint URL.")
     # 代理这一跳被拒放在所有按状态码 / 措辞的分支之前:文本里的 403 / 502 是代理回的,
     # 不是模型服务回的(以前 "Tunnel connection failed: 403 Forbidden" 被说成「提供商拒绝,换个模型试」)。
     _proxy_refused = _proxy_refusal_in_chain(exc)
     if _proxy_refused is not None:
         return ("network",
-                "代理拒绝了这次连接,请求没有送到模型服务,和 API key、所选模型都没有关系。"
-                "请检查代理软件是否正常、代理是否允许访问这个地址、是否需要账号密码;"
-                "或者在「设置 → 模型与密钥」里给该供应商的连接方式换一个能用的代理。"
-                f"代理的回复:{redact_secrets(_proxy_refused, limit=120) or '(无)'}")
+                "The proxy refused this connection, so the request never reached the model service; this has nothing to do with the API key or the selected model. "
+                "Check that your proxy software is working, that the proxy allows access to this address, and whether it needs a username/password; "
+                "or set a working proxy for this provider's connection method under Settings -> Models & Keys. "
+                f"Proxy reply: {redact_secrets(_proxy_refused, limit=120) or '(none)'}")
     if status == 402 or any(m in raw_lower for m in _BALANCE_MARKERS):
         return ("balance",
-                "当前模型的 API 账户余额不足或配额已用尽，重试无法恢复。"
-                "请前往对应 API 提供商充值，或到「设置 → API 设置」切换其他已配置的模型。")
+                "The API account for the current model has insufficient balance or its quota is used up; retrying will not help. "
+                "Top up with the API provider, or switch to another configured model under Settings -> API settings.")
     # 403 ≠ key 失效。群反馈(星色マジック,2026-07-28,xai/grok):同一个 key 在 SillyTavern
     # 一直好用,在这里「说不了几句就提示凭证过期 403」。实测 api.x.ai **无凭据时返回 401**
     # (`{"code":"unauthenticated:no-credentials"}`),它的 403 是别的原因(拒绝该请求),而且
@@ -559,34 +560,34 @@ def classify_provider_error(exc: Exception) -> tuple[str, str] | None:
     _weak_403 = status in (None, 400) and _FORBIDDEN_WEAK_MARKER in _fb_scan
     if status == 403 or _strong_403 or _weak_403:
         _shown = 403 if (status in (None, 403) or _strong_403) else status
-        return ("auth", f"当前模型的请求被提供商拒绝(HTTP {_shown})。"
-                        "这通常不是 key 失效(多数提供商 key 无效返 401),"
-                        "更常见的是该 key/套餐无权访问此模型、或该请求内容被提供商策略拦下。"
-                        f"提供商原话:{_provider_detail(exc) or '(未提供)'} "
-                        "可先换一个模型试;若同一 key 在别处能用,多半是这个模型或这段内容的问题。")
+        return ("auth", f"The provider refused the request for the current model (HTTP {_shown}). "
+                        "This is usually not an invalid key (most providers return 401 for that); "
+                        "more often this key/plan has no access to this model, or the request content was blocked by the provider's policy. "
+                        f"Provider said: {_provider_detail(exc) or '(not provided)'} "
+                        "Try another model first; if the same key works elsewhere, it is probably this model or this content.")
     if status == 401 or any(m in raw_lower for m in _AUTH_MARKERS):
         return ("auth",
-                "当前模型的 API Key 无效、已过期,或该 key 无权访问此模型(401 Unauthorized)。"
-                "请到「模型与密钥」重新测试凭证、确认该 key/套餐包含此模型,或切换到已配置的其他模型。")
+                "The API key for the current model is invalid, expired, or has no access to this model (401 Unauthorized). "
+                "Re-test the credential under Models & Keys, make sure the key/plan includes this model, or switch to another configured model.")
     if status == 429 or any(m in raw_lower for m in _RATELIMIT_MARKERS):
         return ("ratelimit",
-                "当前模型请求过于频繁（提供商限流）。"
-                "请稍候片刻再重试，或切换到其他模型。")
+                "Too many requests to the current model (provider rate limit). "
+                "Wait a moment and try again, or switch to another model.")
     # 上下文超长放在限流之后:它是 400 + 特征短语,与上面三类(402/401/429)不重叠。
     # 413 Payload Too Large 本质也是这一回合塞给模型的东西太大。
     if status == 413 or any(m in raw_lower for m in _CONTEXT_MARKERS):
         return ("context",
-                "本回合的剧情上下文（历史 + 世界书 + 设定）超过了所选模型的上下文长度上限，"
-                "重试也无法恢复。请到「设置 → 模型 / API 设置」换用上下文窗口更大的模型"
-                "（例如百万级上下文的 Gemini 2.5 Flash / Pro 等），或精简世界书 / 历史注入后再试。")
+                "This turn's story context (history + worldbook + lore) exceeds the selected model's context length limit; "
+                "retrying will not help. Switch to a model with a larger context window under Settings -> Models / API settings "
+                "(e.g. a million-token-context model such as Gemini 2.5 Flash / Pro), or trim the worldbook / history injection and try again.")
     # 30x:urllib 线(safe_urlopen 出于安全不跟随重定向)抛 HTTPError,SDK 线是 APIStatusError
     # (如 http 被重定向到 https 的 307)。按状态码统一判,不分异常类型 —— 以前只有 urllib 那条
     # 经连接层分支拿到这句,SDK 的 307 落空成「请重试」。多半是 base_url 协议或路径写错。
     if status is not None and 300 <= status < 400:
         return ("network",
-                f"接口地址返回了重定向(HTTP {status}),平台出于安全不跟随重定向。"
-                "请到「设置 → API 设置」检查该供应商的接口地址(base_url):"
-                "协议是 http 还是 https、路径是否少了 /v1。")
+                f"The endpoint URL returned a redirect (HTTP {status}); for security the platform does not follow redirects. "
+                "Check this provider's endpoint URL (base_url) under Settings -> API settings: "
+                "is the scheme http or https, and is the path missing /v1?")
     # 模型不存在(404)/ 已下线(410):状态码本身就是结论,放在网关措辞兜底之前 ——
     # 挂 Cloudflare 的服务商,4xx 错误页正文里也带 "cloudflare"。
     # 404 也可能是路由不存在(base_url 少了 /v1),多给一句怎么分辨。
@@ -601,21 +602,21 @@ def classify_provider_error(exc: Exception) -> tuple[str, str] | None:
     ):
         code = str(status) if status else "5xx"
         return ("upstream",
-                f"你的模型服务暂时不可用（服务器返回 {code} 网关错误，多为供应商 / 中转站过载或宕机），"
-                "不是平台或存档的问题。请稍等片刻重试，或到「设置 → 模型 / API 设置」换用其他模型 / 供应商。")
+                f"Your model service is temporarily unavailable (the server returned a {code} gateway error, usually because the provider / relay is overloaded or down). "
+                "This is not a problem with the platform or your save. Wait a moment and try again, or switch to another model / provider under Settings -> Models / API settings.")
     # 该模型不支持本次请求所需的功能(工具调用/系统指令等):400 + 特征短语。重试无法恢复。
     if status == 400 and any(m in raw_lower for m in _FEATURE_MARKERS):
         return ("feature_unsupported",
-                "该模型不支持本次请求所需的功能(如工具调用/系统指令)，重试无法恢复。"
-                "请切换到支持完整功能的模型。")
+                "This model does not support a feature this request needs (e.g. tool calls / system instructions); retrying will not help. "
+                "Switch to a model with full feature support.")
     # 请求里有对面不认识/不支持的参数(中转站最常见)。排在模型措辞之前:这类报错里偶尔也会出现
     # "does not exist"(指参数不存在),不能被说成模型不可用。
     if (status is None or 400 <= status < 500) and any(m in raw_lower for m in _UNKNOWN_PARAM_MARKERS):
         return ("bad_request",
-                "模型服务拒绝了这次请求:请求里有它不认识或不支持的参数,重试无法恢复。"
-                "多半是模型服务或中转站不接受平台发送的某个参数(比如思考开关、采样参数、工具调用)。"
-                "请先换一个模型或供应商;如果用的是中转站,可以把下面这句原话转给它的维护者。"
-                f"提供商原话:{_provider_detail(exc) or '(未提供)'}")
+                "The model service rejected this request: it contains a parameter the service does not recognize or support; retrying will not help. "
+                "Most likely the model service or relay does not accept a parameter the platform sends (e.g. thinking toggle, sampling parameters, tool calls). "
+                "Try another model or provider first; if you are using a relay, you can forward the message below to its maintainer. "
+                f"Provider said: {_provider_detail(exc) or '(not provided)'}")
     # 状态码被 SDK 吞掉时,按措辞认「模型不存在 / 已下线」。
     if (_model_is_subject(_MODEL_GONE_RE, raw_lower) or _model_is_subject(_MODEL_MISSING_RE, raw_lower)
             or any(m in raw_lower for m in _MODEL_MARKERS)):
@@ -627,40 +628,40 @@ def classify_provider_error(exc: Exception) -> tuple[str, str] | None:
             any(m in raw_lower for m in _CONTENT_POLICY_MARKERS)
             or (_in_stream and any(m in raw_lower for m in _CONTENT_POLICY_WEAK_MARKERS))):
         return ("content_policy",
-                "这次请求被所用模型的内容策略拦下了,重试也会被拦。"
+                "This request was blocked by the content policy of the model in use; retrying will be blocked too. "
                 + _CONTENT_POLICY_ADVICE
-                + f"提供商原话:{_provider_detail(exc) or '(未提供)'}")
+                + f"Provider said: {_provider_detail(exc) or '(not provided)'}")
     # 流内错误(HTTP 200 的流里来了 error 事件):多为供应商/中转站在生成中途出错,归 upstream,
     # 首 token 前自动重试、计入渠道健康。error.type 是「请求本身被拒」的非瞬时类型时除外。
     if _in_stream:
         if _error_types(exc) & _STREAM_NON_TRANSIENT_TYPES:
             return ("bad_request",
-                    "模型服务在生成途中拒绝了这次请求(请求错误,不是临时故障),重试也不会好。"
-                    "请先换一个模型或供应商试试;如果用的是中转站,可以把下面这句原话转给它的维护者。"
-                    f"提供商原话:{_provider_detail(exc) or '(未提供)'}")
+                    "The model service rejected this request mid-generation (a request error, not a temporary outage); retrying will not help. "
+                    "Try another model or provider first; if you are using a relay, you can forward the message below to its maintainer. "
+                    f"Provider said: {_provider_detail(exc) or '(not provided)'}")
         return ("upstream",
-                "模型服务在生成过程中返回了错误,多为供应商或中转站临时故障,不是平台或存档的问题。"
-                f"提供商原话:{_provider_detail(exc) or '(未提供)'} "
-                "请稍等片刻重试,或到「设置 → API 设置」换用其他模型或供应商。")
+                "The model service returned an error during generation, usually a temporary provider or relay outage; this is not a problem with the platform or your save. "
+                f"Provider said: {_provider_detail(exc) or '(not provided)'} "
+                "Wait a moment and try again, or switch to another model or provider under Settings -> API settings.")
     # 连接层失败放最后:它没有 HTTP 状态码,必须等上面所有带 status 的分支排完
     # (504 gateway timeout 的措辞里也有 "timeout",顺序反了会被误吞成"连不上")。
     if _is_connection_failure(exc):
         _blocked = _outbound_blocked_in_chain(exc)
         _low = redact_secrets(_blocked if _blocked is not None else exc, limit=120)
         return ("network",
-                "连不上这个模型的接口地址(请求没送达或没等到响应),不是存档或剧本的问题。"
-                "请依次检查:① 「设置 → 模型与密钥」里该供应商的接口地址(base_url)是否正确;"
-                "② 若是本地模型,对应的服务(Ollama / LM Studio / vLLM)是否正在运行、端口是否一致;"
-                "③ 网络或代理能否访问该地址。"
-                f"底层报错:{_low or '(无)'}")
+                "Cannot reach this model's endpoint URL (the request was not delivered or no response arrived); this is not a problem with your save or script. "
+                "Check in order: (1) whether this provider's endpoint URL (base_url) under Settings -> Models & Keys is correct; "
+                "(2) for a local model, whether its service (Ollama / LM Studio / vLLM) is running and the port matches; "
+                "(3) whether your network or proxy can reach that address. "
+                f"Underlying error: {_low or '(none)'}")
     return None
 
 
 _MODEL_UNAVAILABLE_MSG = (
-    "当前模型不可用:已被服务商下线或不存在(也可能是这个账户无权使用它),重试无法恢复。"
-    "请到「设置 → API 设置」换一个模型;如果确认模型名没写错,可以向 API 提供商确认。"
+    "The current model is unavailable: the provider has retired it or it does not exist (or this account is not allowed to use it); retrying will not help. "
+    "Switch to another model under Settings -> API settings; if you are sure the model name is correct, check with the API provider."
 )
-_ROUTE_404_HINT = "如果换哪个模型都报这个错,多半是接口地址(base_url)不对,比如少了 /v1。"
+_ROUTE_404_HINT = " If every model gives this error, the endpoint URL (base_url) is probably wrong, e.g. missing /v1."
 
 
 def provider_error_summary(exc: Exception) -> str:

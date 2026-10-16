@@ -27,13 +27,13 @@ async def api_models_visibility(request: Request):
     # 全局模型目录写操作:与同级 /api/models/* 一致,须管理员(CWE-862)。
     user = require_user(request)
     if not is_admin(user):
-        return _bad("需要管理员权限", status=403)
+        return _bad("Administrator privileges required", status=403)
     body = await request.json() or {}
     api_id = body.get("api_id") or body.get("api")
     model_real_name = body.get("model") or body.get("real_name")
     visible = body.get("visible")
     if not api_id or model_real_name is None or visible is None:
-        return _bad("缺少参数")
+        return _bad("Missing parameters")
     from model_registry import find_api, load_model_catalog, upsert_model
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
@@ -66,7 +66,7 @@ async def api_me_models_visibility(request: Request):
     model = body.get("model") or body.get("real_name") or body.get("model_id")
     visible = body.get("visible")
     if not api_id or model is None or visible is None:
-        return _bad("缺少参数")
+        return _bad("Missing parameters")
     from platform_app.user_models import set_overlay_model_enabled
     n = set_overlay_model_enabled(user["id"], api_id, model, bool(visible))
     if not n:
@@ -135,7 +135,7 @@ async def api_me_models_model_delete(request: Request):
     api_id = body.get("api_id") or body.get("api")
     model = body.get("real_name") or body.get("model") or body.get("model_id")
     if not api_id or not model:
-        return _bad("缺少参数")
+        return _bad("Missing parameters")
     from platform_app.user_models import delete_overlay_model
     n = delete_overlay_model(user["id"], api_id, str(model))
     if not n:

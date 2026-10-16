@@ -27,7 +27,7 @@ async def api_admin_smtp_test(request: Request):
     """
     user = require_user(request)
     if not is_admin(user):
-        return json_response({"ok": False, "error": "需要管理员权限"}, status_code=403)
+        return json_response({"ok": False, "error": "Administrator privileges required"}, status_code=403)
     return json_response({
         "ok": False,
         "error": "SMTP 尚未在 user_preferences 中规范化存储 · 请先在「部署 → 邮件 SMTP」配置并保存",
@@ -46,7 +46,7 @@ async def api_admin_deployment_config_get(request: Request):
     """读取管理员部署配置（存于 app_config 表）。需要重启才能生效。"""
     user = require_user(request)
     if not is_admin(user):
-        return json_response({"ok": False, "error": "需要管理员权限"}, status_code=403)
+        return json_response({"ok": False, "error": "Administrator privileges required"}, status_code=403)
     init_db()
     with connect() as db:
         row = db.execute(
@@ -67,7 +67,7 @@ async def api_admin_deployment_config_set(request: Request):
 
     user = require_user(request)
     if not is_admin(user):
-        return json_response({"ok": False, "error": "需要管理员权限"}, status_code=403)
+        return json_response({"ok": False, "error": "Administrator privileges required"}, status_code=403)
     body = await request.json() or {}
     if not isinstance(body, dict):
         return _bad("请求体必须是对象")

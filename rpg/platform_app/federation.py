@@ -258,7 +258,7 @@ def device_approve(user_id: int, user_code: str, deny: bool = False) -> dict[str
             (uc,),
         ).fetchone()
         if not row:
-            raise ValueError("授权码不存在或已失效")
+            raise ValueError("Authorization code not found or no longer valid")
         d = dict(row)
         if d.get("expires_at") and d["expires_at"] < _now():
             raise ValueError("授权码已过期")
@@ -339,10 +339,10 @@ def ext_export_pack(script_id: int) -> tuple[bytes, str]:
             (int(script_id),),
         ).fetchone()
     if not row:
-        raise ValueError("剧本不存在")
+        raise ValueError("Script not found")
     d = dict(row)
     if not d.get("is_public"):
-        raise PermissionError("该剧本未公开")
+        raise PermissionError("This script is not public")
     return script_pack.export_script_pack(int(script_id), int(d["owner_id"]), include_chunks=False)
 
 
@@ -469,7 +469,7 @@ def connector_import(user_id: int, remote_script_id: int) -> dict[str, Any]:
     with _client(base, token) as c:
         r = c.get(f"/api/ext/library/scripts/{int(remote_script_id)}/pack")
     if r.status_code == 403:
-        raise ValueError("该剧本未公开,无法导入")
+        raise ValueError("This script is not public and cannot be imported")
     if r.status_code != 200:
         raise ValueError(f"下载失败 HTTP {r.status_code}")
     zip_bytes = r.content

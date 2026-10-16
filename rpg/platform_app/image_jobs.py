@@ -555,7 +555,7 @@ def list_persona_images(user_id: int, card_id: int) -> list[dict[str, Any]]:
             (int(card_id), user_id),
         ).fetchone()
         if not owned:
-            raise ValueError("card 不存在或无权访问")
+            raise ValueError("Card not found or not accessible")
         rows = db.execute(
             """
             select id, image_url, persona_hash, card_row_version,
@@ -599,7 +599,7 @@ def set_current_persona_image(user_id: int, card_id: int, image_id: int) -> dict
             (int(card_id), user_id),
         ).fetchone()
         if not card_row:
-            raise ValueError("card 不存在或无权访问")
+            raise ValueError("Card not found or not accessible")
         # 校验 image 归属该卡
         img_row = db.execute(
             "select image_url from card_persona_images where id = %s and card_id = %s",

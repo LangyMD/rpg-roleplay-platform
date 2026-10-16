@@ -54,7 +54,7 @@ def record_runtime_turn(
     parent_id = int(meta.get("active_commit_id") or meta.get("active_branch_node_id") or 0)
     ref_id = int(meta.get("active_ref_id") or 0) or None
     if not save_id or not parent_id:
-        return {"ok": False, "reason": "runtime 缺少存档或节点"}
+        return {"ok": False, "reason": "runtime is missing a save or node"}
 
     from state import SAVE_FILE
     state_path = Path(runtime_state_path or SAVE_FILE)
@@ -78,7 +78,7 @@ def record_runtime_turn(
         else:
             save = db.execute("select * from game_saves where id = %s", (save_id,)).fetchone()
             if user_id and (not save or int(save["user_id"]) != int(user_id)):
-                return {"ok": False, "reason": "runtime 不属于当前用户"}
+                return {"ok": False, "reason": "runtime does not belong to the current user"}
             # 并发冲突检测(P0 丢回合根修 · 双端并发状态覆盖):提交前先看 game_saves 活跃指针
             # 是否已被别处推进。parent_id 是请求早期读入的旧基线;LLM 流式(数十秒)期间另一
             # tab / 设备可能已提交新回合,使 DB 活跃指针领先。旧逻辑此时把 parent「假 rebase」到
@@ -171,7 +171,7 @@ def persist_runtime_state(
     commit_id = int(meta.get("active_commit_id") or meta.get("active_branch_node_id") or 0)
     ref_id = int(meta.get("active_ref_id") or 0) or None
     if not save_id or not commit_id:
-        return {"ok": False, "reason": "runtime 缺少存档或节点"}
+        return {"ok": False, "reason": "runtime is missing a save or node"}
 
     from state import SAVE_FILE
     state_path = Path(runtime_state_path or meta.get("runtime_state_path") or SAVE_FILE)
@@ -185,9 +185,9 @@ def persist_runtime_state(
         acquire_save_advisory_lock(db, save_id, user_id)
         save = db.execute("select * from game_saves where id = %s", (save_id,)).fetchone()
         if user_id and (not save or int(save["user_id"]) != int(user_id)):
-            return {"ok": False, "reason": "runtime 不属于当前用户"}
+            return {"ok": False, "reason": "runtime does not belong to the current user"}
         if not save:
-            return {"ok": False, "reason": "存档不存在"}
+            return {"ok": False, "reason": "Save not found"}
         db_snapshot = commit_state(save)
         # 防丢回合:以事务内 game_saves 的当前活跃指针为权威(而非可能滞后的 meta.commit_id —
         # record_runtime_turn 的 TXN1 先更 game_saves,runtime 表由其后的 update_active_node 异步同步,

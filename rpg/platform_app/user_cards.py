@@ -201,7 +201,7 @@ def upsert_persona(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                     {**fields, "slug": slug, "id": int(persona_id), "user_id": user_id},
                 )
             except _pg_errors.UniqueViolation:
-                raise ValueError("slug 已被使用, 请换一个")
+                raise ValueError("slug is already in use; please choose another")
             row = db.execute(
                 "select * from character_cards where id = %s and user_id = %s and card_type = 'persona'",
                 (int(persona_id), user_id),
@@ -238,7 +238,7 @@ def upsert_persona(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                     {**fields, "user_id": user_id, "slug": slug},
                 ).fetchone()
             except _pg_errors.UniqueViolation:
-                raise ValueError("slug 已被使用, 请换一个")
+                raise ValueError("slug is already in use; please choose another")
 
         # 原子置默认：单条 UPDATE 将同用户所有 persona 的 is_default 设为 (id = 目标id)，
         # 消除先清零再置位的并发竞争窗口。
@@ -277,7 +277,7 @@ def set_auto_image_sync(user_id: int, card_id: int, enabled: bool) -> dict[str, 
             (bool(enabled), int(card_id), user_id),
         )
     if result.rowcount == 0:
-        raise ValueError("card 不存在或无权访问")
+        raise ValueError("Card not found or not accessible")
     return {"ok": True, "card_id": int(card_id), "auto_image_sync": bool(enabled)}
 
 
@@ -432,7 +432,7 @@ def upsert_user_card(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                 (int(card_id), user_id),
             ).fetchone()
             if not owned:
-                raise ValueError("card 不存在或无权访问")
+                raise ValueError("Card not found or not accessible")
             db.execute(
                 """
                 update character_cards set
@@ -541,7 +541,7 @@ def set_card_public(user_id: int, card_id: int, is_public: bool) -> dict[str, An
             (int(card_id), user_id),
         ).fetchone()
         if not owned:
-            raise ValueError("角色卡不存在或无权访问")
+            raise ValueError("Character card not found or not accessible")
         row = db.execute(
             """
             update character_cards

@@ -55,7 +55,7 @@ async def api_regex_save(request: Request, api_user: dict[str, Any] = Depends(ge
     from platform_app.db import connect, init_db
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     body = await request.json()
     find = str((body or {}).get("find") or "").strip()
     if not find:
@@ -108,12 +108,12 @@ async def api_regex_remove(request: Request, api_user: dict[str, Any] = Depends(
     from platform_app.db import connect, init_db
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     body = await request.json()
     try:
         rid = int((body or {}).get("id"))
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "id 无效"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid id"}, status_code=400)
     init_db()
     with connect() as db:
         scripts = [s for s in _load(db, uid) if not (isinstance(s, dict) and s.get("id") == rid)]

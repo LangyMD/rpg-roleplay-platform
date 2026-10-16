@@ -192,7 +192,7 @@ async def api_image_file(filename: str, request: Request) -> FileResponse:
     # 2. 扩展名白名单
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext not in _ALLOWED_EXTS:
-        raise HTTPException(status_code=400, detail="不支持的文件类型")
+        raise HTTPException(status_code=400, detail="Unsupported file type")
 
     # 3. 通过 storage 解析真实路径（内部做路径穿越防护）
     try:

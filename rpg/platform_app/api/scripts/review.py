@@ -31,7 +31,7 @@ async def api_script_graph(script_id: int, user=Depends(require_user)):
     with connect() as db:
         s = _owned_script(db, script_id, user["id"])
         if not s:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         entities = db.execute(
             "select id, logical_key, name, type, aliases, summary, importance, "
             "first_revealed_chapter, public_knowledge from kb_canon_entities "
@@ -91,10 +91,10 @@ async def api_patch_canon(request: Request, script_id: int, user=Depends(require
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     with connect() as db:
         if not _owned_script(db, script_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         resp = _apply_canon_patch(db, script_id, body)
     # 事务提交后再作废:提交前作废,并发请求可能把旧值又读进缓存。
     from kb.alias import invalidate_alias_cache
@@ -110,7 +110,7 @@ def _apply_canon_patch(db, script_id: int, body: dict):
     if op == "update_entity":
         lk = (body.get("logical_key") or "").strip()
         if not lk:
-            return json_response({"ok": False, "error": "缺 logical_key"}, status_code=400)
+            return json_response({"ok": False, "error": "Missing logical_key"}, status_code=400)
         sets, args = [], []
         text_values: dict = {}
         for col in ("summary",):
@@ -131,7 +131,7 @@ def _apply_canon_patch(db, script_id: int, body: dict):
             args.append(Jsonb(body["aliases"]))
             text_values["aliases"] = body["aliases"]
         if not sets:
-            return json_response({"ok": False, "error": "无可更新字段"}, status_code=400)
+            return json_response({"ok": False, "error": "No fields to update"}, status_code=400)
         # 人工复核改过 → 标 source='editor',重建知识库保留(与编辑器 REST / agent 工具同口径)
         sets.append("attrs = coalesce(attrs, '{}'::jsonb) || %s::jsonb")
         args.append(Jsonb({"source": "editor"}))
@@ -173,7 +173,7 @@ def _apply_canon_patch(db, script_id: int, body: dict):
     if op == "delete_entity":
         lk = (body.get("logical_key") or "").strip()
         if not lk:
-            return json_response({"ok": False, "error": "缺 logical_key"}, status_code=400)
+            return json_response({"ok": False, "error": "Missing logical_key"}, status_code=400)
         n = db.execute("delete from kb_canon_entities where script_id=%s and logical_key=%s", (script_id, lk)).rowcount
         detached = detach_canon_children(db, script_id, lk) if n else []
         return json_response({"ok": True, "deleted": n, "detached_children": detached})
@@ -188,7 +188,7 @@ async def api_script_mark_reviewed(script_id: int, user=Depends(require_user)):
     """
     with connect() as db:
         if not _owned_script(db, script_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         db.execute(
             "update scripts set review_status='reviewed', reviewed_at=now(), updated_at=now() "
             "where id=%s",
@@ -202,7 +202,7 @@ async def api_script_unmark_reviewed(script_id: int, user=Depends(require_user))
     """owner 重新打开复核(回 unreviewed)。"""
     with connect() as db:
         if not _owned_script(db, script_id, user["id"]):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         db.execute(
             "update scripts set review_status='unreviewed', reviewed_at=null, updated_at=now() "
             "where id=%s",

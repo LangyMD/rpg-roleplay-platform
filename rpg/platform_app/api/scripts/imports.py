@@ -214,7 +214,7 @@ async def api_export_script_pack(
     try:
         zip_bytes, filename = export_script_pack(script_id, user["id"], include_chunks=include_chunks)
     except PermissionError:
-        raise HTTPException(status_code=403, detail="无权访问该剧本")
+        raise HTTPException(status_code=403, detail="No access to this script")
     # 文件名含中文时按 RFC 5987 编码,否则 latin-1 header 报 codec 错
     from urllib.parse import quote as _quote
     ascii_fallback = filename.encode("ascii", "ignore").decode("ascii") or "script_pack.zip"

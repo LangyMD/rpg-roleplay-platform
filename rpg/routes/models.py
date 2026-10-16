@@ -422,7 +422,7 @@ async def api_models_remote_sync(
     """
     user_id = int(api_user["id"]) if api_user and api_user.get("id") else None
     if not user_id:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
 
     try:
         body = await request.json()
@@ -440,7 +440,7 @@ def _remote_sync_blocking(api_user: dict[str, Any], user_id: int, body: Any) -> 
 
     api_id = normalize_api_id((body or {}).get("api_id", ""))
     if not api_id:
-        return json_response({"ok": False, "error": "api_id 不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "api_id cannot be empty"}, status_code=400)
     blocked = _check_probe_permission(api_user, api_id)
     if blocked:
         return blocked

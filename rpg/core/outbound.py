@@ -321,7 +321,7 @@ def safe_urlopen(req, *, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy: str | No
         raise OutboundBlocked(f"出站仅允许 http/https:{scheme or '(空)'}")
     host = parsed.hostname
     if not host:
-        raise OutboundBlocked("出站目标缺少 host")
+        raise OutboundBlocked("Outbound target is missing a host")
     port = parsed.port or (443 if scheme == "https" else 80)
 
     # urllib 默认 UA(Python-urllib/x.y)会被部分 provider 网关 WAF 直接 403(实测 opencode.ai/zen
@@ -436,7 +436,7 @@ class _SsrfGuardTransport:
             if scheme not in {"http", "https"}:
                 raise OutboundBlocked(f"出站仅允许 http/https:{scheme or '(空)'}")
             if not host:
-                raise OutboundBlocked("出站目标缺少 host")
+                raise OutboundBlocked("Outbound target is missing a host")
             port = request.url.port or (443 if scheme == "https" else 80)
             # 服务器模式才做内网拦截;本地/自部署模式放行(本机大模型 / 梯子 fake-ip)。
             if _ssrf_enforced():

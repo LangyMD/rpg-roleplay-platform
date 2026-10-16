@@ -51,7 +51,7 @@ async def api_script_rename(request: Request, script_id: int, user=Depends(requi
         pass
     title = str(body.get("title") or "").strip()
     if not title:
-        return json_response({"ok": False, "error": "标题不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "Title cannot be empty"}, status_code=400)
     from ...db import connect as _connect
     with _connect() as db:
         row = db.execute(
@@ -81,7 +81,7 @@ async def api_script_visibility(request: Request, script_id: int, user=Depends(r
         from ...perms import script_owned
         owned = script_owned(db, script_id, user["id"])
         if not owned:
-            return json_response({"ok": False, "error": "无权操作该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "Not allowed to modify this script"}, status_code=403)
         if is_public:
             # 护栏:0 章空剧本(注册默认档 / 未导入正文)不允许公开,避免污染公开库。
             # 以 script_chapters 实际行数为准(chapter_count 列可能陈旧)。
@@ -209,9 +209,9 @@ async def api_clone_public_script(script_id: int, user=Depends(require_user)):
             (script_id,),
         ).fetchone()
         if not row:
-            return json_response({"ok": False, "error": "剧本不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Script not found"}, status_code=404)
         if not row.get("is_public"):
-            return json_response({"ok": False, "error": "该剧本未公开,无法导入"}, status_code=403)
+            return json_response({"ok": False, "error": "This script is not public and cannot be imported"}, status_code=403)
         if int(row["owner_id"]) == int(user["id"]):
             return json_response({"ok": False, "error": "这是你自己的剧本,无需订阅"}, status_code=400)
         # 2. O(1) INSERT subscription(主键冲突即已订阅)。RETURNING 1 只在【真正插入】

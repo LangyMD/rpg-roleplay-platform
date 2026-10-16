@@ -93,7 +93,7 @@ async def api_set_avatar_url(request: Request):
     raw_url = str(body.get("url") or "").strip()
     safe_url = _safe_avatar_path(raw_url)
     if not safe_url:
-        return json_response({"ok": False, "error": "不合法的图片 URL（仅允许站内资产路径）"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid image URL (only on-site asset paths are allowed)"}, status_code=400)
 
     init_db()
     with connect() as db:

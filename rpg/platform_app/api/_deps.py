@@ -18,62 +18,62 @@ API_VERSION = "1"
 
 COMMANDS = [
     ("GET", "/", "Backend root (service info JSON)"),
-    ("GET", "/api/state", "读取当前可玩存档状态"),
-    ("POST", "/api/new", "创建新游戏并保留旧档备份"),
-    ("POST", "/api/opening", "生成开场"),
-    ("POST", "/api/chat", "发送玩家行动/对话，支持流式 GM 输出与结构化状态写回"),
-    ("POST", "/api/stop", "打断当前生成"),
-    ("POST", "/api/save", "手动保存当前游戏"),
-    ("POST", "/api/memory/add", "添加长期记忆"),
-    ("POST", "/api/memory/remove", "删除长期记忆"),
-    ("POST", "/api/permissions", "设置 LLM 状态写入权限"),
-    ("GET", "/api/models", "读取 API/模型树与前端显示模型"),
-    ("POST", "/api/models/select", "选择当前前端模型"),
-    ("POST", "/api/models/api", "新增或更新 API 供应商"),
-    ("POST", "/api/models/model", "新增或更新 API 下属模型"),
-    ("GET", "/api/tools", "插件/MCP/Skill 能力状态"),
-    ("POST", "/api/mcp/server", "新增或更新 MCP 服务器配置"),
-    ("POST", "/api/mcp/server/enabled", "启用或禁用 MCP 服务器"),
-    ("POST", "/api/mcp/server/delete", "删除 MCP 服务器配置"),
-    ("POST", "/api/mcp/server/validate", "校验 MCP stdio 命令可用性"),
-    ("POST", "/api/skills/import", "本地部署导入 Skill 包"),
-    ("POST", "/api/worldline/variable", "新增或锁定用户世界线变量"),
-    ("POST", "/api/worldline/variable/remove", "移除用户世界线变量"),
-    ("POST", "/api/auth/register", "注册账号"),
-    ("POST", "/api/auth/login", "登录并写入会话 cookie"),
-    ("POST", "/api/auth/logout", "退出登录"),
-    ("GET", "/api/platform", "平台总览：主页、剧本、存档、库、工具"),
-    ("GET", "/api/scripts", "剧本列表"),
-    ("POST", "/api/scripts/import", "导入 TXT/MD 剧本并自动识别章节"),
-    ("GET", "/api/scripts/{script_id}/chapters", "读取剧本章节目录与预览"),
+    ("GET", "/api/state", "Read the current playable save state"),
+    ("POST", "/api/new", "Start a new game and keep a backup of the old save"),
+    ("POST", "/api/opening", "Generate the opening"),
+    ("POST", "/api/chat", "Send a player action/dialogue; supports streaming GM output and structured state write-back"),
+    ("POST", "/api/stop", "Interrupt the current generation"),
+    ("POST", "/api/save", "Manually save the current game"),
+    ("POST", "/api/memory/add", "Add long-term memory"),
+    ("POST", "/api/memory/remove", "Remove long-term memory"),
+    ("POST", "/api/permissions", "Set LLM state write permission"),
+    ("GET", "/api/models", "Read the API/model tree and the displayed model"),
+    ("POST", "/api/models/select", "Select the current model"),
+    ("POST", "/api/models/api", "Add or update an API provider"),
+    ("POST", "/api/models/model", "Add or update a model under an API"),
+    ("GET", "/api/tools", "Plugin/MCP/Skill capability status"),
+    ("POST", "/api/mcp/server", "Add or update an MCP server config"),
+    ("POST", "/api/mcp/server/enabled", "Enable or disable an MCP server"),
+    ("POST", "/api/mcp/server/delete", "Delete an MCP server config"),
+    ("POST", "/api/mcp/server/validate", "Validate that an MCP stdio command is available"),
+    ("POST", "/api/skills/import", "Import a Skill package (local deployments)"),
+    ("POST", "/api/worldline/variable", "Add or lock a user world line variable"),
+    ("POST", "/api/worldline/variable/remove", "Remove a user world line variable"),
+    ("POST", "/api/auth/register", "Register an account"),
+    ("POST", "/api/auth/login", "Log in and set the session cookie"),
+    ("POST", "/api/auth/logout", "Log out"),
+    ("GET", "/api/platform", "Platform overview: home, scripts, saves, library, tools"),
+    ("GET", "/api/scripts", "Script list"),
+    ("POST", "/api/scripts/import", "Import a TXT/MD script and detect chapters automatically"),
+    ("GET", "/api/scripts/{script_id}/chapters", "Read a script's chapter list and previews"),
     (
         "POST",
         "/api/scripts/{script_id}/knowledge/sync",
-        "重建剧本 ChapterFact、世界书、人设卡和检索块",
+        "Rebuild a script's ChapterFacts, worldbook, character cards and retrieval chunks",
     ),
-    ("GET", "/api/scripts/{script_id}/chapter-facts", "读取剧本 ChapterFact 时间线"),
+    ("GET", "/api/scripts/{script_id}/chapter-facts", "Read a script's ChapterFact timeline"),
     (
         "GET",
         "/api/scripts/{script_id}/birthpoints",
-        "入场选出生点：按 phase 聚合 + 每 phase 均匀采样 anchor",
+        "Pick a starting point: grouped by phase, with anchors sampled evenly per phase",
     ),
-    ("GET", "/api/scripts/{script_id}/character-cards", "读取剧本人设卡"),
-    ("GET", "/api/scripts/{script_id}/worldbook", "读取剧本世界书条目"),
-    ("GET", "/api/saves", "游戏存档目录"),
-    ("POST", "/api/saves", "基于剧本创建新存档"),
-    ("GET", "/api/branches/{save_id}", "读取某个存档的分支树"),
-    ("POST", "/api/branches/continue", "从任意对话节点派生/激活当前游戏 runtime"),
-    ("POST", "/api/branches/activate", "直接激活某个分支节点为当前游戏 runtime"),
-    ("POST", "/api/branches/delete", "删除某条连线下的整条分支"),
-    ("GET", "/api/saves/{save_id}/context-runs", "读取某个存档的上下文子代理运行记录"),
-    ("GET", "/api/saves/{save_id}/anchors", "task 136: 读取存档世界线收束锚点状态"),
-    ("POST", "/api/saves/{save_id}/anchors/reseed", "task 136: 重 seed 锚点 (调试用)"),
-    ("GET", "/api/settings", "读取设置"),
-    ("POST", "/api/settings", "写入设置"),
-    ("GET", "/api/library", "文件库列表"),
-    ("POST", "/api/library/upload", "文件库上传"),
-    ("POST", "/api/library/mkdir", "文件库创建文件夹"),
-    ("GET", "/api/platform/commands", "读取全部功能指令清单"),
+    ("GET", "/api/scripts/{script_id}/character-cards", "Read a script's character cards"),
+    ("GET", "/api/scripts/{script_id}/worldbook", "Read a script's worldbook entries"),
+    ("GET", "/api/saves", "Game save list"),
+    ("POST", "/api/saves", "Create a new save from a script"),
+    ("GET", "/api/branches/{save_id}", "Read a save's branch tree"),
+    ("POST", "/api/branches/continue", "Fork/activate the current game runtime from any conversation node"),
+    ("POST", "/api/branches/activate", "Activate a branch node directly as the current game runtime"),
+    ("POST", "/api/branches/delete", "Delete the whole branch under a link"),
+    ("GET", "/api/saves/{save_id}/context-runs", "Read a save's context sub-agent run records"),
+    ("GET", "/api/saves/{save_id}/anchors", "Read the status of a save's world line convergence anchors"),
+    ("POST", "/api/saves/{save_id}/anchors/reseed", "Re-seed anchors (debug)"),
+    ("GET", "/api/settings", "Read settings"),
+    ("POST", "/api/settings", "Write settings"),
+    ("GET", "/api/library", "File library list"),
+    ("POST", "/api/library/upload", "Upload to the file library"),
+    ("POST", "/api/library/mkdir", "Create a folder in the file library"),
+    ("GET", "/api/platform/commands", "Read the full command list"),
 ]
 
 
@@ -222,7 +222,7 @@ def current_user(request: Request) -> dict | None:
 def require_user(request: Request) -> dict:
     user = current_user(request)
     if not user:
-        raise HTTPException(status_code=401, detail="需要登录")
+        raise HTTPException(status_code=401, detail="Login required")
     return user
 
 
@@ -238,7 +238,7 @@ def is_admin(user: dict | None) -> bool:
 def require_admin(user=Depends(require_user)) -> dict:
     """FastAPI Depends:要求当前用户是 admin,否则 403。"""
     if not is_admin(user):
-        raise HTTPException(status_code=403, detail="需要管理员权限")
+        raise HTTPException(status_code=403, detail="Administrator privileges required")
     return user
 
 
@@ -250,7 +250,7 @@ def _resolve_save_id(user_id: int, body: dict) -> int:
         from ..perms import owns_save
         with connect() as db:
             if not owns_save(db, sid, user_id):
-                raise HTTPException(status_code=403, detail="无权访问该存档")
+                raise HTTPException(status_code=403, detail="No access to this save")
         return sid
     with connect() as db:
         row = db.execute(
@@ -258,7 +258,7 @@ def _resolve_save_id(user_id: int, body: dict) -> int:
             (user_id,),
         ).fetchone()
     if not row:
-        raise ValueError("还没有可写入的存档")
+        raise ValueError("There is no writable save yet")
     return int(row["id"])
 
 

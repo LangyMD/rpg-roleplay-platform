@@ -90,7 +90,7 @@ async def api_memory_update(
     index = body_dict.get("index")
     text = (body_dict.get("text") or "").strip()
     if index is None or not isinstance(index, int) or index < 0:
-        return json_response({"ok": False, "error": "index 必须是非负整数"}, status_code=400)
+        return json_response({"ok": False, "error": "index must be a non-negative integer"}, status_code=400)
     if not text:
         return json_response({"ok": False, "error": "内容不能为空"}, status_code=400)
     if bucket not in {"notes", "pinned", "facts", "resources", "abilities"}:
@@ -124,7 +124,7 @@ async def api_memory_remove(
     body_dict = body.model_dump(exclude_none=True)
     index = body_dict.get("index")
     if index is None or (isinstance(index, int) and index < 0):
-        return json_response({"ok": False, "error": "index 必须是非负整数"}, status_code=400)
+        return json_response({"ok": False, "error": "index must be a non-negative integer"}, status_code=400)
     state = _ensure_loaded(api_user)
     from tools_dsl.ui_dispatch_helper import dispatch_ui_tool
     result = dispatch_ui_tool(

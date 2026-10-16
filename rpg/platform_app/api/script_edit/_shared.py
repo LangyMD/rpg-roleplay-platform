@@ -38,7 +38,7 @@ def _require_owner(db, script_id: int, user_id: int):
         return owned
     exists = db.execute("SELECT owner_id FROM scripts WHERE id = %s", (script_id,)).fetchone()
     if not exists:
-        raise ValueError("剧本不存在")
+        raise ValueError("Script not found")
     raise ValueError("必须 fork 后才能编辑（当前用户不是该剧本 owner）")
 
 

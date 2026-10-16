@@ -79,7 +79,7 @@ def round_preview(player_text: str, gm_text: str, limit: int = 260) -> str:
         parts.append(f"玩家：{compact(clean_text(player_text), 90)}")
     if clean_text(gm_text):
         parts.append(f"GM：{compact(clean_text(gm_text), 170)}")
-    return compact(" / ".join(parts) or "空回合", limit)
+    return compact(" / ".join(parts) or "Empty turn", limit)
 
 
 def rough_summary(player_text: str, gm_text: str = "", limit: int = 22) -> str:
@@ -91,7 +91,7 @@ def rough_summary(player_text: str, gm_text: str = "", limit: int = 22) -> str:
     elif len(source) <= 2:
         source = gm or source
     if not source:
-        source = "空回合"
+        source = "Empty turn"
     source = first_clause(source)
     source = re.sub(r"^(我好像|我想要|我想|我要|我把|我先|我)", "", source)
     source = source.strip(" ，。！？；：、,.!?;:-")

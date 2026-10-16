@@ -51,7 +51,7 @@ async def serve_storage_file(kind: str, filename: str, request: Request) -> File
     ext = os.path.splitext(filename)[-1].lower()
     allowed_exts = _EXT_ALLOWLIST_SCRIPTS if kind == "scripts" else _EXT_ALLOWLIST
     if ext not in allowed_exts:
-        raise HTTPException(status_code=404, detail="不支持的文件类型")
+        raise HTTPException(status_code=404, detail="Unsupported file type")
 
     # 穿越防护（resolve_path 内部校验）
     storage_key = f"{kind}/{filename}"

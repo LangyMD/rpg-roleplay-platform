@@ -84,7 +84,7 @@ def delete_subtree(user_id: int, node_id: int) -> dict[str, Any]:
     with connect() as db:
         node = _commit_for_user(db, user_id, node_id)
         if not node:
-            raise ValueError("无权访问该分支节点")
+            raise ValueError("No access to this branch node")
         node = round_start_node(db, node)
         if node["parent_id"] is None:
             raise ValueError("不能删除根节点")
@@ -178,7 +178,7 @@ def rollback_to_message(
             (save_id, user_id),
         ).fetchone()
         if not save:
-            raise ValueError("无权访问该存档,或存档不存在")
+            raise ValueError("No access to this save, or the save does not exist")
 
         current_commit_id = save.get("active_commit_id") or save.get("active_branch_node_id")
 
@@ -332,7 +332,7 @@ def rewind_last_round(user_id: int, save_id: int) -> dict[str, Any] | None:
             (save_id, user_id),
         ).fetchone()
         if not save:
-            raise ValueError("无权访问该存档,或存档不存在")
+            raise ValueError("No access to this save, or the save does not exist")
         active_id = save.get("active_commit_id") or save.get("active_branch_node_id")
         if not active_id:
             return None

@@ -63,7 +63,7 @@ async def api_anchor_update(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     _ANCHOR_COLS = (
         "id, story_phase, story_time_label, sample_title, sample_summary, "
@@ -81,7 +81,7 @@ async def api_anchor_update(
             (anchor_id, script_id),
         ).fetchone()
         if not before_row:
-            return json_response({"ok": False, "error": "anchor 不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Anchor not found"}, status_code=404)
 
         before = dict(before_row)
         sets, args = _anchor_update_sets(body)
@@ -136,7 +136,7 @@ async def api_anchor_add(
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
 
     story_time_label = str(body.get("story_time_label") or "").strip()
     story_phase = str(body.get("story_phase") or "").strip()
@@ -205,7 +205,7 @@ async def api_anchor_delete(
             (anchor_id, script_id),
         ).fetchone()
         if not before_row:
-            return json_response({"ok": False, "error": "anchor 不存在"}, status_code=404)
+            return json_response({"ok": False, "error": "Anchor not found"}, status_code=404)
 
         before = dict(before_row)
         db.execute(

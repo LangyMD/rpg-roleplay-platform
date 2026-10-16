@@ -95,7 +95,7 @@ async def admin_update_user(
 
     with connect() as db:
         if not db.execute("SELECT 1 FROM users WHERE id = %s", (user_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="用户不存在")
+            raise HTTPException(status_code=404, detail="User does not exist")
         if new_role is not None:
             # task: vip_user 享受平台 RAG embedder 兜底,但仍 LLM BYOK,跟 admin 区别
             # 是 vip_user 没 admin 权限(不能改其他用户、看 audit log 等)

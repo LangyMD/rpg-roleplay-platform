@@ -29,7 +29,7 @@ async def api_list_commits(
             (script_id, user["id"]),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
 
         rows = db.execute(
             """
@@ -57,7 +57,7 @@ async def api_chapter_undoable(script_id: int, chapter_index: int, user=Depends(
     """本章是否有可撤销的 AI 改动(给前端决定是否显示「撤销」)。"""
     with connect() as db:
         if not script_owned(db, script_id, int(user["id"])):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         row = db.execute(
             """SELECT id, message FROM script_commits
                WHERE script_id=%s AND kind='chapter_edit'
@@ -81,7 +81,7 @@ async def api_undo_chapter_edit(script_id: int, chapter_index: int, user=Depends
     uid = int(user["id"])
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         row = db.execute(
             """SELECT id, payload FROM script_commits
                WHERE script_id=%s AND kind='chapter_edit'
@@ -106,7 +106,7 @@ async def api_undo_chapter_edit(script_id: int, chapter_index: int, user=Depends
     )
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         db.execute(
             "UPDATE script_commits SET payload = jsonb_set(payload, '{undone}', 'true') WHERE id=%s",
             (commit_id,),
@@ -137,7 +137,7 @@ async def api_undo_edit(request: Request, script_id: int, user=Depends(require_u
     try:
         body = await request.json()
     except Exception:
-        return json_response({"ok": False, "error": "body 必须是合法 JSON"}, status_code=400)
+        return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     table = str(body.get("table") or "")
     if table not in _UNDO_SPEC:
         return json_response({"ok": False, "error": "不支持的 table"}, status_code=400)
@@ -149,7 +149,7 @@ async def api_undo_edit(request: Request, script_id: int, user=Depends(require_u
     uid = int(user["id"])
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         row = db.execute(
             """SELECT id, payload FROM script_commits
                WHERE script_id=%s AND kind=%s
@@ -236,7 +236,7 @@ async def api_chapter_history(script_id: int, chapter_index: int, user=Depends(r
     uid = int(user["id"])
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         rows = db.execute(
             """SELECT id, kind, message, created_at,
                       coalesce((payload->>'undone')::boolean, false) AS undone,
@@ -263,7 +263,7 @@ async def api_chapter_restore(request: Request, script_id: int, chapter_index: i
         return json_response({"ok": False, "error": "commit_id 必填且为整数"}, status_code=400)
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         row = db.execute(
             "SELECT payload FROM script_commits WHERE id=%s AND script_id=%s AND kind='chapter_edit'",
             (commit_id, script_id),
@@ -283,7 +283,7 @@ async def api_chapter_restore(request: Request, script_id: int, chapter_index: i
     )
     with connect() as db:
         if not script_owned(db, script_id, uid):
-            return json_response({"ok": False, "error": "无权访问该剧本"}, status_code=403)
+            return json_response({"ok": False, "error": "No access to this script"}, status_code=403)
         _write_commit(db, script_id=script_id, user_id=uid, kind="chapter_revert",
                       message=f"恢复章节 #{chapter_index} 到版本 #{commit_id} 之前",
                       payload={"table": "script_chapters", "op": "revert",

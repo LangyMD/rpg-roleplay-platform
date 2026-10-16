@@ -510,7 +510,7 @@ def upsert_model(api_id: str, model_data: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(f"未知 API：{api_id}")
     model_id = str(model_data.get("id") or model_data.get("real_name") or "").strip()
     if not model_id:
-        raise ValueError("模型 id 不能为空")
+        raise ValueError("Model id cannot be empty")
     model = find_model(api, model_id)
     prev = model or {}
     # 补丁语义:请求里没给的字段沿用已有条目(新条目才用默认值)。以前 display_name / enabled
@@ -540,7 +540,7 @@ def delete_model(api_id: str, model_id: str) -> dict[str, Any]:
         raise ValueError(f"未知 API：{api_id}")
     model_id = str(model_id or "").strip()
     if not model_id:
-        raise ValueError("模型 id 不能为空")
+        raise ValueError("Model id cannot be empty")
     models = list(api.get("models") or [])
     remaining = [
         model for model in models

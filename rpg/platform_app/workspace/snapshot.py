@@ -158,7 +158,7 @@ def _build_initial_snapshot(
 
     if name or role or background:
         try:
-            state.setup_player(name or "无名者", role or "未指定", background or "（无背景）")
+            state.setup_player(name or "Nameless", role or "Unspecified", background or "(no background)")
         except Exception:
             pass
         # #6 代入去重: script_card = 玩家代入原作已有角色。登记 player↔NPC 绑定
@@ -315,11 +315,11 @@ def _build_initial_snapshot(
     try:
         player = state.data.setdefault("player", {})
         if not player.get("name"):
-            player["name"] = "无名者"
+            player["name"] = "Nameless"
         if not player.get("role"):
-            player["role"] = "未指定"
+            player["role"] = "Unspecified"
         if not player.get("background"):
-            player["background"] = "（无背景）"
+            player["background"] = "(no background)"
     except Exception:
         pass
 
