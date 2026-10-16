@@ -118,7 +118,7 @@
     },
     {
       "id": "ark_agent_plan",
-      "display_name": "火山方舟 Agent Plan (订阅套餐)",
+      "display_name": "Volcengine Ark Agent Plan (火山方舟 subscription)",
       "kind": "openai_compat",
       "enabled": true,
       "credential_ref": "",
@@ -218,7 +218,7 @@
         {
           "id": "deepseek-v4-flash",
           "real_name": "deepseek-v4-flash",
-          "display_name": "DeepSeek V4 Flash (旧别名 → V4.1-Flash)",
+          "display_name": "DeepSeek V4 Flash (legacy alias → V4.1-Flash)",
           "enabled": true,
           "capabilities": [
             "text",
@@ -232,7 +232,7 @@
         {
           "id": "deepseek-v4-flash-vision-exp",
           "real_name": "deepseek-v4-flash-vision-exp",
-          "display_name": "DeepSeek V4 Flash Vision (旧别名 → V4.1-Flash)",
+          "display_name": "DeepSeek V4 Flash Vision (legacy alias → V4.1-Flash)",
           "enabled": true,
           "capabilities": [
             "text",
@@ -247,7 +247,7 @@
     },
     {
       "id": "doubao",
-      "display_name": "火山方舟 Doubao (Volcengine Ark)",
+      "display_name": "Volcengine Ark Doubao (火山方舟)",
       "kind": "openai_compat",
       "enabled": true,
       "credential_ref": "",
@@ -624,7 +624,7 @@
         {
           "id": "grok-4.20-0309-reasoning",
           "real_name": "grok-4.20-0309-reasoning",
-          "display_name": "Grok 4.20 (推理)",
+          "display_name": "Grok 4.20 (reasoning)",
           "enabled": true,
           "capabilities": [
             "text",

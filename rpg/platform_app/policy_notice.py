@@ -102,7 +102,7 @@ def schedule_policy_change(
     Returns: notice record dict (含 id).
     """
     if slug not in POLICY_SLUGS:
-        raise ValueError(f"未知 slug: {slug!r}")
+        raise ValueError(f"Unknown slug: {slug!r}")
 
     if effective_at is None:
         effective_at = datetime.now(UTC) + timedelta(days=NOTICE_LEAD_TIME_DAYS)
