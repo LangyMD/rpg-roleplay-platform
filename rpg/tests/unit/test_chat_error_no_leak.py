@@ -136,7 +136,7 @@ class ChatErrorNoLeak(unittest.TestCase):
         class _FakeDBError(Exception):
             code = "23505"
         msg = _client_safe_error(_FakeDBError("duplicate key value violates unique constraint"))
-        self.assertIn("本轮处理出错", msg)
+        self.assertIn("Something went wrong this turn", msg)
 
     def test_source_no_raw_str_exc_to_client_sse(self):
         # 两处 client-facing SSE error 不应再直传 str(exc)

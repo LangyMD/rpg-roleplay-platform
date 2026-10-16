@@ -27,10 +27,10 @@ _ALLOWED_SA_TOKEN_URIS = {
 
 def _validate_sa_json(sa: dict) -> None:
     if not isinstance(sa, dict) or sa.get("type") != "service_account":
-        raise ValueError("SA JSON 非法:type 必须为 service_account")
+        raise ValueError("Invalid SA JSON: type must be service_account")
     token_uri = sa.get("token_uri") or "https://oauth2.googleapis.com/token"
     if token_uri not in _ALLOWED_SA_TOKEN_URIS:
-        raise ValueError(f"SA JSON token_uri 不在白名单(疑似 SSRF):{token_uri!r}")
+        raise ValueError(f"SA JSON token_uri is not in the allowlist (possible SSRF): {token_uri!r}")
 
 
 def load_sa_credentials(
@@ -123,8 +123,8 @@ def has_user_sa(user_id: int | None, api_id: str = "AgentPlatform") -> bool:
 
 
 VERTEX_SA_MISSING_MESSAGE = (
-    "使用 Agent Platform(Vertex)模型需要先上传 Service Account JSON。"
-    "请到「设置 → API & 模型 → Agent Platform」上传后再试。"
+    "Using Agent Platform (Vertex) models requires uploading a Service Account JSON first. "
+    "Upload it under Settings -> API & Models -> Agent Platform and try again."
 )
 
 

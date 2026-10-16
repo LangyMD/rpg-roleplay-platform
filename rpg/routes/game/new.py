@@ -83,7 +83,7 @@ async def api_new(
             background = source_meta.get("background") or "(no background)"
         else:
             role = source_meta.get("identity") or "Unspecified"
-            background = source_meta.get("appearance") or source_meta.get("personality") or "（来自角色卡）"
+            background = source_meta.get("appearance") or source_meta.get("personality") or "(from character card)"
     else:
         # 通用 RPG 底座：默认 role 不再 fallback 到《我蕾穆丽娜不爱你》的『穿越者·魔女』。
         # ROLES 字典里有该剧本的 role label，作为兼容映射保留，但不再当默认值。

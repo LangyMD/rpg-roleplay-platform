@@ -68,7 +68,7 @@ def _verify_ownership(db, save_id, user_id):
             (save_id,),
         ).fetchone()
     if not save_row:
-        raise HTTPException(status_code=403, detail="存档不存在或无权访问")
+        raise HTTPException(status_code=403, detail="Save not found or not accessible")
 
     script_id = save_row["script_id"]
     active_phase_index = save_row.get("active_phase_index") or 0

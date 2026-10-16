@@ -46,30 +46,30 @@ async def api_skill_run(
     body_dict = body.model_dump(exclude_none=True)
     cmd = body_dict.get("cmd") or body_dict.get("command")
     if not isinstance(cmd, list) or not cmd:
-        return json_response({"ok": False, "error": "cmd 必须是非空 list"}, status_code=400)
+        return json_response({"ok": False, "error": "cmd must be a non-empty list"}, status_code=400)
     if not all(isinstance(x, str) for x in cmd):
-        return json_response({"ok": False, "error": "cmd 所有元素必须是字符串"}, status_code=400)
+        return json_response({"ok": False, "error": "All cmd elements must be strings"}, status_code=400)
     if len(cmd) > 64 or any(len(x) > 4096 for x in cmd):
-        return json_response({"ok": False, "error": "cmd 元素或长度超限"}, status_code=400)
+        return json_response({"ok": False, "error": "cmd element or length exceeds the limit"}, status_code=400)
 
     # P0-1 SEC: cmd[0] 白名单 + 路径穿越防御
     _CMD_WHITELIST = {"bash", "sh", "python3", "python", "node", "ruby"}
     cmd0 = cmd[0]
     if "/" in cmd0:
-        return json_response({"ok": False, "error": "cmd[0] 不能包含 /，必须是裸文件名"}, status_code=400)
+        return json_response({"ok": False, "error": "cmd[0] cannot contain /; it must be a bare file name"}, status_code=400)
     if cmd0 not in _CMD_WHITELIST:
-        return json_response({"ok": False, "error": f"cmd[0] 必须在白名单内: {sorted(_CMD_WHITELIST)}"}, status_code=400)
+        return json_response({"ok": False, "error": f"cmd[0] must be in the allowlist: {sorted(_CMD_WHITELIST)}"}, status_code=400)
     if any(".." in part for part in cmd):
-        return json_response({"ok": False, "error": "cmd 元素不能包含 .."}, status_code=400)
+        return json_response({"ok": False, "error": "cmd elements cannot contain .."}, status_code=400)
 
     # 找 skill_id 对应的目录
     from tools_dsl.tool_registry import list_imported_skills
     skill = next((s for s in list_imported_skills() if s.get("id") == skill_id), None)
     if not skill:
-        return json_response({"ok": False, "error": f"skill 不存在: {skill_id}"}, status_code=404)
+        return json_response({"ok": False, "error": f"Skill not found: {skill_id}"}, status_code=404)
     skill_path = skill.get("path") or ""
     if not skill_path:
-        return json_response({"ok": False, "error": "skill 路径丢失"}, status_code=500)
+        return json_response({"ok": False, "error": "Skill path is missing"}, status_code=500)
 
     # 找 skill 根目录（SKILL.md 的父目录）
     from pathlib import Path as _Path

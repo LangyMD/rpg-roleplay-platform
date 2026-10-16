@@ -58,11 +58,11 @@ async def api_rules_module_start(
     # 安全：module_id 必须是合法 slug — 仅允许 [a-zA-Z0-9_-]，禁止任何分隔符或 ..
     import re as _re
     if not _re.fullmatch(r"[A-Za-z0-9_-]{1,64}", module_id):
-        raise HTTPException(status_code=400, detail="module_id 仅允许 [A-Za-z0-9_-] 且长度 1-64")
+        raise HTTPException(status_code=400, detail="module_id may only contain [A-Za-z0-9_-] and must be 1-64 characters long")
     # 进一步用 registry 验证模组真实存在（与 /launch 保持一致）
     import modules as _rules_module_registry
     if not _rules_module_registry.load_module(module_id):
-        raise HTTPException(status_code=404, detail=f"模组不存在: {module_id}")
+        raise HTTPException(status_code=404, detail=f"Module not found: {module_id}")
     character_overrides = body_dict.get("character") or None
 
     state = _ensure_loaded(api_user, ensure_gm=False)
@@ -75,7 +75,7 @@ async def api_rules_module_start(
         state=state,
     )
     if not d_result.ok:
-        raise HTTPException(status_code=400, detail=d_result.error or "module_load 失败")
+        raise HTTPException(status_code=400, detail=d_result.error or "module_load failed")
     state.save()
     _persist_runtime_checkpoint(state, api_user)
     # 从模组 opening.md 读取开场白（path traversal 防御：必须在 modules/ 内）
@@ -117,11 +117,11 @@ async def api_rules_module_launch(
         _rules_payload,
     )
     if not api_user or not api_user.get("id"):
-        raise HTTPException(status_code=401, detail="启动模组需要登录")
+        raise HTTPException(status_code=401, detail="Starting a module requires login")
     body_dict = body.model_dump(exclude_none=True)
     module_id = str(body_dict.get("module_id") or "ash_mine").strip()
     if not module_id:
-        raise HTTPException(status_code=400, detail="缺少 module_id")
+        raise HTTPException(status_code=400, detail="Missing module_id")
     character_overrides = body_dict.get("character") or None
     custom_title = str(body_dict.get("title") or "").strip()
 
@@ -132,7 +132,7 @@ async def api_rules_module_launch(
     try:
         bundle = _rules_module_registry.load_module(module_id)
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=f"未知模组 {module_id}：{exc}") from exc
+        raise HTTPException(status_code=404, detail=f"Unknown module {module_id}：{exc}") from exc
     manifest = bundle.get("manifest") or {}
     title = custom_title or manifest.get("name_cn") or manifest.get("name") or module_id
 
@@ -159,7 +159,7 @@ async def api_rules_module_launch(
     tmp_state = GameState.new()
     res = _rb_start_module(tmp_state, module_id, character_overrides=character_overrides)
     if not res.get("ok"):
-        raise HTTPException(status_code=400, detail=res.get("error", "start_module 失败"))
+        raise HTTPException(status_code=400, detail=res.get("error", "start_module failed"))
 
     # 把初始 snapshot 写入新 save
     from psycopg.types.json import Jsonb as _Jsonb
@@ -221,7 +221,7 @@ async def api_rules_move(
     body_dict = body.model_dump(exclude_none=True)
     location_id = str(body_dict.get("to") or "").strip()
     if not location_id:
-        raise HTTPException(status_code=400, detail="缺少 to")
+        raise HTTPException(status_code=400, detail="Missing to")
     state = _ensure_loaded(api_user, ensure_gm=False)
     from tools_dsl.ui_dispatch_helper import dispatch_ui_tool
     d_result = dispatch_ui_tool(
@@ -290,7 +290,7 @@ async def api_rules_encounter_start(
     body_dict = body.model_dump(exclude_none=True)
     encounter_id = str(body_dict.get("encounter_id") or "").strip()
     if not encounter_id:
-        raise HTTPException(status_code=400, detail="缺少 encounter_id")
+        raise HTTPException(status_code=400, detail="Missing encounter_id")
     seed = body_dict.get("seed")
     state = _ensure_loaded(api_user, ensure_gm=False)
     from tools_dsl.ui_dispatch_helper import dispatch_ui_tool

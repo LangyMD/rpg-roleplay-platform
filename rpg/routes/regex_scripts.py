@@ -59,17 +59,17 @@ async def api_regex_save(request: Request, api_user: dict[str, Any] = Depends(ge
     body = await request.json()
     find = str((body or {}).get("find") or "").strip()
     if not find:
-        return json_response({"ok": False, "error": "匹配正则不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "Match regex cannot be empty"}, status_code=400)
     if len(find) > 2000:
-        return json_response({"ok": False, "error": "正则过长"}, status_code=400)
+        return json_response({"ok": False, "error": "Regex is too long"}, status_code=400)
     try:
         _re.compile(find)
     except _re.error as e:
-        return json_response({"ok": False, "error": f"正则无效: {e}"}, status_code=400)
+        return json_response({"ok": False, "error": f"Invalid regex: {e}"}, status_code=400)
     from state.regex_scripts import is_risky_pattern
     if is_risky_pattern(find):
         return json_response(
-            {"ok": False, "error": "该正则含嵌套无界量词（如 (a+)+），可能导致灾难回溯，已拒绝。请简化。"},
+            {"ok": False, "error": "This regex contains nested unbounded quantifiers (like (a+)+) that can cause catastrophic backtracking; rejected. Please simplify it."},
             status_code=400,
         )
     item = {

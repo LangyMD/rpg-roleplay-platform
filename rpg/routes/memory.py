@@ -49,7 +49,7 @@ async def api_memory_add(
             return json_response(
                 {
                     "ok": False,
-                    "error": f"固定记忆已达上限 {ms.pinned_max} 条，请先删除旧条目再添加",
+                    "error": f"Pinned memory limit reached ({ms.pinned_max} entries); delete old entries before adding new ones",
                 },
                 status_code=400,
             )
@@ -92,18 +92,18 @@ async def api_memory_update(
     if index is None or not isinstance(index, int) or index < 0:
         return json_response({"ok": False, "error": "index must be a non-negative integer"}, status_code=400)
     if not text:
-        return json_response({"ok": False, "error": "内容不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "Content cannot be empty"}, status_code=400)
     if bucket not in {"notes", "pinned", "facts", "resources", "abilities"}:
-        return json_response({"ok": False, "error": "该记忆桶不支持编辑"}, status_code=400)
+        return json_response({"ok": False, "error": "This memory bucket cannot be edited"}, status_code=400)
     state = _ensure_loaded(api_user)
     items = state.data.setdefault("memory", {}).setdefault(bucket, [])
     if index >= len(items):
-        return json_response({"ok": False, "error": "条目不存在(可能已被修改,请刷新)"}, status_code=400)
+        return json_response({"ok": False, "error": "Entry not found (it may have been changed; please refresh)"}, status_code=400)
     if not isinstance(items[index], str):
-        return json_response({"ok": False, "error": "该条目不是可编辑的文本"}, status_code=400)
+        return json_response({"ok": False, "error": "This entry is not editable text"}, status_code=400)
     # 同步 legacy bucket + 结构化 items(否则 GM 上下文只读 items、看到旧文本)。
     if not state.edit_memory(bucket, index, text):
-        return json_response({"ok": False, "error": "编辑失败"}, status_code=400)
+        return json_response({"ok": False, "error": "Edit failed"}, status_code=400)
     state.save()
     _persist_runtime_checkpoint(state, api_user)
     return json_response({"ok": True, "state": _payload(api_user)})

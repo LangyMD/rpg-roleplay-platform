@@ -98,12 +98,12 @@ async def api_worldbook_overlay_add(request: Request, api_user: dict[str, Any] =
 
     _pu, save_id = _resolve_persist_target(api_user)
     if not save_id:
-        return json_response({"ok": False, "error": "无活跃存档"}, status_code=400)
+        return json_response({"ok": False, "error": "No active save"}, status_code=400)
     body = await request.json()
     title = str((body or {}).get("title") or "").strip()
     content = str((body or {}).get("content") or "").strip()
     if not title or not content:
-        return json_response({"ok": False, "error": "标题和正文不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "Title and content cannot be empty"}, status_code=400)
     keys = _norm_keys((body or {}).get("keys"))
     try:
         priority = int((body or {}).get("priority") or 50)
@@ -116,8 +116,8 @@ async def api_worldbook_overlay_add(request: Request, api_user: dict[str, Any] =
         user_id=_uid(api_user), save_id=int(save_id), state=state,
     )
     if not getattr(result, "ok", False):
-        return json_response({"ok": False, "error": getattr(result, "error", None) or "新增失败"}, status_code=400)
-    return json_response({"ok": True, "message": getattr(result, "result", "已新增")})
+        return json_response({"ok": False, "error": getattr(result, "error", None) or "Add failed"}, status_code=400)
+    return json_response({"ok": True, "message": getattr(result, "result", "Added")})
 
 
 @router.post("/api/worldbook/overlay/update")
@@ -144,8 +144,8 @@ async def api_worldbook_overlay_update(request: Request, api_user: dict[str, Any
         if field in body:
             val = str(body.get(field) or "").strip()
             if not val:
-                label = "标题" if field == "title" else "正文"
-                return json_response({"ok": False, "error": f"{label}不能为空"}, status_code=400)
+                label = "Title" if field == "title" else "Content"
+                return json_response({"ok": False, "error": f"{label} cannot be empty"}, status_code=400)
             sets.append(f"{field}=%s")
             params.append(val)
     if "keys" in body:
@@ -161,13 +161,13 @@ async def api_worldbook_overlay_update(request: Request, api_user: dict[str, Any
         sets.append("priority=%s")
         params.append(priority)
     if not sets:
-        return json_response({"ok": False, "error": "没有要修改的字段"}, status_code=400)
+        return json_response({"ok": False, "error": "No fields to update"}, status_code=400)
 
     uid = _uid(api_user)
     init_db()
     with connect() as db:
         if not _own_addition(db, oid, uid):
-            return json_response({"ok": False, "error": "条目不存在或无权修改"}, status_code=404)
+            return json_response({"ok": False, "error": "Entry not found or not allowed to modify"}, status_code=404)
         db.execute(
             f"update save_worldbook_overlays set {', '.join(sets)}, updated_at=now() where id=%s",  # noqa: S608 — set 片段全是字面量列名,值走参数
             (*params, oid),
@@ -189,6 +189,6 @@ async def api_worldbook_overlay_remove(request: Request, api_user: dict[str, Any
     init_db()
     with connect() as db:
         if not _own_addition(db, oid, uid):
-            return json_response({"ok": False, "error": "条目不存在或无权删除"}, status_code=404)
+            return json_response({"ok": False, "error": "Entry not found or not allowed to delete"}, status_code=404)
         db.execute("delete from save_worldbook_overlays where id=%s", (oid,))
     return json_response({"ok": True, "removed": oid})

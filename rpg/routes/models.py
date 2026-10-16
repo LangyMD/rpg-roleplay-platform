@@ -292,7 +292,7 @@ async def api_models_select(
             from fastapi import HTTPException
             raise HTTPException(
                 status_code=403,
-                detail={"error_key": "admin_required", "message": "全局模型切换仅 admin 可用。如改个人默认模型请删 scope 参数(默认 per-user)。"},
+                detail={"error_key": "admin_required", "message": "Only admins can switch the global model. To change your personal default model, drop the scope parameter (defaults to per-user)."},
             )
         catalog = select_model(api_id, model_id)
         with _state_lock:
@@ -303,7 +303,7 @@ async def api_models_select(
     # 只清当前用户 GM 缓存。任何登录用户都能用。
     if not api_user or not api_user.get("id"):
         from fastapi import HTTPException
-        raise HTTPException(status_code=401, detail="未登录")
+        raise HTTPException(status_code=401, detail="Not logged in")
     try:
         from psycopg.types.json import Jsonb
 
@@ -334,7 +334,7 @@ async def api_models_select(
             pass
     except Exception as exc:
         from fastapi import HTTPException
-        raise HTTPException(status_code=500, detail=f"prefs 写入失败: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to write prefs: {exc}")
     uid = _user_key(api_user)
     with _state_lock:
         _gm_by_user.pop(uid, None)
@@ -542,7 +542,7 @@ async def api_models_probe(
         cred = _ucreds.get_credential(api_user["id"], api_id)
         if not cred:
             return json_response(
-                {"ok": False, "error": "需要先在「个人主页 → API 凭证」中配置该 provider 的 key 才能测试"},
+                {"ok": False, "error": "Configure a key for this provider under Profile -> API credentials before testing"},
                 status_code=403,
             )
     import model_probe
@@ -572,7 +572,7 @@ async def api_models_pricing(
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
     if not api:
-        return json_response({"ok": False, "error": f"api_id 不存在: {api_id}"})
+        return json_response({"ok": False, "error": f"api_id not found: {api_id}"})
     model = find_model(api, model_id)
     real_name = (model or {}).get("real_name") if model else model_id
     # 先用 api_id 查（按 provider 分组的定价表），找不到再用 kind 兜底
@@ -619,7 +619,7 @@ async def api_models_capabilities(
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
     if not api:
-        return json_response({"ok": False, "error": f"api_id 不存在: {api_id}"})
+        return json_response({"ok": False, "error": f"api_id not found: {api_id}"})
     model = find_model(api, model_id)
     real_name = (model or {}).get("real_name") if model else model_id
     caps = model_probe.get_capabilities(api_id, real_name, (model or {}).get("capabilities"))

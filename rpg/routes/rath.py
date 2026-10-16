@@ -38,7 +38,7 @@ def _flag_ok(user) -> bool:
 
 
 def _deny() -> JSONResponse:
-    return json_response({"ok": False, "error": "RATH 实验未对当前账号开放"}, status_code=403)
+    return json_response({"ok": False, "error": "The RATH experiment is not enabled for this account"}, status_code=403)
 
 
 @router.get("/api/rath/preflight")
@@ -81,7 +81,7 @@ async def api_rath_create(request: Request, user=Depends(get_current_user)):
     body = await request.json()
     save_id = int(body.get("save_id") or 0)
     if not save_id:
-        return json_response({"ok": False, "error": "缺 save_id"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing save_id"}, status_code=400)
     from rath.engine import create_experiment
     out = create_experiment(int(user["id"]), save_id)
     return out if out.get("ok") else json_response(out, status_code=400)
@@ -247,7 +247,7 @@ async def api_rath_tick(exp_id: int, user=Depends(get_current_user)):
     _bg.add(task)
     task.add_done_callback(_bg.discard)
     return {"ok": True, "started": True,
-            "note": "已开始推进(约1分钟),完成后会出现在日志中。"}
+            "note": "Advancing now (about 1 minute); the result will appear in the log when done."}
 
 
 @router.post("/api/rath/experiments/{exp_id}/{action}")
@@ -255,7 +255,7 @@ async def api_rath_action(exp_id: int, action: str, request: Request, user=Depen
     if not _flag_ok(user):
         return _deny()
     if action not in ("pause", "resume", "archive", "accel", "directive"):
-        return json_response({"ok": False, "error": "未知操作"}, status_code=400)
+        return json_response({"ok": False, "error": "Unknown operation"}, status_code=400)
     from platform_app.db import connect, init_db
     from rath.engine import ACCEL_CHOICES, _expose
     init_db()
@@ -269,7 +269,7 @@ async def api_rath_action(exp_id: int, action: str, request: Request, user=Depen
             body = await request.json()
             directive = str(body.get("directive") or "").strip()[:200]
             if not directive:
-                return json_response({"ok": False, "error": "引导内容不能为空"}, status_code=400)
+                return json_response({"ok": False, "error": "Guidance cannot be empty"}, status_code=400)
             db.execute(
                 "insert into rath_events (exp_id, kind, summary, world_clock_min) "
                 "values (%s, 'directive', %s, %s)",
@@ -283,7 +283,7 @@ async def api_rath_action(exp_id: int, action: str, request: Request, user=Depen
             body = await request.json()
             accel = int(body.get("accel") or 0)
             if accel not in ACCEL_CHOICES:
-                return json_response({"ok": False, "error": f"accel 只能是 {ACCEL_CHOICES}"}, status_code=400)
+                return json_response({"ok": False, "error": f"accel must be one of {ACCEL_CHOICES}"}, status_code=400)
             # accel 联动(契约):tick_interval_sec = clamp(1800*60/accel, 600, 3600)
             # → 240x=600s,60x=1800s,1x=3600s。不联动的话高倍速下单拍会吞掉数天
             # (run_due_ticks 每 60s 才扫一次,固定 1800s 间隔配 240x accel 一拍=5世界日)。

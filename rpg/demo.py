@@ -43,42 +43,42 @@ def setup_character(state: GameState) -> None:
     """首次进入时，引导玩家创建角色"""
     print()
     print("=" * 52)
-    print("  通用 RPG Demo")
+    print("  Generic RPG Demo")
     print("=" * 52)
     print()
-    print("剧情即将展开。")
-    print("你即将进入这个世界，卷入其中。")
+    print("The story is about to begin.")
+    print("You are about to enter this world and be drawn into it.")
     print()
     print(THIN_DIV)
     print()
 
-    name = input("你叫什么名字？\n> ").strip()
+    name = input("What is your name?\n> ").strip()
     if not name:
         name = "Nameless"
 
     print()
-    print("你在这个故事里扮演什么角色？")
-    print("  1. 欧洲世家的信使，在各方势力间传递消息")
-    print("  2. 地联太平洋方面的情报协力人员")
-    print("  3. 流亡中的薇瑟帝国边缘贵族")
-    print("  4. 自定义...")
+    print("What role do you play in this story?")
+    print("  1. A courier for an old European family, carrying messages between factions")
+    print("  2. An intelligence liaison for the Earth Federation's Pacific branch")
+    print("  3. A minor noble of the exiled Wiser Empire")
+    print("  4. Custom...")
     print()
-    choice = input("选择（1-4）：\n> ").strip()
+    choice = input("Choose (1-4):\n> ").strip()
 
     roles = {
-        "1": "欧洲世家信使",
-        "2": "地联太平洋方面情报协力人员",
-        "3": "薇瑟帝国流亡贵族",
+        "1": "European family courier",
+        "2": "Earth Federation Pacific intelligence liaison",
+        "3": "Exiled Wiser Empire noble",
     }
     if choice in roles:
         role = roles[choice]
     else:
-        role = input("请描述你的角色定位：\n> ").strip() or "过客"
+        role = input("Describe your role:\n> ").strip() or "Passerby"
 
     print()
-    background = input(f"用一两句话描述 {name} 来到这里的原因（可留空）：\n> ").strip()
+    background = input(f"In a sentence or two, why did {name} come here? (optional)\n> ").strip()
     if not background:
-        background = "原因不明，只是来了。"
+        background = "No clear reason; they just came."
 
     state.setup_player(name, role, background)
     state.save()
@@ -90,7 +90,7 @@ def game_loop(state: GameState, gm: GameMaster) -> None:
     last_context = ""
 
     # 开场白
-    print("\n正在生成开场……")
+    print("\nGenerating the opening...")
     opening_ctx = retrieve_context("开场", verbose=False)
     opening     = gm.generate_opening(state, retrieved_context=opening_ctx)
     _print_gm(opening)
@@ -100,7 +100,7 @@ def game_loop(state: GameState, gm: GameMaster) -> None:
         try:
             user_input = input(f"[{state.player_name}] > ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\n[存档并退出]")
+            print("\n[Saved and exited]")
             state.save()
             break
 
@@ -109,13 +109,13 @@ def game_loop(state: GameState, gm: GameMaster) -> None:
 
         # ── 内置命令 ──
         if user_input.lower() in ("q", "quit", "exit", "退出"):
-            print("[存档并退出]")
+            print("[Saved and exited]")
             state.save()
             break
 
         if user_input == "/save":
             state.save()
-            print("[已存档]")
+            print("[Saved]")
             continue
 
         if user_input == "/status":
@@ -126,8 +126,8 @@ def game_loop(state: GameState, gm: GameMaster) -> None:
 
         if user_input == "/debug":
             print()
-            print("=== 上轮召回内容 ===")
-            print(last_context or "（本轮无召回）")
+            print("=== Last turn's retrieved context ===")
+            print(last_context or "(nothing retrieved this turn)")
             print()
             continue
 
@@ -135,7 +135,7 @@ def game_loop(state: GameState, gm: GameMaster) -> None:
             loc = user_input[5:].strip()
             if loc:
                 state.update_location(loc)
-                print(f"[位置更新：{loc}]")
+                print(f"[Location updated: {loc}]")
             continue
 
         if user_input.startswith("/rel "):
@@ -143,7 +143,7 @@ def game_loop(state: GameState, gm: GameMaster) -> None:
             parts = user_input[5:].strip().split(" ", 1)
             if len(parts) == 2:
                 state.update_relationship(parts[0], parts[1])
-                print(f"[关系更新：{parts[0]} → {parts[1]}]")
+                print(f"[Relationship updated: {parts[0]} -> {parts[1]}]")
             continue
 
         # ── 正常游戏输入 ──
@@ -163,15 +163,15 @@ def main():
     try:
         gm = GameMaster()
     except ValueError as e:
-        print(f"[错误] {e}")
+        print(f"[Error] {e}")
         sys.exit(1)
     except Exception as e:
         if "401" in str(e) or "authentication" in str(e).lower():
-            print("[错误] API Key 无效（401）。")
-            print("请在项目根目录 .env 文件中设置有效的 ANTHROPIC_API_KEY：")
+            print("[Error] Invalid API key (401).")
+            print("Set a valid ANTHROPIC_API_KEY in the .env file at the project root:")
             print("  ANTHROPIC_API_KEY=<your Anthropic API key>")
         else:
-            print(f"[错误] {e}")
+            print(f"[Error] {e}")
         sys.exit(1)
 
     game_loop(state, gm)

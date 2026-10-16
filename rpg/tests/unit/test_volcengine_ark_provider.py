@@ -153,9 +153,9 @@ def test_models_404_message_does_not_blame_base_url():
     assert "if _code == 404:" in src, "404 没有单独分支,仍会落进「base_url 可能缺 /v1」的通用猜测"
     i = src.index("if _code == 404:")
     branch = src[i: i + 700]
-    assert "没有提供模型列表接口" in branch
-    assert "不要**在 base_url 后面加 /v1" in branch or "不要" in branch and "/v1" in branch
-    assert "手动填写模型 ID" in branch
+    assert "does not offer a model list endpoint" in branch
+    assert "do not append /v1" in branch
+    assert "enter the model ID manually" in branch
 
 
 def test_generic_guess_still_exists_for_non_404():
@@ -164,4 +164,4 @@ def test_generic_guess_still_exists_for_non_404():
 
     import model_probe as _mp
     src = _p.Path(_mp.__file__).read_text(encoding="utf-8")
-    assert "base_url 可能缺 /v1 版本段" in src
+    assert "base_url may be missing the /v1 version segment" in src
