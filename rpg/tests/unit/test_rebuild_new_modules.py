@@ -54,21 +54,21 @@ class RebuildModulesRegistration(unittest.TestCase):
         self.assertIn("facts_refine", ip.REBUILD_MODULES)
         kind, label, needs_llm = ip.REBUILD_MODULES["facts_refine"]
         self.assertEqual(kind, "rebuild_facts_refine")
-        self.assertEqual(label, "章节摘要精炼")
+        self.assertEqual(label, "Refine chapter summaries")
         self.assertTrue(needs_llm)
 
     def test_worldbook_enrich_registered(self):
         self.assertIn("worldbook_enrich", ip.REBUILD_MODULES)
         kind, label, needs_llm = ip.REBUILD_MODULES["worldbook_enrich"]
         self.assertEqual(kind, "rebuild_worldbook_enrich")
-        self.assertEqual(label, "世界书条目充实")
+        self.assertEqual(label, "Enrich worldbook entries")
         self.assertTrue(needs_llm)
 
     def test_world_key_registered(self):
         self.assertIn("world_key", ip.REBUILD_MODULES)
         kind, label, needs_llm = ip.REBUILD_MODULES["world_key"]
         self.assertEqual(kind, "rebuild_world_key")
-        self.assertEqual(label, "世界线回填")
+        self.assertEqual(label, "Backfill worldlines")
         # 基线免费(结构先验默认零 LLM);仅 body.use_llm 时才需要凭证,由
         # estimate/schedule 按 body 覆盖,不在 REBUILD_MODULES 静态表里写死 True。
         self.assertFalse(needs_llm)

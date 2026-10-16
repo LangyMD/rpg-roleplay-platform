@@ -298,6 +298,13 @@ def _stage_entities(ctl: JobController, script_id: int, user_id: int) -> list[di
             existing_names.update(r.get("aliases") or [])
 
     full_text = "\n".join(c["content"] for c in chapters)
+    # 英文(拉丁文字为主)小说:中文 n-gram 一个候选都抽不出 → 走英文专名候选路径
+    from core.token_estimate import is_cjk_text
+    if full_text and not is_cjk_text(full_text):
+        from .en_names import english_name_candidates
+        ctl.update(stage_progress=1, stage_total=1)
+        return english_name_candidates(full_text[:_NAME_SCAN_CHARS * 3], limit=60,
+                                       existing_names=existing_names)
     # 候选：2-3 字中文连续词，且不在常见停用词里
     candidates = re.findall(r"[一-鿿]{2,3}", full_text)
     # task 47: 复用 session.py 的统一 blacklist,避免维护两份。包含 40+ 高频副词/

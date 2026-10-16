@@ -461,7 +461,7 @@ def _rebuild_world_key(ctl, user_id, script_id, body) -> dict:
     if r.get("overcut"):
         partial_failures.append({
             "stage": "world_key",
-            "error": "overcut:分段过密已整体退回单世界(null)",
+            "error": "overcut: too many segments, so it fell back to a single world (null)",
         })
     result = {
         "ok": True,

@@ -16,6 +16,7 @@ from agents.provider_errors import (
     provider_error_summary,
 )
 from core.llm_backend import DEFAULT_FALLBACK_API, DEFAULT_FALLBACK_MODEL
+from core.token_estimate import cjk_chars_to_budget
 from model_aliases import credential_storage_api_id, normalize_api_id
 
 from ..db import connect
@@ -88,7 +89,7 @@ def _provider_error_hint(exc: Exception, *, api_id: str, model: str) -> tuple[st
     """
     known = classify_provider_error(exc)
     text = known[1] if known else provider_error_summary(exc)
-    who = f"(提取模型 {api_id}/{model})" if (api_id or model) else ""
+    who = f" (extraction model {api_id}/{model})" if (api_id or model) else ""
     fatal = bool(known) and (
         known[0] in _FATAL_FOR_ALL_CANDIDATES
         or (known[0] == "auth" and http_status(exc) == 401)
@@ -139,24 +140,26 @@ def _stage_story_phase_llm(ctl: JobController, user_id: int, script_id: int) -> 
         step = max(1, total // 30)
         sample = rows[::step][:30]
     lines = "\n".join(
-        f"第{r['chapter']}章《{r['title']}》: {(r['summary'] or '')[:120]}"
+        f"Chapter {r['chapter']} \"{r['title']}\": {(r['summary'] or '')[:cjk_chars_to_budget(r['summary'] or '', 120)]}"
         for r in sample
     )
     prompt = (
-        f"这本书共 {total} 章 (第 1 章 — 第 {total} 章)，以下是均匀采样的章节摘要。"
-        "请把章节范围划分到这 5 个阶段:开端 / 发展前期 / 发展中期 / 发展后期 / 结局。"
-        "不需要每个阶段都出现 — 只列实际存在的。这 5 个 phase 标签是底座固定枚举,"
-        "saves 出生点 wizard 和 GM 翻阅都依赖这套命名,**不要使用其他标签(如 高潮/番外/序章 等)**。\n\n"
-        "返回严格 JSON 数组，每段一项,无任何前后文字:\n"
+        f"This book has {total} chapters (chapter 1 - chapter {total}); below are evenly sampled chapter summaries. "
+        "Divide the chapter ranges into these 5 phases: 开端 (opening) / 发展前期 (early development) / "
+        "发展中期 (middle development) / 发展后期 (late development) / 结局 (ending). "
+        "Not every phase has to appear -- list only those that actually exist. These 5 phase labels are a fixed "
+        "enum of the platform (the save spawn-point wizard and the GM's lookups depend on them), so use them "
+        "**exactly as written, in Chinese**, and **never use any other label (such as climax / side story / prologue)**.\n\n"
+        "Return a strict JSON array, one item per phase, with no text before or after:\n"
         '[{"phase":"开端","start":1,"end":N},{"phase":"发展前期","start":N+1,"end":M},...]\n\n'
-        f"章节摘要:\n{lines}"
+        f"Chapter summaries:\n{lines}"
     )
     try:
         # 结构化微任务禁深思(268 实锤族)+空正文护栏
         from agents._harness import call_agent_json_guarded
         raw, last = call_agent_json_guarded(
             api_id, model,
-            "你是小说剧情分析器,只输出 JSON 数组。",
+            "You are a novel plot analyzer. Output a JSON array only.",
             prompt,
             user_id,
             log_tag="story_phase",
@@ -187,7 +190,7 @@ def _stage_story_phase_llm(ctl: JobController, user_id: int, script_id: int) -> 
                 ctl.update(warnings={
                     "stage": "story_phase_llm",
                     "exception": "InvalidResponse",
-                    "message": f"LLM 返回非数组(type={type(ranges).__name__}),已退化为 5 段均分",
+                    "message": f"The LLM did not return an array (type={type(ranges).__name__}); fell back to an even 5-way split",
                 })
             except Exception:
                 pass
@@ -360,39 +363,43 @@ def _stage_cards(ctl: JobController, user_id: int, script_id: int, entities: lis
             if isinstance(chars, list) and any(
                 isinstance(c, dict) and c.get("name") == name for c in chars
             ):
-                relevant_summaries.append(f"第{fr['chapter']}章: {(fr['summary'] or '')[:200]}")
+                relevant_summaries.append(f"Chapter {fr['chapter']}: {(fr['summary'] or '')[:cjk_chars_to_budget(fr['summary'] or '', 200)]}")
             if len(relevant_summaries) >= 8:
                 break
 
         if relevant_summaries:
-            context = "章节摘要（该角色相关）：\n" + "\n".join(relevant_summaries)
+            context = "Chapter summaries (relevant to this character):\n" + "\n".join(relevant_summaries)
         else:
             snippets = []
             for ch in chapters_idx:
-                if name in ch["content"]:
-                    snippets.append(ch["content"][:1500])
+                _pos = ch["content"].find(name)
+                if _pos >= 0:
+                    # 取名字首次出现附近的窗口(按 token 预算,英文 ~3750 字符)
+                    _win = cjk_chars_to_budget(ch["content"], 1500)
+                    _st = max(0, _pos - _win // 3)
+                    snippets.append(ch["content"][_st:_st + _win])
                     if len(snippets) >= 3:
                         break
             if not snippets:
                 no_context += 1
                 ctl.update(stage_progress=i + 1)
                 continue
-            context = "文本片段：\n" + "\n---\n".join(snippets)
+            context = "Text excerpts:\n" + "\n---\n".join(snippets)
 
         # task 47: 显式让 LLM 判断"这是真人名吗",false 时直接跳过不写卡。
         # 2-3 字中文 ngram 候选有大量副词/连词/动词性短语(为什么/的声音/紧接着/有德的)
         # 维护硬编码 blacklist 永远跟不上内容,LLM 一个布尔判断成本极低且精度高。
         prompt = (
-            f"分析「{name}」是否是真实的角色人名(不是副词/连词/动词/地名/物品/碎片),返回严格 JSON:\n"
-            "如果不是真人名,返回 {\"is_character\": false}\n"
-            "如果是真人名,返回 {\n"
+            f"Decide whether \"{name}\" is the name of an actual character (not an adverb / conjunction / verb / place / object / fragment) and return strict JSON:\n"
+            "If it is not a character's name, return {\"is_character\": false}\n"
+            "If it is a character's name, return {\n"
             "  \"is_character\": true,\n"
-            "  \"identity\": \"身份/职业/势力\",\n"
-            "  \"appearance\": \"外貌描述\",\n"
-            "  \"personality\": \"性格特点\",\n"
-            "  \"speech_style\": \"说话风格\",\n"
-            "  \"secrets\": \"秘密或重要伏笔(如无则空字符串)\",\n"
-            "  \"aliases\": [\"别名1\"]\n"
+            "  \"identity\": \"identity / occupation / allegiance\",\n"
+            "  \"appearance\": \"appearance\",\n"
+            "  \"personality\": \"personality traits\",\n"
+            "  \"speech_style\": \"way of speaking\",\n"
+            "  \"secrets\": \"secrets or important foreshadowing (empty string if none)\",\n"
+            "  \"aliases\": [\"alias 1\"]\n"
             "}\n\n"
             + context
         )
@@ -405,10 +412,11 @@ def _stage_cards(ctl: JobController, user_id: int, script_id: int, entities: lis
             from agents._harness import call_agent_json_guarded
             raw, last = call_agent_json_guarded(
                 api_id, model,
-                "你是角色卡提取器,严格判断 name 是否为真实角色人名。只输出 JSON。"
-                "【虚构铁律】本作是虚构小说,即使角色与真实历史人物同名,所有字段也"
-                "**只能依据给定的章节片段/摘要**,严禁引入你自己的真实史实/生平/百科知识"
-                "(如『活捉单于』『封冠军侯』这类片段里没有的内容),给不出片段依据就留空。",
+                "You are a character-card extractor. Judge strictly whether the name is an actual character's name. Output JSON only. "
+                "[Fiction hard rule] This work is a fictional novel. Even if a character shares a name with a real historical "
+                "figure, every field **may only be based on the given chapter excerpts / summaries**; never bring in real "
+                "historical facts, biographies or encyclopedic knowledge you know (anything the excerpts do not contain). "
+                "If the excerpts give no basis for a field, leave it empty.",
                 prompt,
                 user_id,
                 log_tag="card_extract",
@@ -473,7 +481,7 @@ def _stage_cards(ctl: JobController, user_id: int, script_id: int, entities: lis
                 "[cards] LLM card for %r failed: %s", name, exc, exc_info=True,
             )
             if llm_answered:
-                _hint, _fatal = f"写入人物卡时出错:{plain_error_summary(exc)}", False
+                _hint, _fatal = f"Error while writing the character card: {plain_error_summary(exc)}", False
             else:
                 _hint, _fatal = _provider_error_hint(exc, api_id=api_id, model=model)
             if not first_hint:
@@ -556,7 +564,7 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
 
     if fact_rows:
         summaries_block = "\n".join(
-            f"第{r['chapter']}章: {(r['summary'] or '')[:100]}"
+            f"Chapter {r['chapter']}: {(r['summary'] or '')[:cjk_chars_to_budget(r['summary'] or '', 100)]}"
             for r in fact_rows[:30]
         )
         # 聚合高频地点/势力/概念作为提示
@@ -578,18 +586,19 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
         top_facs = [n for n, _ in fac_cnt.most_common(10) if n]
         top_cons = [n for n, _ in con_cnt.most_common(10) if n]
         hints = (
-            f"高频地点: {', '.join(top_locs)}\n"
-            f"高频势力: {', '.join(top_facs)}\n"
-            f"高频概念: {', '.join(top_cons)}\n"
+            f"Frequent locations: {', '.join(top_locs)}\n"
+            f"Frequent factions: {', '.join(top_facs)}\n"
+            f"Frequent concepts: {', '.join(top_cons)}\n"
         )
-        seed = hints + "\n章节摘要：\n" + summaries_block
+        seed = hints + "\nChapter summaries:\n" + summaries_block
     else:
         with connect() as db:
             chapters = db.execute(
                 "select content from script_chapters where script_id = %s order by chapter_index",
                 (script_id,),
             ).fetchall()
-        seed = "\n".join(c["content"] for c in chapters)[:8000]
+        seed = "\n".join(c["content"] for c in chapters)
+        seed = seed[:cjk_chars_to_budget(seed, 8000)]
 
     # 读取新提取管线已落库的纪元(若存在),作为铁律塞进 prompt,治 _stage_worldbook 独立 LLM
     # 凭空编"哥本哈根研究所 2927年创立"这种带具体年份的 hallucination
@@ -602,16 +611,16 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
         if era_row and era_row.get("content"):
             era_lock = str(era_row["content"])[:200]
     era_iron_rule = (
-        f"【纪元铁律】{era_lock}\n严禁在 content 中编造具体的创立年/事件年份;"
-        "若必须提及年代,只能引用上述纪元,**绝不写真实历史年份**(1927/1935/1940 等)。\n"
+        f"[Era hard rule] {era_lock}\nNever invent specific founding years / event years in content; "
+        "if a date must be mentioned, refer only to the era above and **never write real historical years** (1927 / 1935 / 1940 etc.).\n"
         if era_lock else
-        "【纪元约束】不要在 content 中编造具体年份(避免幻觉);只描述背景/角色/地理/势力关系。\n"
+        "[Era constraint] Do not invent specific years in content (avoid hallucination); describe only background / characters / geography / faction relations.\n"
     )
     prompt = (
         era_iron_rule +
-        "根据下面的章节摘要和高频实体，提取重要的世界观条目（地点/势力/概念），返回严格 JSON 数组：\n"
-        "[{\"name\":\"...\",\"keys\":[\"关键词1\",\"关键词2\"],\"content\":\"≤200字解释\",\"priority\":80}]\n"
-        "数量上限 20。\n\n" + seed
+        "From the chapter summaries and frequent entities below, extract the important world-building entries (locations / factions / concepts) and return a strict JSON array:\n"
+        "[{\"name\":\"...\",\"keys\":[\"keyword 1\",\"keyword 2\"],\"content\":\"<= 130-word explanation\",\"priority\":80}]\n"
+        "At most 20 entries.\n\n" + seed
     )
     llm_answered = False  # 同 _stage_cards:模型答完之后(写库)出的错不进服务商分类
     try:
@@ -619,7 +628,7 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
         from agents._harness import call_agent_json_guarded
         raw, last = call_agent_json_guarded(
             api_id, model,
-            "你是世界书编辑，只输出 JSON 数组。",
+            "You are a worldbook editor. Output a JSON array only.",
             prompt,
             user_id,
             log_tag="worldbook_extract",
@@ -638,9 +647,9 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
             # 调用成功但拿不到条目:以前阶段条目只剩「未知错误」。
             _note_stage_error(
                 ctl, "worldbook",
-                "模型没有返回可用的世界书条目(输出解析不出 JSON 数组,或是空的)。"
-                "提取模型多半不适配结构化输出,可在设置里换提取模型重试"
-                f"(提取模型 {api_id}/{model})",
+                "The model returned no usable worldbook entries (no JSON array could be parsed, or it was empty). "
+                "The extraction model probably does not handle structured output well; try a different extraction model in Settings "
+                f"(extraction model {api_id}/{model})",
             )
         count = 0
         with connect() as db:
@@ -677,8 +686,8 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
             # 模型给了条目却一条没写进去:以前阶段条目同样只剩「未知错误」。
             _note_stage_error(
                 ctl, "worldbook",
-                f"模型返回了 {len(entries)} 条世界书条目,但一条都没有写进去:"
-                "条目缺名字,或同名条目是在编辑器里手写的(导入不会覆盖手写条目)",
+                f"The model returned {len(entries)} worldbook entries, but none were written: "
+                "entries were missing a name, or an entry with the same name was written by hand in the editor (import never overwrites hand-written entries)",
             )
         ctl.update(stage_progress=1)
         # phase_backend: 标记 worldbook 阶段写了多少条 — 0 当作 partial 让上层标 done_with_errors
@@ -695,14 +704,14 @@ def _stage_worldbook(ctl: JobController, user_id: int, script_id: int) -> int:
         # 不然导入结果卡上 job.error 和阶段明细会把同一段原因显示两遍。
         # 以前 job.error 是「_stage_worldbook: HTTPError: HTTP Error 410: Gone」,阶段条目显示「未知错误」。
         if llm_answered:
-            _hint = f"写入世界书条目时出错:{plain_error_summary(exc)}"
+            _hint = f"Error while writing worldbook entries: {plain_error_summary(exc)}"
         else:
             _hint, _ = _provider_error_hint(exc, api_id=api_id, model=model)
         _note_stage_error(ctl, "worldbook", _hint)
         try:
             ctl.update(
                 stage_progress=1,
-                error="世界书阶段失败,原因见阶段明细",
+                error="Worldbook stage failed; see the stage details for the reason",
                 warnings={
                     "stage": "worldbook",
                     "exception": type(exc).__name__,
@@ -802,18 +811,18 @@ def _stage_npc_voices(user_id: int, script_id: int, *, max_npc: int = 20, only_e
             continue
 
         prompt = (
-            f"分析下述 NPC「{name}」在原文中的人物特征,产出**结构化**性格与说话风格,"
-            f"用于 RPG 引擎让 GM 拿到结构化数据后准确扮演,**不要长篇大论解读**。\n\n"
-            f"已知身份: {r['identity'] or '(空)'}\n"
-            f"已知背景: {r['background'] or '(空)'}\n\n"
-            f"原文片段(此 NPC 出场场景,可能不完整):\n"
+            f"Analyze how the NPC \"{name}\" is portrayed in the source text and produce a **structured** personality and speaking style, "
+            f"which the RPG engine hands to the GM so it can play the character accurately. **No lengthy interpretation.**\n\n"
+            f"Known identity: {r['identity'] or '(empty)'}\n"
+            f"Known background: {r['background'] or '(empty)'}\n\n"
+            f"Source excerpts (scenes where this NPC appears; may be incomplete):\n"
             + "\n---\n".join(excerpts) + "\n\n"
-            "严格输出 JSON(无前后文字),字段必填:\n"
+            "Output strict JSON (no text before or after); all fields are required:\n"
             "{\n"
-            '  "personality": "≤80字性格,用具体形容词+行为倾向(例:平静、戏谑、信息密度高、不轻易动情绪)",\n'
-            '  "speech_style": "≤80字说话风格,语气+常用词+句式特征(例:称对方为被选中者,尾音常带呢/呐,'
-            '冷峻陈述穿插戏谑反问)",\n'
-            '  "sample_dialogue": ["逐字摘原文 2-3 句最有代表性的台词,保留引号"]\n'
+            '  "personality": "<= 50 words: personality, using concrete adjectives + behavioral tendencies (e.g. calm, teasing, information-dense, rarely shows emotion)",\n'
+            '  "speech_style": "<= 50 words: way of speaking -- tone + favorite words + sentence patterns (e.g. calls the other person \\"the chosen one\\", '
+            'ends lines with a soft drawl, cold statements laced with teasing rhetorical questions)",\n'
+            '  "sample_dialogue": ["2-3 of the most representative lines quoted VERBATIM from the source, keeping the quotation marks"]\n'
             "}"
         )
         try:
@@ -821,9 +830,11 @@ def _stage_npc_voices(user_id: int, script_id: int, *, max_npc: int = 20, only_e
             from agents._harness import call_agent_json_guarded
             raw, last = call_agent_json_guarded(
                 api_id, model,
-                "你是 RPG 角色档案抽取器,只输出结构化 JSON,不解释。"
-                "【虚构铁律】本作是虚构小说,即使角色与真实历史人物同名,也**只能依据上面给的原文片段**"
-                "总结其性格/说话风格,严禁掺入你自己知道的真实史实/生平/百科;片段不足就写概括性短语,不要脑补。",
+                "You are an RPG character-profile extractor. Output structured JSON only, no explanation. "
+                "[Fiction hard rule] This work is a fictional novel. Even if a character shares a name with a real historical "
+                "figure, summarize their personality / speaking style **only from the source excerpts given above**; never mix "
+                "in real history, biographies or encyclopedic knowledge you know. If the excerpts are thin, write a general "
+                "short phrase; do not make things up.",
                 prompt, user_id, log_tag="npc_voice", max_tokens=500, no_think=True,
                 agent_kind="import_pipeline",
             )
@@ -831,12 +842,12 @@ def _stage_npc_voices(user_id: int, script_id: int, *, max_npc: int = 20, only_e
             if not isinstance(data, dict):
                 log.warning(f"[npc_voice] {name}: LLM returned non-dict {type(data).__name__}")
                 continue
-            personality = str(data.get("personality") or "").strip()[:200]
-            speech_style = str(data.get("speech_style") or "").strip()[:200]
+            personality = str(data.get("personality") or "").strip()[:400]
+            speech_style = str(data.get("speech_style") or "").strip()[:400]
             sample = data.get("sample_dialogue") or []
             if not isinstance(sample, list):
                 sample = []
-            sample = [str(x)[:200] for x in sample[:5] if x]
+            sample = [str(x)[:400] for x in sample[:5] if x]
             if not personality and not speech_style:
                 log.info(f"[npc_voice] {name}: LLM 返回空 personality+speech_style, skip update")
                 continue
