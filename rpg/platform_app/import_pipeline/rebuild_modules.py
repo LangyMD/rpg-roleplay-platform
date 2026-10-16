@@ -187,8 +187,8 @@ def rebuild_cards_from_canon(user_id: int, script_id: int, *,
 
 def rebuild_cards_with_llm(user_id: int, script_id: int, *,
                            chapter_max: int | None = None,
-                           model: str = "deepseek-v4-flash",
-                           api_id: str = "deepseek",
+                           model: str | None = None,
+                           api_id: str | None = None,
                            progress_cb=None) -> dict[str, Any]:
     """可选 LLM 丰富重建(进度感知角色卡 Phase 1A):走 run_llm_extraction(带 chapter_max)
     对 1..chapter_max 区间重抽规范层,产「该时期态」的丰富 identity/background,然后零 LLM
