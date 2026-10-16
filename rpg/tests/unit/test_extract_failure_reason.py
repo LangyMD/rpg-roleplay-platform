@@ -179,7 +179,7 @@ def test_editor_selection_parse_failure_keeps_actionable_hint():
          mock.patch("agents._harness.resolve_api_and_model", return_value=("relay", "m")), \
          mock.patch.object(ExtractLLM, "complete_text", return_value="Into the Forbidden Forest."):
         out = tool._t_extract_from_selection(1, 12, {"text": "一段选中的正文"}, None)
-    assert "缩短选区" in out and "403" not in out, out
+    assert "shorter selection" in out and "403" not in out, out
 
 
 # ── 本地异常(写库 / 消歧)不进服务商分类器 ─────────────────────────────────

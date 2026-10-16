@@ -24,13 +24,13 @@ def _t_list_anchors(user_id: int, script_id: int | None, args: dict, state: Any)
     """
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, sid, user_id):
-                return f"失败 (权限): 剧本 #{sid} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{sid} does not belong to the current user or is not subscribed"
             rows = db.execute(
                 "select id as anchor_id, story_time_label as label, story_phase, "
                 "       chapter_min, chapter_max, sample_title, sample_summary, "
@@ -40,23 +40,23 @@ def _t_list_anchors(user_id: int, script_id: int | None, args: dict, state: Any)
                 (sid,),
             ).fetchall() or []
         if not rows:
-            return f"(剧本 #{sid} 暂无时间线锚点。)"
+            return f"(Script #{sid} has no timeline anchors yet.)"
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2, default=str)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_update_anchor(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     anchor_id = args.get("anchor_id")
     if not anchor_id:
-        return "失败: anchor_id 必填"
+        return "Failed: anchor_id is required"
     try:
         aid = int(anchor_id)
     except (TypeError, ValueError):
-        return "失败: anchor_id 必须是整数"
+        return "Failed: anchor_id must be an integer"
     try:
         from platform_app.api.script_edit import _write_commit
         from platform_app.db import connect, init_db
@@ -65,14 +65,14 @@ def _t_update_anchor(user_id: int, script_id: int | None, args: dict, state: Any
         with connect() as db:
             # ② 严格 owner 闸
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             before = db.execute(
                 "select id, story_time_label from script_timeline_anchors "
                 "where id = %s and script_id = %s",
                 (aid, sid),
             ).fetchone()
             if not before:
-                return f"失败: 锚点 #{aid} 不存在或不属于剧本 #{sid}"
+                return f"Failed: anchor #{aid} does not exist or does not belong to script #{sid}"
             sets, params = [], []
             # story_summary 在 script_timeline_anchors 里列名是 sample_summary;这里直接收 sample_summary。
             for col in ("story_phase", "story_time_label", "sample_title", "sample_summary"):
@@ -92,7 +92,7 @@ def _t_update_anchor(user_id: int, script_id: int | None, args: dict, state: Any
                 sets.append("keywords=%s")
                 params.append([str(x) for x in args["keywords"]])
             if not sets:
-                return "失败: 没有要更新的字段"
+                return "Failed: no fields to update"
             sets.append("updated_at=now()")
             params.extend([aid, sid])
             db.execute(
@@ -104,18 +104,18 @@ def _t_update_anchor(user_id: int, script_id: int | None, args: dict, state: Any
             try:
                 _write_commit(
                     db, script_id=sid, user_id=user_id, kind="anchor_edit",
-                    message=f"编辑 anchor #{aid}",
+                    message=f"Edit anchor #{aid}",
                     payload={"table": "script_timeline_anchors", "op": "edit",
                              "ids": {"anchor_id": aid}},
                 )
             except Exception:
                 pass
             db.commit()
-        return f"已更新时间线锚点 #{aid}(剧本 #{sid})"
+        return f"Updated timeline anchor #{aid} (script #{sid})"
     except ValueError as exc:
-        return f"失败: {exc}"
+        return f"Failed: {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_create_anchor(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
@@ -128,16 +128,16 @@ def _t_create_anchor(user_id: int, script_id: int | None, args: dict, state: Any
     """
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     label = str(args.get("story_time_label") or "").strip()
     if not label:
-        return "失败: story_time_label 必填(新事件的时间/节点名)"
+        return "Failed: story_time_label is required (the time/milestone name of the new event)"
     if args.get("chapter_min") is None or args.get("chapter_max") is None:
-        return "失败: chapter_min / chapter_max 必填(该事件大致所处章节)"
+        return "Failed: chapter_min / chapter_max are required (the approximate chapters of the event)"
     try:
         cmin = int(args["chapter_min"]); cmax = int(args["chapter_max"])
     except (TypeError, ValueError):
-        return "失败: chapter_min / chapter_max 必须是整数"
+        return "Failed: chapter_min / chapter_max must be integers"
     if cmax < cmin:
         cmax = cmin
     phase = str(args.get("story_phase") or "")
@@ -157,7 +157,7 @@ def _t_create_anchor(user_id: int, script_id: int | None, args: dict, state: Any
         with connect() as db:
             # ② 严格 owner 闸(写)
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             row = db.execute(
                 """
                 insert into script_timeline_anchors
@@ -172,14 +172,14 @@ def _t_create_anchor(user_id: int, script_id: int | None, args: dict, state: Any
             ).fetchone()
             if not row:
                 return (
-                    f"失败: 剧本 #{sid} 已有同名节点「{label}」(阶段「{phase or '未分阶段'}」)。"
-                    "要改它请用 update_anchor(先 list_anchors 拿 anchor_id),不要重复新建。"
+                    f"Failed: script #{sid} already has a milestone named '{label}' (phase '{phase or 'no phase'}'). "
+                    "To change it, use update_anchor (get anchor_id with list_anchors first); do not create a duplicate."
                 )
             aid = int(row["id"])
             try:
                 _write_commit(
                     db, script_id=sid, user_id=user_id, kind="anchor_add",
-                    message=f"新增 anchor「{label}」",
+                    message=f"Add anchor '{label}'",
                     payload={"table": "script_timeline_anchors", "op": "add",
                              "ids": {"anchor_id": aid}, "source": "editor"},
                 )
@@ -187,11 +187,11 @@ def _t_create_anchor(user_id: int, script_id: int | None, args: dict, state: Any
                 pass
             db.commit()
         return (
-            f"已新建时间线锚点 #{aid}「{label}」(剧本 #{sid};来源 editor,"
-            "时间线重建不会删它)"
+            f"Created timeline anchor #{aid} '{label}' (script #{sid}; source editor, "
+            "so timeline rebuilds will not delete it)"
         )
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_delete_anchor(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
@@ -199,37 +199,37 @@ def _t_delete_anchor(user_id: int, script_id: int | None, args: dict, state: Any
     注意:若它是原著骨架(source=novel),时间线重建可能会再生成;作者新增的(source=editor)删了不再生。"""
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         aid = int(args.get("anchor_id"))
     except (TypeError, ValueError):
-        return "失败: anchor_id 必填且为整数(先 list_anchors 拿 id)"
+        return "Failed: anchor_id is required and must be an integer (get the id with list_anchors first)"
     try:
         from platform_app.db import connect, init_db
         from platform_app.perms import script_owned
         init_db()
         with connect() as db:
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             row = db.execute(
                 "select story_time_label, source from script_timeline_anchors where id=%s and script_id=%s",
                 (aid, sid),
             ).fetchone()
             if not row:
-                return f"失败: 锚点 #{aid} 不存在或不属于剧本 #{sid}"
+                return f"Failed: anchor #{aid} does not exist or does not belong to script #{sid}"
             db.execute("delete from script_timeline_anchors where id=%s and script_id=%s", (aid, sid))
             try:
                 from platform_app.api.script_edit import _write_commit
                 _write_commit(db, script_id=sid, user_id=user_id, kind="anchor_delete",
-                              message=f"删除锚点 #{aid}「{row['story_time_label']}」",
+                              message=f"Delete anchor #{aid} '{row['story_time_label']}'",
                               payload={"table": "script_timeline_anchors", "op": "delete",
                                        "ids": {"anchor_id": aid}})
             except Exception:
                 pass
             db.commit()
-        _note = "(原著骨架,重建可能再生成)" if str(row.get("source") or "") == "novel" else "(作者新增,删了不再生)"
-        return f"已删除时间线锚点 #{aid}「{row['story_time_label']}」(剧本 #{sid}){_note}"
+        _note = " (canon skeleton; a rebuild may regenerate it)" if str(row.get("source") or "") == "novel" else " (added by the author; it will not come back)"
+        return f"Deleted timeline anchor #{aid} '{row['story_time_label']}' (script #{sid}){_note}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 

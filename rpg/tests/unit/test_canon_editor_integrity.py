@@ -238,7 +238,7 @@ def test_agent_create_same_name_and_type_points_to_existing(env):
     from tools_dsl.command_tools_script_write.canon import _t_upsert_canon_entity
     _insert(env, "云岚宗", "云岚宗", "faction")
     out = _t_upsert_canon_entity(env["uid"], env["sid"], {"name": "云岚宗", "type": "势力"}, None)
-    assert out.startswith("失败") and "云岚宗" in out and "logical_key" in out
+    assert out.startswith("Failed") and "云岚宗" in out and "logical_key" in out
     with env["connect"]() as db:
         n = db.execute(
             "select count(*) as c from kb_canon_entities where script_id=%s and name='云岚宗'",
@@ -274,10 +274,10 @@ def test_agent_rename_onto_same_name_and_type_is_rejected(env):
     _insert(env, "美杜莎", "美杜莎", "character", summary="正主")
     _insert(env, "彩鳞", "彩鳞", "character")
     out = _t_upsert_canon_entity(env["uid"], env["sid"], {"logical_key": "彩鳞", "name": "美杜莎"}, None)
-    assert out.startswith("失败") and "美杜莎" in out, out
+    assert out.startswith("Failed") and "美杜莎" in out, out
     assert _row(env, "彩鳞")["name"] == "彩鳞"
     out = _t_upsert_canon_entity(env["uid"], env["sid"], {"logical_key": "彩鳞", "summary": "蛇人族女王"}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
 
 
 def _wb_create(env, title, sid=None):
@@ -340,10 +340,10 @@ def test_agent_update_text_change_clears_embedding(env):
     _insert(env, "纳兰嫣然", "纳兰嫣然", "character", summary="旧")
     _set_fake_embedding(env, "纳兰嫣然")
     out = _t_upsert_canon_entity(env["uid"], env["sid"], {"logical_key": "纳兰嫣然", "importance": 3}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
     assert _has_embedding(env, "纳兰嫣然")
     out = _t_upsert_canon_entity(env["uid"], env["sid"], {"logical_key": "纳兰嫣然", "summary": "新"}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
     assert not _has_embedding(env, "纳兰嫣然")
 
 
@@ -469,5 +469,5 @@ def test_agent_rejects_dot_segment_key(env):
     from tools_dsl.command_tools_script_write.canon import _t_upsert_canon_entity
     out = _t_upsert_canon_entity(env["uid"], env["sid"],
                                  {"logical_key": "..", "name": "点点", "type": "concept"}, None)
-    assert out.startswith("失败") and "logical_key" in out
+    assert out.startswith("Failed") and "logical_key" in out
     assert _row(env, "..") is None

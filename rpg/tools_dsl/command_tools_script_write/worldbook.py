@@ -20,13 +20,13 @@ def _t_list_worldbook_entries(user_id: int, script_id: int | None, args: dict, s
     """
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, sid, user_id):
-                return f"失败 (权限): 剧本 #{sid} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{sid} does not belong to the current user or is not subscribed"
             rows = db.execute(
                 "select id as entry_id, title, keys, enabled, "
                 "       insertion_position, priority, probability::float8 as probability "
@@ -35,10 +35,10 @@ def _t_list_worldbook_entries(user_id: int, script_id: int | None, args: dict, s
                 (sid,),
             ).fetchall() or []
         if not rows:
-            return f"(剧本 #{sid} 暂无世界书条目。要新建用 upsert_worldbook_entry 不传 entry_id。)"
+            return f"(Script #{sid} has no worldbook entries yet. To create one, call upsert_worldbook_entry without entry_id.)"
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2, default=str)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
@@ -50,14 +50,14 @@ def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
     entry_id = args.get("entry_id")
     title = args.get("title")
     if not entry_id and not (title and str(title).strip()):
-        return {"ok": False, "id": None, "action": None, "title": "", "error": "创建世界书条目必须提供 title"}
+        return {"ok": False, "id": None, "action": None, "title": "", "error": "Creating a worldbook entry requires a title"}
 
     if entry_id:
         # ── 更新现有条目 ──
         try:
             eid = int(entry_id)
         except (TypeError, ValueError):
-            return {"ok": False, "id": None, "action": None, "title": "", "error": "entry_id 必须是整数"}
+            return {"ok": False, "id": None, "action": None, "title": "", "error": "entry_id must be an integer"}
         before = db.execute(
             "select id, title, content, priority, token_budget, sticky_turns, cooldown_turns, "
             "probability::float8 as probability, enabled, keys, regex_keys, character_filter, "
@@ -65,7 +65,7 @@ def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
             (eid, sid),
         ).fetchone()
         if not before:
-            return {"ok": False, "id": eid, "action": None, "title": "", "error": f"条目 #{eid} 不存在或不属于剧本 #{sid}"}
+            return {"ok": False, "id": eid, "action": None, "title": "", "error": f"Entry #{eid} does not exist or does not belong to script #{sid}"}
         # 撤销快照:存改前全字段,供作者一键撤回 AI 对世界书的改动(与章节撤销同款安全网)。
         _wb_before = {k: before[k] for k in (
             "title", "content", "priority", "token_budget", "sticky_turns", "cooldown_turns",
@@ -91,7 +91,7 @@ def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
                 sets.append(f"{col}=%s")
                 params.append(Jsonb(_strlist(args[col])))
         if not sets:
-            return {"ok": False, "id": eid, "action": None, "title": before["title"], "error": "没有要更新的字段"}
+            return {"ok": False, "id": eid, "action": None, "title": before["title"], "error": "No fields to update"}
         sets.append("updated_at=now()")
         params.extend([eid, sid])
         db.execute(
@@ -100,7 +100,7 @@ def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
         )
         try:
             _write_commit(db, script_id=sid, user_id=user_id, kind="worldbook_edit",
-                          message=f"编辑 worldbook #{eid}",
+                          message=f"Edit worldbook #{eid}",
                           payload={"table": "worldbook_entries", "op": "edit", "ids": {"entry_id": eid},
                                    "before": _wb_before, "undoable": True})
         except Exception:
@@ -142,11 +142,11 @@ def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
     if not new_row:
         # title 已存在(unique(script_id,title) 冲突 → do nothing)→ 幂等不重复建。
         return {"ok": False, "id": None, "action": None, "title": t,
-                "error": f"剧本 #{sid} 已有同名条目「{t}」(要改它请带 entry_id)"}
+                "error": f"Script #{sid} already has an entry with the same name '{t}' (pass entry_id to change it)"}
     new_id = int(new_row["id"])
     try:
         _write_commit(db, script_id=sid, user_id=user_id, kind="worldbook_add",
-                      message=f"新增 worldbook: {t}",
+                      message=f"Add worldbook: {t}",
                       payload={"table": "worldbook_entries", "op": "add", "ids": {"entry_id": new_id}})
     except Exception:
         pass
@@ -156,25 +156,28 @@ def _wb_upsert_one(db: Any, sid: int, user_id: int, args: dict) -> dict:
 def _t_upsert_worldbook_entry(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         from platform_app.perms import script_owned
         init_db()
         with connect() as db:
             if not script_owned(db, sid, user_id):  # ② 严格 owner 闸
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             r = _wb_upsert_one(db, sid, user_id, args)
             db.commit()
         _invalidate_worldbook_cache(sid)
         if not r["ok"]:
-            extra = "。要改它请带 entry_id(先用 list_worldbook_entries 拿 entry_id),不要重复新建。" if "同名" in (r.get("error") or "") else ""
-            return f"失败: {r['error']}{extra}"
-        return f"已{'更新' if r['action'] == 'updated' else '创建'}世界书条目 #{r['id']}(剧本 #{sid})"
+            _err = r.get("error") or ""
+            # 中英两种「同名」文案都认(producer 已英文化)
+            extra = (". To change it, pass entry_id (get it with list_worldbook_entries first); do not create a duplicate."
+                     if ("同名" in _err or "same name" in _err) else "")
+            return f"Failed: {r['error']}{extra}"
+        return f"{'Updated' if r['action'] == 'updated' else 'Created'} worldbook entry #{r['id']} (script #{sid})"
     except ValueError as exc:
-        return f"失败: {exc}"
+        return f"Failed: {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_upsert_worldbook_entries(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
@@ -184,13 +187,13 @@ def _t_upsert_worldbook_entries(user_id: int, script_id: int | None, args: dict,
     返回逐条真实结果,杜绝「只成功第一条却说全成功」。"""
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     entries = args.get("entries")
     if not isinstance(entries, list) or not entries:
-        return ("失败: 没收到 entries(可能单次条数过多,整个工具调用超输出长度被截断了)。"
-                "请每次只传 ≤6 条,把更多条目分成多次调用。每项是一条世界书条目对象(新建带 title、改带 entry_id)。")
+        return ("Failed: no entries received (probably too many in one call, so the whole tool call was truncated at the output length limit). "
+                "Pass at most 6 per call and split more entries across several calls. Each item is a worldbook entry object (title when creating, entry_id when updating).")
     if len(entries) > 12:
-        return "失败: 单次条数过多易被截断,请每次 ≤6 条、分多次调用"
+        return "Failed: too many entries in one call risks truncation; pass at most 6 per call and use several calls"
     try:
         from platform_app.db import connect, init_db
         from platform_app.perms import script_owned
@@ -198,10 +201,10 @@ def _t_upsert_worldbook_entries(user_id: int, script_id: int | None, args: dict,
         results: list[dict] = []
         with connect() as db:
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             for i, e in enumerate(entries):
                 if not isinstance(e, dict):
-                    results.append({"ok": False, "title": f"#{i}", "error": "条目不是对象"})
+                    results.append({"ok": False, "title": f"#{i}", "error": "entry is not an object"})
                     continue
                 try:
                     with db.transaction():   # 每条一个 savepoint:一条失败回滚自身,不连累其他
@@ -214,18 +217,18 @@ def _t_upsert_worldbook_entries(user_id: int, script_id: int | None, args: dict,
         bad = [r for r in results if not r.get("ok")]
         # 全军覆没(0 成功)必须以失败惯例开头,否则 dispatcher 记 ok=True=报成功
         if results and not ok:
-            lines = [f"批量世界书失败:成功 0/{len(results)} 条(剧本 #{sid})"]
+            lines = [f"Batch worldbook failed: 0/{len(results)} succeeded (script #{sid})"]
         else:
-            lines = [f"批量世界书:成功 {len(ok)}/{len(results)} 条(剧本 #{sid})"]
+            lines = [f"Batch worldbook: {len(ok)}/{len(results)} succeeded (script #{sid})"]
         for r in ok:
-            lines.append(f"- {'更新' if r.get('action') == 'updated' else '创建'} #{r.get('id')} {r.get('title', '')}")
+            lines.append(f"- {'Updated' if r.get('action') == 'updated' else 'Created'} #{r.get('id')} {r.get('title', '')}")
         for r in bad:
-            lines.append(f"- 失败「{r.get('title', '')}」:{r.get('error')}")
+            lines.append(f"- Failed '{r.get('title', '')}': {r.get('error')}")
         return "\n".join(lines)
     except ValueError as exc:
-        return f"失败: {exc}"
+        return f"Failed: {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _invalidate_worldbook_cache(script_id: int) -> None:
@@ -241,35 +244,35 @@ def _t_delete_worldbook_entry(user_id: int, script_id: int | None, args: dict, s
     """删除一条世界书条目(entry_id 必填,先 list_worldbook_entries 拿 id)。不可逆,删前向用户确认。"""
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         eid = int(args.get("entry_id"))
     except (TypeError, ValueError):
-        return "失败: entry_id 必填且为整数(先 list_worldbook_entries 拿 id)"
+        return "Failed: entry_id is required and must be an integer (get the id with list_worldbook_entries first)"
     try:
         from platform_app.db import connect, init_db
         from platform_app.perms import script_owned
         init_db()
         with connect() as db:
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             row = db.execute(
                 "select title from worldbook_entries where id=%s and script_id=%s", (eid, sid),
             ).fetchone()
             if not row:
-                return f"失败: 世界书条目 #{eid} 不存在或不属于剧本 #{sid}"
+                return f"Failed: worldbook entry #{eid} does not exist or does not belong to script #{sid}"
             db.execute("delete from worldbook_entries where id=%s and script_id=%s", (eid, sid))
             try:
                 from platform_app.api.script_edit import _write_commit
                 _write_commit(db, script_id=sid, user_id=user_id, kind="worldbook_delete",
-                              message=f"删除世界书条目 #{eid}「{row['title']}」",
+                              message=f"Delete worldbook entry #{eid} '{row['title']}'",
                               payload={"table": "worldbook_entries", "op": "delete",
                                        "ids": {"entry_id": eid}})
             except Exception:
                 pass
             db.commit()
-        return f"已删除世界书条目 #{eid}「{row['title']}」(剧本 #{sid})"
+        return f"Deleted worldbook entry #{eid} '{row['title']}' (script #{sid})"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 

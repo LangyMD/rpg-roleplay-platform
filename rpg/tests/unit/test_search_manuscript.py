@@ -62,10 +62,10 @@ def test_substring_match_across_chapters(monkeypatch):
     ]
     _patch_db(monkeypatch, rows)
     out = sw._t_search_manuscript(1, 1, {"query": "重力控制"}, None)
-    assert "2 处命中" in out and "2 章" in out
-    assert "【第3章 觉醒】@" in out
-    assert "【第7章 试炼】@" in out
-    assert "【第5章" not in out  # 无命中的章不出现
+    assert "2 hits" in out and "2 chapters" in out
+    assert "[Chapter 3 觉醒] @" in out
+    assert "[Chapter 7 试炼] @" in out
+    assert "[Chapter 5 " not in out  # 无命中的章不出现
 
 
 def test_offset_points_at_real_position(monkeypatch):
@@ -79,30 +79,30 @@ def test_offset_points_at_real_position(monkeypatch):
 def test_case_insensitive(monkeypatch):
     _patch_db(monkeypatch, [_row(1, "x", "the Gravity Engine hums.")])
     out = sw._t_search_manuscript(1, 1, {"query": "gravity engine"}, None)
-    assert "1 处命中" in out
+    assert "1 hit " in out
 
 
 def test_regex_mode(monkeypatch):
     _patch_db(monkeypatch, [_row(1, "x", "编号 A-117 与 A-118 都在场。")])
     out = sw._t_search_manuscript(1, 1, {"query": r"A-\d{3}", "regex": True}, None)
-    assert "2 处命中" in out
+    assert "2 hits" in out
 
 
 def test_bad_regex_returns_error_not_crash(monkeypatch):
     _patch_db(monkeypatch, [_row(1, "x", "whatever")])
     out = sw._t_search_manuscript(1, 1, {"query": "A-[", "regex": True}, None)
-    assert out.startswith("失败: 正则无效")
+    assert out.startswith("Failed: invalid regex")
 
 
 def test_zero_hits(monkeypatch):
     _patch_db(monkeypatch, [_row(1, "x", "完全无关的内容")])
     out = sw._t_search_manuscript(1, 1, {"query": "不存在的词"}, None)
-    assert "0 命中" in out
+    assert "0 hits" in out
 
 
 def test_missing_query():
     out = sw._t_search_manuscript(1, 1, {}, None)
-    assert out.startswith("失败") and "query" in out
+    assert out.startswith("Failed") and "query" in out
 
 
 def test_max_results_caps_listing(monkeypatch):
@@ -110,5 +110,5 @@ def test_max_results_caps_listing(monkeypatch):
     content = "。".join(["命中"] * 50)
     _patch_db(monkeypatch, [_row(1, "密集", content)])
     out = sw._t_search_manuscript(1, 1, {"query": "命中", "max_results": 5}, None)
-    assert "50 处命中" in out
-    assert out.count("【第1章 密集】@") == 5
+    assert "50 hits" in out
+    assert out.count("[Chapter 1 密集] @") == 5
