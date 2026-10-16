@@ -29,8 +29,8 @@ const dual = (v) => ({ light: v, dark: v });
 const theme = {
   tokens: {
     // 字体:沿用项目现有中文字体 + serif 叙事标题
-    fontFamilyBase: "'Noto Sans SC', system-ui, -apple-system, sans-serif",
-    fontFamilyHeading: "'Noto Serif SC', 'Noto Sans SC', serif",
+    fontFamilyBase: "'Noto Sans', 'Noto Sans SC', system-ui, -apple-system, sans-serif",
+    fontFamilyHeading: "'Noto Serif', 'Noto Serif SC', 'Noto Sans SC', serif",
 
     // ── 字号阶梯整体调小(中文 + Cloudscape 默认偏大,挤压密度)──────────
     fontSizeBodyM: '13px', lineHeightBodyM: '19px',
