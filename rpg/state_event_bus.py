@@ -81,8 +81,8 @@ def subscribe(user_id: int) -> asyncio.Queue[StateEvent]:
         bucket = _SUBSCRIBERS[user_id]
         if len(bucket) >= MAX_SUBSCRIBERS_PER_USER:
             raise TooManySubscribers(
-                f"user {user_id} 已达 SSE 订阅上限 ({MAX_SUBSCRIBERS_PER_USER}), "
-                "请关掉旧标签页再重试"
+                f"user {user_id} has reached the SSE subscription limit ({MAX_SUBSCRIBERS_PER_USER}); "
+                "close old tabs and try again"
             )
         q: asyncio.Queue[StateEvent] = asyncio.Queue(maxsize=_QUEUE_MAX)
         bucket.add(q)

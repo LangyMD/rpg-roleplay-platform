@@ -29,24 +29,24 @@ def _pending_jump_warning_text(state) -> str:
     pending_status = str(pending.get("status") or "")
     is_awaiting = pending_status in ("awaiting_gm_confirmation", "awaiting", "pending_confirmation")
     lines = [
-        f"玩家请求时间跳跃：{pending.get('from', '')} -> {pending.get('to', '')}",
-        f"pending 状态：{pending_status or '未知'}",
+        f"Player requested a time jump: {pending.get('from', '')} -> {pending.get('to', '')}",
+        f"pending status: {pending_status or 'unknown'}",
     ]
     if is_awaiting:
         lines.extend([
-            "⚠ 本轮 anchor_state=pending_confirmation：禁止把玩家请求的未来时间/地点当作已发生的事实。",
-            "禁止输出『翌日…』『次日…』『转眼已是…』等任何把场景叙事推进到目标时间的措辞；",
-            "禁止输出标签【时间跳跃确认：…】【当前时间线：目标时间】【当前位置：新地点】【时间：目标时间】；",
-            "禁止给出『新时间/新地点』场景里的对话、动作、选项；",
-            "本轮只允许：① 给出冲突检查；② 列出风险/代价/前置条件；"
-            "③ 输出【询问玩家：是否确认跳跃到 <目标时间>？】+ 1-3 个明确选项（确认 / 取消 / 修改目标）；",
-            "下一轮若玩家明确回复『确认』或 /confirm，再正式推进时间线和场景。",
+            "⚠ This turn anchor_state=pending_confirmation: do NOT treat the future time/place the player requested as something that has already happened.",
+            "Do not write anything that moves the scene forward to the target time ('The next morning...', 'The following day...', 'Before you know it...', etc.);",
+            "do not output the tags 【时间跳跃确认：…】【当前时间线：<target time>】【当前位置：<new place>】【时间：<target time>】;",
+            "do not give dialogue, actions or options set in the 'new time / new place' scene.",
+            "This turn you may only: (1) give a conflict check; (2) list risks / costs / prerequisites; "
+            "(3) output 【询问玩家：Confirm the jump to <target time>?】 + 1-3 clear options (confirm / cancel / change the target).",
+            "Only if the player clearly replies 'confirm' or /confirm next turn do you actually advance the timeline and the scene.",
         ])
     else:
         lines.extend([
-            "本轮必须先处理时间跳跃事务：默认尊重玩家的跳转/改线意图，",
-            "接受则写出过渡/落点并输出【时间跳跃确认：目标时间】和【当前时间线：目标时间】；",
-            "只有目标完全不可解析时才输出【询问玩家：...】。",
-            "在确认前，不要把玩家请求的未来时间当作已经发生；确认后才允许推进场景与更新位置/目标。",
+            "This turn you must deal with the time jump first. By default, respect the player's intent to jump or change course;",
+            "if you accept, write the transition / landing point and output 【时间跳跃确认：<target time>】 and 【当前时间线：<target time>】;",
+            "only output 【询问玩家：...】 if the target cannot be interpreted at all.",
+            "Until it is confirmed, do not treat the requested future time as already happened; only after confirmation may you advance the scene and update location / objective.",
         ])
     return "\n".join(lines)

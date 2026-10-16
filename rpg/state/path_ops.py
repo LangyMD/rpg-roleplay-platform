@@ -22,7 +22,26 @@ def _clean_path(path: str) -> str:
         "记忆模式": "memory.mode",
         "权限": "permissions.mode",
     }
-    return aliases.get(path, path)
+    # English aliases (whitespace already removed, matched case-insensitively)
+    en_aliases = {
+        "name": "player.name",
+        "role": "player.role",
+        "background": "player.background",
+        "location": "player.current_location",
+        "currentlocation": "player.current_location",
+        "time": "world.time",
+        "currenttime": "world.time",
+        "timeline": "world.time",
+        "currenttimeline": "world.time",
+        "objective": "memory.current_objective",
+        "currentobjective": "memory.current_objective",
+        "goal": "memory.current_objective",
+        "mainquest": "memory.main_quest",
+        "memorymode": "memory.mode",
+        "permission": "permissions.mode",
+        "permissions": "permissions.mode",
+    }
+    return aliases.get(path) or en_aliases.get(path.lower(), path)
 
 
 _HARD_FORBIDDEN_PATHS = {"schema_version", "history", "created_at", "is_new"}

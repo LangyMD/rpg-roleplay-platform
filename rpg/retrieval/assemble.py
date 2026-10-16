@@ -6,6 +6,7 @@ mutable 全局 _TIMELINE_READY 与其读写方 _ensure_timeline_ready 同居本�
 """
 from __future__ import annotations
 
+from kb.section_markers import ANCHOR_PENDING_MARKER as _ANCHOR_PENDING_MARKER
 from timeline_index import bootstrap_timeline_from_summaries, timeline_filter_for_label
 
 from ._common import log
@@ -203,10 +204,10 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                 # 注入 phase 摘要,给 GM 当前阶段的整体描述
                 if phase_range.get("phase_label") or phase_range.get("summary"):
                     parts.append(
-                        "=== 当前剧情阶段 (phase fallback) ===\n"
-                        f"阶段: {phase_range.get('phase_label', '')}\n"
-                        f"章节范围: 第{phase_range['chapter_min']}-{phase_range['chapter_max']}章\n"
-                        f"阶段概要: {(phase_range.get('summary') or '')[:600]}"
+                        "=== Current Story Phase (phase fallback) ===\n"
+                        f"Phase: {phase_range.get('phase_label', '')}\n"
+                        f"Chapter range: chapters {phase_range['chapter_min']}-{phase_range['chapter_max']}\n"
+                        f"Phase summary: {(phase_range.get('summary') or '')[:600]}"
                     )
         # task 125: 注入 anchor 章节的真实原文片段 — 解决 GM 只拿到标题没拿到内容,
         # 自由发挥编出"防空洞 / Kataphrakt"这种与原著无关的设定。
@@ -294,58 +295,58 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                     # 「原文=风格参考 / 发生方式可变」的活世界默认说明(用反馈:原著对话/关键情节被跳)。
                     # 确定性部分=原文已注入+预算更大;能否复现到位仍取决于模型,故此为 rail 档语义。
                     parts.append(
-                        "=== 锚点章节原文 · 贴原著档(最高优先) ===\n"
-                        "本回合处于【贴原著】引导强度。以下是当前进度章节的原著正文。\n"
-                        "**你必须忠实重现其中的关键对话与桥段**:原著存在的人物对话尽量保留原话 / 原意,\n"
-                        "原著发生的关键情节(冲突 / 死亡 / 相遇 / 转折等)不得跳过或一笔带过。\n"
-                        "玩家的输入决定切入视角与节奏,但不得让剧情脱离本章原著走向。\n"
-                        "本段指示优先于其他「原文仅供风格参考 / 发生方式可变」的说明。\n"
-                        "**注意:即使下方原著正文中夹带英文 / 德文等外语台词,你的叙事语言仍跟随本剧本既定的\n"
-                        "主体语言(通常即原著正文的主体语言),不要因此切换;外语台词可在角色说话时原样保留,\n"
-                        "但旁白 / 动作 / 心理 / 场景描写保持既定语言。**\n\n"
+                        "=== Anchor Chapter Source Text · Faithful Mode (highest priority) ===\n"
+                        "This turn runs at the [Faithful to the novel] steering strength. Below is the original text of the chapter at the current progress point.\n"
+                        "**You must faithfully reproduce its key dialogue and set pieces**: keep the characters' original lines (or their exact meaning) wherever the novel has them,\n"
+                        "and never skip or gloss over the key plot beats of the original (conflicts / deaths / meetings / turning points, etc.).\n"
+                        "The player's input decides the point of view and pacing, but the story must not drift away from where this chapter goes in the original.\n"
+                        "This instruction overrides any other note saying the source text is 'style reference only' or that 'how events happen may vary'.\n"
+                        "**Note: even if the source text below contains lines in other languages, keep narrating in the output language you have been instructed to use;\n"
+                        "do not switch because of it. Foreign-language lines may be kept verbatim when a character speaks them,\n"
+                        "but narration / action / inner thoughts / scene description stay in the instructed language.**\n\n"
                         + anchor_text
                     )
                 else:
                     # task 131(活世界默认):原文标记"风格 + 骨架参考,不是必须复现的戏剧强度"
                     parts.append(
-                        "=== 锚点章节原文 (双重用途, 严格区分) ===\n"
-                        "【骨架用途】时空 / 角色 / 事件骨架 — 必须保持。\n"
-                        "【风格用途】学作者句法 / 用词 / 节奏 — 模仿。\n"
-                        "**不模仿情绪强度** — 原文极端事件密度高不代表你本轮要复制那种密度,\n"
-                        "玩家本轮输入的戏剧强度才决定你本轮的戏剧强度。\n\n"
+                        "=== Anchor Chapter Source Text (two uses, keep them distinct) ===\n"
+                        "[Skeleton use] time and place / characters / event skeleton - must be preserved.\n"
+                        "[Style use] learn the author's syntax / word choice / rhythm - imitate it.\n"
+                        "**Do not imitate its emotional intensity** - a dense run of extreme events in the source does not mean you should replicate that density this turn;\n"
+                        "the dramatic intensity of the player's input this turn decides the dramatic intensity of your reply.\n\n"
                         + anchor_text
                     )
                 # task 131-B: 抽出原文前几段当作"作者文风样本",最高优先级 style anchor
                 style_sample = _extract_style_sample(anchor_text)
                 if style_sample:
                     parts.append(
-                        "=== 作者文风样本 (style anchor, 仅学句法/词汇/节奏, 不学情绪强度) ===\n"
+                        "=== Author Style Samples (style anchor: learn syntax/vocabulary/rhythm only, not emotional intensity) ===\n"
                         + style_sample
                     )
         if is_default:
             # 默认 MuMu 剧本才显示『原著锚点』和章节窗口；非默认剧本这些字段都是 None/无意义。
             parts.append(
-                "=== 时间线检索锚点 ===\n"
-                f"当前时间：{world.get('time', '')}\n"
-                f"待确认跳跃：{pending.get('to', '无')}\n"
-                f"本轮检索标签：{label}\n"
-                f"原著锚点：第{timeline_filter.get('anchor_chapter')}章 · {timeline_filter.get('anchor_event')}\n"
-                f"检索章节窗口：{timeline_filter.get('chapter_min')} - {timeline_filter.get('chapter_max')}"
+                "=== Timeline Retrieval Anchor ===\n"
+                f"Current time: {world.get('time', '')}\n"
+                f"Pending time jump: {pending.get('to', 'none')}\n"
+                f"Retrieval label this turn: {label}\n"
+                f"Novel anchor: chapter {timeline_filter.get('anchor_chapter')} · {timeline_filter.get('anchor_event')}\n"
+                f"Retrieval chapter window: {timeline_filter.get('chapter_min')} - {timeline_filter.get('chapter_max')}"
             )
         else:
             parts.append(
-                "=== 时间线检索锚点 ===\n"
-                f"当前时间：{world.get('time', '')}\n"
-                f"待确认跳跃：{pending.get('to', '无')}\n"
-                f"本轮检索标签：{label}\n"
-                "来源：当前导入剧本（不读默认 MuMu 原著时间线）"
+                "=== Timeline Retrieval Anchor ===\n"
+                f"Current time: {world.get('time', '')}\n"
+                f"Pending time jump: {pending.get('to', 'none')}\n"
+                f"Retrieval label this turn: {label}\n"
+                "Source: the currently imported script (the default MuMu novel timeline is not used)"
             )
 
         # SQLite ChapterFact 只给默认剧本（.webnovel/chapter_facts.db 是 MuMu 原著）
         if is_default:
             facts_text = load_chapter_facts(timeline_filter.get("chapter_min"), timeline_filter.get("chapter_max"))
             if facts_text:
-                parts.append("=== ChapterFact时间线 ===\n" + facts_text)
+                parts.append("=== ChapterFact Timeline ===\n" + facts_text)
         # task 136: 世界线收束机制 — 注入【当前阶段待发生锚点】
         # 让 GM 知道接下来原著该发生哪几个关键事件,主动设计场景把剧情往那里引。
         # 玩家可以改变事件发生方式,但 GM 必须想办法让锚点的【核心结果】发生。
@@ -390,11 +391,11 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                 summary = summarize_save_anchor_state(_sid_for_anchors)
                 if anchors:
                     _src_tag = {
-                        "satisfied": f"按已推进进度(原著 ch{_progress['last_satisfied_chapter']}+1..+{50})",
-                        "progress_chapter": f"按玩家显式进度(progress_chapter)锁定 ch{_ch_min}..{_ch_max}",
-                        "label": f"按当前时间标签 '{_world_time}' 锁定 ch{_ch_min}..{_ch_max}",
-                        "fallback": "剧本开头 ch1..30(玩家未推进任何锚点)",
-                    }.get(_progress["source"], "未知")
+                        "satisfied": f"from progress so far (novel ch{_progress['last_satisfied_chapter']}+1..+{50})",
+                        "progress_chapter": f"locked to the player's explicit progress (progress_chapter) ch{_ch_min}..{_ch_max}",
+                        "label": f"locked by the current time label '{_world_time}' to ch{_ch_min}..{_ch_max}",
+                        "fallback": "start of the script ch1..30 (the player has not advanced any anchor yet)",
+                    }.get(_progress["source"], "unknown")
                     # iter#7: 反查 history,标已被改写的 pending 锚点
                     try:
                         from agents.save_history import find_history_for_pending
@@ -403,15 +404,15 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                     except Exception:
                         _drift_map = {}
                     lines = [
-                        "=== 世界线收束·接下来的锚点 ===",
-                        f"窗口来源: {_src_tag}",
-                        f"整体状态: pending={summary['pending']} occurred={summary['occurred']} "
+                        _ANCHOR_PENDING_MARKER,
+                        f"Window source: {_src_tag}",
+                        f"Overall status: pending={summary['pending']} occurred={summary['occurred']} "
                         f"variant={summary['variant']} superseded={summary['superseded']} "
                         f"avg_drift={summary['avg_drift']}",
-                        "按章节顺序、原著在此窗口内必须发生的事件 (发生方式可变,结果不可省):",
+                        "Events that must happen in the original within this window, in chapter order (how they happen may vary; the outcome may not be skipped):",
                     ]
                     for i, a in enumerate(anchors, 1):
-                        fatal_tag = "【死神来了·必发生】" if a.get("is_fatal") else ""
+                        fatal_tag = "[FATAL · must happen]" if a.get("is_fatal") else ""
                         mp = a.get("must_preserve") or []
                         mv = a.get("may_vary") or []
                         # 反查 history:如果该 anchor 已被 history 改写,标 ⚠
@@ -420,31 +421,31 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                         if drift_hist:
                             top = drift_hist[0]
                             drift_marker = (
-                                f"\n   ⚠ 已被存档历史改写 (turn {top['turn']}): "
+                                f"\n   ⚠ Already rewritten by this save's history (turn {top['turn']}): "
                                 f"{top['summary'][:120]}\n"
-                                f"   → 该 pending 状态本应已 satisfied,但 save_anchor_states 还是 pending — "
-                                f"应跳过本条,不要再触发。如有遗漏可调 mark_anchor_satisfied 补登。"
+                                f"   → This anchor should already be satisfied, but save_anchor_states still says pending - "
+                                f"skip it and do not trigger it again. If it was missed, call mark_anchor_satisfied to record it."
                             )
                         lines.append(
                             f"{i}. [chapter {a['chapter']}, importance {a['importance']}, "
                             f"key={a['anchor_key']}] {fatal_tag}\n"
                             f"   {a['summary']}\n"
-                            f"   · 必须保留: {', '.join(str(x) for x in mp) or '(参见事件描述)'}\n"
-                            f"   · 可变: {', '.join(str(x) for x in mv) or '(地点/时机/旁观者)'}"
+                            f"   · Must preserve: {', '.join(str(x) for x in mp) or '(see the event description)'}\n"
+                            f"   · May vary: {', '.join(str(x) for x in mv) or '(place / timing / bystanders)'}"
                             + drift_marker
                         )
                     lines.append(
-                        "操作指引: 当锚点自然发生时调 mark_anchor_satisfied(anchor_key, "
-                        "how_it_happened, drift_score)。玩家偏离时,1-3 轮内用命运式手段"
-                        "(巧合/误会/他人介入)把剧情拉回最近锚点。当玩家 /set 跳时间时,"
-                        "本窗口会重算到新的章节段。"
+                        "How to use: when an anchor happens naturally, call mark_anchor_satisfied(anchor_key, "
+                        "how_it_happened, drift_score). When the player drifts away, use fate-like devices "
+                        "(coincidence / misunderstanding / someone else stepping in) to steer the story back to the nearest anchor within 1-3 turns. "
+                        "When the player uses /set to jump in time, this window is recomputed for the new chapter range."
                     )
                     parts.append("\n".join(lines))
                 elif summary.get("total", 0) > 0:
                     parts.append(
-                        "=== 世界线收束·进度 ===\n"
-                        f"本进度窗口 (ch{_ch_min}..{_ch_max}) 无 pending 锚点。"
-                        f"整体: occurred={summary['occurred']} "
+                        "=== Worldline Convergence · Progress ===\n"
+                        f"No pending anchors in this progress window (ch{_ch_min}..{_ch_max}). "
+                        f"Overall: occurred={summary['occurred']} "
                         f"variant={summary['variant']} avg_drift={summary['avg_drift']}"
                     )
         except Exception as _anchor_err:
@@ -469,11 +470,11 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                 _ban_names = [str(r["name"]) for r in (_ban_rows or []) if r.get("name")]
                 if _ban_names:
                     parts.append(
-                        "=== 命名禁区(尚未出场的原著角色名) ===\n"
-                        "以下名字属于本书后文才出场的角色,当前【禁止】用于任何人物"
-                        "(包括你原创的路人/官员/化名),也不得赋予其原著身份或提前引入:"
-                        + "、".join(_ban_names)
-                        + "\n(玩家若主动提到这些名字,当作陌生名字处理,不确认任何设定。)"
+                        "=== Forbidden Names (novel characters not yet introduced) ===\n"
+                        "The following names belong to characters who only appear later in the book. They are currently [FORBIDDEN] for any character "
+                        "(including passers-by / officials / aliases you invent), and you must not give anyone their canonical identity or introduce them early: "
+                        + ", ".join(_ban_names)
+                        + "\n(If the player brings up one of these names, treat it as an unfamiliar name and confirm nothing about it.)"
                     )
         except Exception as _ban_err:
             log.debug(f"[retrieval] 命名禁区注入跳过(非致命): {_ban_err}")
@@ -508,37 +509,37 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                 hsum = history_summary(_sid_for_hist)
                 if hist:
                     hlines = [
-                        "=== 存档独立时间线·玩家创造的历史 (过去时态) ===",
-                        f"本存档共积累 {hsum['total']} 条历史锚点 (系统判定 {hsum.get('system_count', 0)} / "
-                        f"GM 写 {hsum['gm_count']} / 玩家声明 {hsum['player_count']}),"
-                        f"最高 importance={hsum['max_importance']}",
-                        "下面是最近 6 条 (turn 倒序),必须当作【已经发生的事实】,",
-                        "不要重复触发、不要描述成『接下来要发生』:",
+                        "=== Save Timeline · Player-Made History (past tense) ===",
+                        f"This save has {hsum['total']} history anchors in total (system-detected {hsum.get('system_count', 0)} / "
+                        f"written by the GM {hsum['gm_count']} / declared by the player {hsum['player_count']}), "
+                        f"highest importance={hsum['max_importance']}",
+                        "Below are the 6 most recent (newest turn first). Treat them as [facts that have ALREADY happened]:",
+                        "do not trigger them again and do not describe them as 'about to happen':",
                     ]
                     for i, h in enumerate(hist, 1):
                         tag_str = ", ".join(h["tags"]) if h["tags"] else ""
                         chars_str = ", ".join(h["characters"]) if h["characters"] else ""
                         link_str = ""
                         if h["linked_anchors"]:
-                            link_str = f" [改写原著锚点: {', '.join(h['linked_anchors'])}]"
+                            link_str = f" [rewrote novel anchors: {', '.join(h['linked_anchors'])}]"
                         hlines.append(
                             f"{i}. [turn {h['turn']}, importance {h['importance']}]{link_str}\n"
                             f"   {h['summary']}\n"
-                            f"   · 涉及: {chars_str or '(未标注)'}"
-                            + (f" · 标签: {tag_str}" if tag_str else "")
+                            f"   · Involves: {chars_str or '(not tagged)'}"
+                            + (f" · Tags: {tag_str}" if tag_str else "")
                         )
                     hlines.append(
-                        "操作指引: 玩家本轮做出 importance ≥60 的事时,调 record_history_anchor 留档。"
-                        "需要追溯某角色的历史时调 list_recent_history(character_filter='XX')。"
+                        "How to use: when the player does something with importance >= 60 this turn, call record_history_anchor to record it. "
+                        "To trace a character's history, call list_recent_history(character_filter='XX')."
                     )
                     parts.append("\n".join(hlines))
                 else:
                     # 没历史 → 提示 GM 这是早期 turn,主动留档高 importance 事件
                     parts.append(
-                        "=== 存档独立时间线·玩家创造的历史 ===\n"
-                        "本存档暂无历史锚点。当玩家做出 importance ≥60 的事 "
-                        "(改 NPC 关系/势力立场,或改写原著锚点) 时,调 record_history_anchor 留档,"
-                        "下次 GM 就能查 list_recent_history 看自己创造了什么。"
+                        "=== Save Timeline · Player-Made History ===\n"
+                        "This save has no history anchors yet. When the player does something with importance >= 60 "
+                        "(changes an NPC relationship / faction stance, or rewrites a novel anchor), call record_history_anchor to record it, "
+                        "so that later turns can check list_recent_history to see what has been created."
                     )
                 # 永恒记忆·情景召回(episodic_recall flag 默认关):按当前情境从【全程】游戏历史
                 # 语义召回最相关的往事,补足"近因 6 条"覆盖不到的远期记忆。分支安全(谱系 CTE)、
@@ -556,13 +557,13 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                             from kb.episodic import retrieve_episodic
                             _epi = retrieve_episodic(_sid_for_hist, _commit, user_id, user_input, k=5)
                             if _epi:
-                                _el = ["=== 相关往事·语义召回 (玩家亲历的过去,与本回合最相关) ==="]
+                                _el = ["=== Relevant Past Events · Semantic Recall (what the player lived through, most relevant to this turn) ==="]
                                 for _i, _e in enumerate(_epi, 1):
                                     _meta = " · ".join(x for x in [
                                         (_e.get("story_time") or "").strip(),
                                         (_e.get("location") or "").strip()] if x)
                                     _el.append(f"{_i}. {_e.get('summary') or ''}" + (f"  ({_meta})" if _meta else ""))
-                                _el.append("以上按当前情境从全程历史召回,当作【已发生事实】参考,勿复述成新发生。")
+                                _el.append("The above was recalled from the whole play history based on the current situation. Use it as [facts that already happened]; do not retell it as if it were happening now.")
                                 parts.append("\n".join(_el))
                                 log.info("[retrieval] episodic recall 注入 %d 条 (save=%s)", len(_epi), _sid_for_hist)
                 except Exception as _epi_err:
@@ -653,9 +654,9 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                         else:
                             top_level.append(rec)
                     tree_lines = [
-                        "=== 组织/势力/地点 层级图 (取重要度前 60) ===",
-                        "格式 [子类型] 名称 (importance);缩进表示从属关系。",
-                        "GM 引用时务必尊重层级:'铁人团是德军下属'不要写成两个独立势力。",
+                        "=== Organizations / Factions / Locations Hierarchy (top 60 by importance) ===",
+                        "Format: [subtype] name (importance); indentation shows who belongs to whom.",
+                        "Respect the hierarchy when you refer to them: if 'the Iron Company is part of the army', do not write them as two independent factions.",
                     ]
                     # 先输出有 parent 的实体按 parent group
                     parents_with_children = sorted(
@@ -665,14 +666,14 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
                     for parent_lk, children in parents_with_children:
                         # parent 信息从任一 child 拿
                         parent_name = children[0]["parent_name"]
-                        tree_lines.append(f"\n【{parent_name}】 下辖:")
+                        tree_lines.append(f"\n[{parent_name}] oversees:")
                         for ch in children[:8]:
                             stag = f"[{ch['subtype']}]" if ch["subtype"] else f"[{ch['type']}]"
                             tree_lines.append(f"  └─ {stag} {ch['name']} (imp {ch['imp']})")
                     # 再输出顶层独立实体(没 parent 但 importance 高)
                     top_solo = sorted(top_level, key=lambda r: -r["imp"])[:10]
                     if top_solo:
-                        tree_lines.append("\n【顶级/独立实体】(无明确归属):")
+                        tree_lines.append("\n[Top-level / independent entities] (no clear parent):")
                         for r in top_solo:
                             stag = f"[{r['subtype']}]" if r["subtype"] else f"[{r['type']}]"
                             tree_lines.append(f"  · {stag} {r['name']} (imp {r['imp']})")
@@ -723,7 +724,7 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
         char_names = detect_mentioned_characters(user_input)
         char_text  = load_character_cards(char_names)
         if char_text:
-            parts.append("=== 相关角色 ===\n" + char_text)
+            parts.append("=== Relevant Characters ===\n" + char_text)
 
         # 2. BM25 章节片段（.webnovel/vectors.db 是 MuMu 原著 chunks，仅默认走）
         snippets = bm25_search(
@@ -733,7 +734,7 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
             chapter_max=timeline_filter.get("chapter_max") if timeline_filter else None,
         )
         if snippets:
-            parts.append("=== 相关原文片段 ===\n" + "\n\n".join(snippets))
+            parts.append("=== Relevant Source Excerpts ===\n" + "\n\n".join(snippets))
 
         # 3. 章节摘要（indexes/summaries.json 是 MuMu，仅默认走）
         recent = load_summaries_window(
@@ -741,7 +742,7 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
             timeline_filter.get("chapter_max") if timeline_filter else None,
         )
         if recent:
-            parts.append("=== 最近剧情摘要 ===\n" + recent)
+            parts.append("=== Recent Plot Summary ===\n" + recent)
     else:
         char_names = []  # 留作 verbose 日志兼容
 
@@ -766,13 +767,13 @@ def retrieve_context(user_input: str, verbose: bool = False, state=None, user_id
             except Exception:
                 pass
             if wb_text:
-                parts.append("=== 世界设定 (worldbook) ===\n" + wb_text)
+                parts.append("=== World Setting (worldbook) ===\n" + wb_text)
         except Exception:
             pass
         try:
             cc_text = _load_script_character_cards(script_id, user_input, top_k=5)
             if cc_text:
-                parts.append("=== 相关角色 ===\n" + cc_text)
+                parts.append("=== Relevant Characters ===\n" + cc_text)
         except Exception:
             pass
 

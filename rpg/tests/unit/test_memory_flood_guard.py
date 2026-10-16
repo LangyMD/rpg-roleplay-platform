@@ -81,7 +81,7 @@ class TestPerTurnBudget(unittest.TestCase):
             self.assertTrue(ok, why)
         ok, why = s.add_memory_ex("abilities", "第 N+1 条", origin=GM)
         self.assertFalse(ok)
-        self.assertIn("上限", why)
+        self.assertIn("limit", why)
         self.assertEqual(len(s.data["memory"]["abilities"]), cap)
 
     def test_budget_resets_next_turn(self):
@@ -165,9 +165,9 @@ class TestRejectionIsVisible(unittest.TestCase):
         for i in range(memory_append_per_turn_max() + 1):
             s.add_memory_ex("abilities", f"能力{i}", origin=GM)
         text = _write_results_layer(s)
-        self.assertIn("洪泛闸", text)
+        self.assertIn("flood gate", text)
         self.assertIn("memory.abilities", text)
-        self.assertIn("合并", text)
+        self.assertIn("merge", text)
 
     def test_tool_returns_a_failure_string(self):
         """dispatcher 惯例:失败结果串以「失败:」开头,GM 才认得出这不是成功。"""

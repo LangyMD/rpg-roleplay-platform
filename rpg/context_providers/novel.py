@@ -56,19 +56,19 @@ class NovelTimelineProvider(ContextProvider):
                 anchor = {"error": str(exc)}
 
         lines: list[str] = []
-        lines.append(f"【时间线】当前 label：{label or '（无）'}")
+        lines.append(f"[Timeline] current label: {label or '(none)'}")
         if pending:
-            lines.append(f"【待确认跳跃】{pending.get('from', '')} → {pending.get('to', '')}")
+            lines.append(f"[Pending time jump] {pending.get('from', '')} → {pending.get('to', '')}")
         if anchor.get("anchor_chapter"):
             lines.append(
-                f"【原著锚点】第 {anchor.get('anchor_chapter')} 章，"
-                f"窗口 {anchor.get('chapter_min')}-{anchor.get('chapter_max')}"
+                f"[Novel anchor] chapter {anchor.get('anchor_chapter')}, "
+                f"window {anchor.get('chapter_min')}-{anchor.get('chapter_max')}"
             )
         elif label:
-            lines.append("【原著锚点】未精确命中")
+            lines.append("[Novel anchor] no exact match")
         text = "\n".join(lines)
         layer = self.make_layer(
-            "novel_timeline", "时间线事务", text,
+            "novel_timeline", "Timeline", text,
             sticky=True, priority=70,
         )
         return ContextContribution(
@@ -140,13 +140,13 @@ class NovelRetrievalProvider(ContextProvider):
         layers = []
         if anchor_section:
             layers.append(self.make_layer(
-                "anchor_pending", "世界线收束·接下来的锚点",
+                "anchor_pending", "Worldline Convergence · Upcoming Anchors",
                 anchor_section,
                 sticky=False, priority=72,  # 高于 worldbook(70),低于玩家 directive(95)
             ))
         if rag_body:
             layers.append(self.make_layer(
-                "novel_retrieval", "检索参考（原著 / ChapterFact）", rag_body,
+                "novel_retrieval", "Retrieval Reference (novel / ChapterFact)", rag_body,
                 sticky=False, priority=40,
             ))
         if not layers:
@@ -313,7 +313,7 @@ def _format_card_local(name: str, card: dict) -> str:
         from context_engine import _format_card
         return _format_card(name, card)
     except Exception:
-        return f"【{name}】\n身份：{card.get('identity', '')}\n性格：{card.get('personality', '')}\n说话风格：{card.get('speech_style', '')}"
+        return f"[{name}]\nIdentity: {card.get('identity', '')}\nPersonality: {card.get('personality', '')}\nSpeech style: {card.get('speech_style', '')}"
 
 
 class NovelCharactersProvider(ContextProvider):
@@ -386,7 +386,7 @@ class NovelCharactersProvider(ContextProvider):
                     continue
                 npc_cards.append({
                     "name": npc_name,
-                    "matched": ["(anchor 强制注入)"],
+                    "matched": ["(forced in by anchor)"],
                     "priority": 95,  # 高于 grep 命中的(典型 100-130),让 anchor NPC 排前
                     "text": _format_card_local(npc_name, card),
                     "_source": "anchor_pending",
@@ -401,13 +401,13 @@ class NovelCharactersProvider(ContextProvider):
         layers = []
         if player_card.get("text"):
             layers.append(self.make_layer(
-                "player_card", "玩家角色卡", player_card["text"],
+                "player_card", "Player Character Card", player_card["text"],
                 sticky=True, priority=88,
                 source=player_card.get("name", ""),
             ))
         if npc_cards:
             layers.append(self.make_layer(
-                "npc_cards", "当前角色卡（NPC）",
+                "npc_cards", "Current Character Cards (NPCs)",
                 "\n\n".join(c["text"] for c in npc_cards),
                 sticky=False, priority=78,
                 items=[_strip_card_text(c) for c in npc_cards],
@@ -483,7 +483,7 @@ class NovelWorldbookProvider(ContextProvider):
             return ContextContribution.skipped(self.id, "no worldbook entries")
         content = "\n\n".join(e.get("text", "") for e in entries)
         layer = self.make_layer(
-            "novel_worldbook", "激活世界书", content,
+            "novel_worldbook", "Active Worldbook", content,
             sticky=False, priority=72,
             items=[_strip_worldbook_text(e) for e in entries],
         )

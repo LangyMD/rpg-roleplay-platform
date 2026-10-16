@@ -50,8 +50,8 @@ class TimelineLayerForbidsNarrativeWhenPending(unittest.TestCase):
         text = layer.get("text") or ""
         # 必须显式禁止 narrative + tags
         for required in (
-            "禁止把玩家请求的未来时间",
-            "禁止输出标签",
+            "do NOT treat the future time/place the player requested",
+            "do not output the tags",
             "时间跳跃确认",   # 出现在『禁止输出』的负面列表里
             "询问玩家",       # 强制要求输出询问 tag
         ):
@@ -59,7 +59,7 @@ class TimelineLayerForbidsNarrativeWhenPending(unittest.TestCase):
                 f"task 44：pending 分支 prompt 应含『{required}』；layer={text!r}")
         # 旧的『默认尊重玩家意图...输出【时间跳跃确认：目标时间】』必须不出现
         # （否则 GM 仍会被旧 instruction 引导直接 confirm）
-        self.assertNotIn("默认尊重玩家的跳转/改线意图", text,
+        self.assertNotIn("respect the player's intent to jump or change course", text,
             f"task 44：pending awaiting 时不应再带『默认尊重...输出【时间跳跃确认】』旧 instruction；"
             f"layer={text!r}")
         # debug 字段保留 pending_jump 状态供观测
@@ -73,9 +73,9 @@ class TimelineLayerForbidsNarrativeWhenPending(unittest.TestCase):
         s.update_time("申时三刻", source="player_set")
         layer = _timeline_layer(s)
         text = layer.get("text") or ""
-        self.assertIn("没有待确认时间跳跃", text,
+        self.assertIn("No pending time jump", text,
             f"无 pending 时应走原分支；layer={text!r}")
-        self.assertNotIn("禁止把玩家请求的未来时间", text)
+        self.assertNotIn("do NOT treat the future time/place the player requested", text)
 
     def test_pending_with_unknown_status_falls_back_to_safe(self):
         """对照：pending 存在但 status 字段缺失/不识别 → 走旧『默认尊重』分支（兼容性）"""
@@ -92,7 +92,7 @@ class TimelineLayerForbidsNarrativeWhenPending(unittest.TestCase):
         layer = _timeline_layer(s)
         text = layer.get("text") or ""
         # 没识别为 awaiting → 走老 default 分支保留兼容
-        self.assertIn("默认尊重玩家的跳转/改线意图", text,
+        self.assertIn("respect the player's intent to jump or change course", text,
             f"未识别的 pending status 应走兼容 default；layer={text!r}")
 
     def test_build_context_bundle_includes_pending_restriction(self):
@@ -102,9 +102,9 @@ class TimelineLayerForbidsNarrativeWhenPending(unittest.TestCase):
         prompt = bundle.get("prompt") or ""
         # 三类禁止指令至少有一条出现在最终 prompt 中
         markers = [
-            "禁止把玩家请求的未来时间",
-            "禁止输出标签",
-            "本轮 anchor_state=pending_confirmation",
+            "do NOT treat the future time/place the player requested",
+            "do not output the tags",
+            "This turn anchor_state=pending_confirmation",
         ]
         hits = [m for m in markers if m in prompt]
         self.assertTrue(hits,

@@ -35,7 +35,26 @@ def test_day_number_extraction():
 
 def test_regression_detected():
     msg = detect_day_regression("第五天·清晨", "第三天·入夜")
-    assert msg and "第5天" in msg and "第3天" in msg
+    assert msg and "Day 5" in msg and "Day 3" in msg
+
+
+def test_english_day_number_extraction():
+    assert _day_number("Day 3, noon") == 3
+    assert _day_number("day twelve - dusk") == 12
+    assert _day_number("The third day, at dawn") == 3
+    assert _day_number("21st day of the siege") == 21
+    assert _day_number("Late afternoon") is None
+    assert _day_number("Two days later") is None
+    assert _day_number("Day of the Dead") is None
+
+
+def test_english_regression_detected_and_dormant():
+    msg = detect_day_regression("Day 5, morning", "Day 3, nightfall")
+    assert msg and "Day 5" in msg and "Day 3" in msg
+    assert detect_day_regression("Day 3", "Day 4, dawn") is None
+    assert detect_day_regression("Day 3", "dusk") is None
+    # mixed-language labels still compare
+    assert detect_day_regression("第五天·清晨", "Day 2") is not None
 
 
 def test_no_regression_forward_or_same():
@@ -62,7 +81,7 @@ def test_tool_appends_warning_and_audit():
     s.data["world"]["time"] = "第五天·清晨"
     from tools_dsl.command_tools import execute_tool
     r = execute_tool(s, "set_world_time", {"target": "第二天·正午"})
-    assert "⚠" in r and "倒退" in r
+    assert "⚠" in r and "backwards" in r
     audit = s.data.get("permissions", {}).get("audit_log", [])
     assert any(a.get("kind") == "time_day_regression" for a in audit)
 
@@ -72,4 +91,4 @@ def test_tool_no_warning_on_forward():
     s.data["world"]["time"] = "第五天·清晨"
     from tools_dsl.command_tools import execute_tool
     r = execute_tool(s, "set_world_time", {"target": "第五天·入夜"})
-    assert "⚠" not in r and "倒退" not in r
+    assert "⚠" not in r and "backwards" not in r

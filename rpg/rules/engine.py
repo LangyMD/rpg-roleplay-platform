@@ -68,7 +68,7 @@ class RulesEngine:
 
     def __init__(self, ruleset_id: str = "dnd5e", mode: str = "5e_compatible"):
         if ruleset_id != "dnd5e":
-            raise ValueError(f"未支持的 ruleset: {ruleset_id}")
+            raise ValueError(f"unsupported ruleset: {ruleset_id}")
         self.ruleset_id = ruleset_id
         self.mode = mode
 

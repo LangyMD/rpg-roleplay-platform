@@ -695,7 +695,7 @@ class ApplyOpsMixin:
                 "field": path,
                 "from": _get_path(self.data, path),
                 "to": value,
-                "reason": f"{_permission_label(mode)}未授权此字段自动写入",
+                "reason": f"{_permission_label(mode)} does not allow automatic writes to this field",
             }
             permissions.setdefault("pending_writes", []).append(pending)
             permissions["pending_writes"] = permissions["pending_writes"][-20:]
@@ -739,7 +739,7 @@ class ApplyOpsMixin:
                     if not item:
                         continue
                     _ok, _why = self.add_memory_ex(bucket, item, origin=source)
-                    if _why and "去重" not in _why:
+                    if _why and "去重" not in _why and "deduplicated" not in _why:
                         # 逐条继续,不因一条被拦就丢掉同批次里其它合法条目
                         _blocked.append(_why)
                 if _blocked:

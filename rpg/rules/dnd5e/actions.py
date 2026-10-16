@@ -51,7 +51,7 @@ def attack_roll(
 
     if critical_miss:
         success = False
-        gm_facts.append(f"{actor} 攻击 {targ} 自然 1，彻底落空。")
+        gm_facts.append(f"{actor} attacks {targ}: natural 1, a complete miss.")
     elif critical or atk.total >= ac:
         success = True
         # 伤害骰用一个独立 seed 序列（不复用 atk 的 seed，避免确定性骰子和攻击骰耦合）
@@ -60,22 +60,22 @@ def attack_roll(
         dmg_amount = int(damage_info.get("total", 0))
         if critical:
             gm_facts.append(
-                f"{actor} 自然 20 暴击 {targ}：伤害 {dmg_amount}（{damage_expr} 暴击）。"
+                f"{actor} rolls a natural 20 and crits {targ}: {dmg_amount} damage ({damage_expr}, critical)."
             )
         else:
             gm_facts.append(
-                f"{actor} 用 {weapon_name or '近战攻击'} 命中 {targ}：{atk.total} ≥ AC {ac}，伤害 {dmg_amount}。"
+                f"{actor} hits {targ} with {weapon_name or 'a melee attack'}: {atk.total} >= AC {ac}, {dmg_amount} damage."
             )
         # 状态变更：仅声明，不直接改 target 引用，由 RulesEngine.apply 在 game state 中落地
         state_ops.append(StateOp(
             op="subtract",
             path=f"_combatant.{(target or {}).get('id', '')}.hp",
             value=dmg_amount,
-            reason=f"{actor} → {targ} 伤害",
+            reason=f"{actor} → {targ} damage",
         ))
     else:
         success = False
-        gm_facts.append(f"{actor} 攻击 {targ} 未命中（{atk.total} < AC {ac}）。")
+        gm_facts.append(f"{actor} attacks {targ} and misses ({atk.total} < AC {ac}).")
 
     return RuleResult(
         kind="attack",
@@ -107,7 +107,7 @@ def apply_damage(target: dict, amount: int) -> RuleResult:
         success=actual > 0,
         roll={},
         damage={"amount": actual, "raw": int(amount)},
-        gm_facts=[f"{name} 受到 {actual} 点伤害（HP {target.get('hp', 0)}/{target.get('max_hp', 0)}）。"],
+        gm_facts=[f"{name} takes {actual} damage (HP {target.get('hp', 0)}/{target.get('max_hp', 0)})."],
     )
 
 
@@ -123,7 +123,7 @@ def short_rest(character: dict, hit_die: str = "1d8", seed: int | None = None) -
         actor=name,
         roll=rr.to_dict(),
         gm_facts=[
-            f"{name} 短休回复 {actual} HP（生命骰 {hit_die} + CON 修正 {con_mod}），当前 HP {character.get('hp', 0)}/{character.get('max_hp', 0)}。"
+            f"{name} takes a short rest and recovers {actual} HP (hit die {hit_die} + CON modifier {con_mod}); HP is now {character.get('hp', 0)}/{character.get('max_hp', 0)}."
         ],
         extra={"healed": actual, "hit_die": hit_die, "con_mod": con_mod},
     )

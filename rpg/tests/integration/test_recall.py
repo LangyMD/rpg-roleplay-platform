@@ -89,7 +89,7 @@ class RecallPureFunctions(unittest.TestCase):
         anchor = "=== 世界线收束·接下来的锚点 ===\n1. [chapter 2] 某事件"
         out = render_compat_string(r, anchor)
         self.assertIn("=== 世界线收束·接下来的锚点 ===", out, "锚点 marker 丢失→_split 切不出")
-        self.assertIn("知识库召回", out)
+        self.assertIn("Knowledge Base Recall", out)
         self.assertIn("甲", out)
 
     def test_dispatcher_flag_off_no_db_touch(self):

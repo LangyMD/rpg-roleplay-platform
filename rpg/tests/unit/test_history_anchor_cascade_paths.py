@@ -140,7 +140,7 @@ class TestPanelCounters(unittest.TestCase):
 
     def test_injected_line_shows_system_count(self):
         line_src = _src("rpg/retrieval/assemble.py")
-        self.assertIn("系统判定", line_src)
+        self.assertIn("system-detected", line_src)
         self.assertIn("system_count", line_src)
 
 

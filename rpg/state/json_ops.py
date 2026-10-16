@@ -246,15 +246,43 @@ _META_PREAMBLE_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+# 只有「工具预告」动词短语还不够:英文叙事/第一人称旁白里 "I'll mark the trail" /
+# "Let me record what you saw" 都是正常文本。English sentences are stripped only when they
+# ALSO name an unmistakably meta object (tools/functions/state/JSON/anchors/snake_case ids).
+_META_OBJECT_RE = re.compile(
+    r"\b("
+    r"tools?|functions?|(?:tool|function)[ _-]?calls?|json|state[ _]?ops?|ops"
+    r"|(?:the |game |world |story |current )+state|state (?:updates?|changes?)"
+    r"|anchors?|gameplay|story[ _]progress|progress (?:markers?|anchors?|flags?)"
+    r"|checkpoints?|memory (?:system|store|tool)"
+    r"|update the (?:memor(?:y|ies)|world)"
+    r"|[a-z]+_[a-z0-9_]+"
+    r")\b",
+    re.IGNORECASE,
+)
+# Commentary about the session itself, meta even without a named object.
+_META_STANDALONE_RE = re.compile(r"\bthe scene has (?:now )?(?:progressed|advanced)\b", re.IGNORECASE)
 _QUOTE_CHARS = "「」“”‘’\"『』"
+_EN_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?:])\s+")
+
+
+def _is_meta_sentence(sentence: str) -> bool:
+    if not sentence or any(q in sentence for q in _QUOTE_CHARS):
+        return False
+    if _META_STANDALONE_RE.search(sentence):
+        return True
+    return bool(_META_PREAMBLE_RE.search(sentence) and _META_OBJECT_RE.search(sentence))
 
 
 def strip_meta_tool_preamble(text: str) -> str:
     """剥离正文尾部泄漏的英文"工具预告"元叙述。
 
     只剥满足全部条件的尾段:① 处于正文末尾 ② 以英文(ASCII)为主、不在引号内
-    (绝不动角色英文台词)③ 命中工具预告短语。中文叙事 + 引号内台词不受影响。
+    (绝不动角色英文台词)③ 命中工具预告短语 **且** 点名元对象(tool/function/state/JSON/
+    anchors/snake_case id…)。中文叙事 + 引号内台词不受影响。
     紧贴中文句末(中文。English meta…)或独立成行两种形态都能处理。
+    English narration: the tail is split into sentences and only trailing meta sentences are
+    removed, so ordinary final lines ("I'll mark the trail for you.") always survive.
     """
     if not text:
         return text
@@ -268,9 +296,21 @@ def strip_meta_tool_preamble(text: str) -> str:
         seg = m.group(1).strip()
         if not seg or any(q in seg for q in _QUOTE_CHARS):
             break
-        if not _META_PREAMBLE_RE.search(seg):
+        sentences = [x for x in _EN_SENTENCE_SPLIT_RE.split(seg) if x.strip()]
+        keep = len(sentences)
+        while keep > 0 and _is_meta_sentence(sentences[keep - 1]):
+            keep -= 1
+        if keep == len(sentences):
             break
-        result = s[: m.start(1)].rstrip()
+        if keep == 0:
+            result = s[: m.start(1)].rstrip()
+            continue
+        # 尾部几句是元叙述、前面是正常叙事:只截掉元叙述句,保留本行其余部分
+        pos = m.start(1)
+        for i in range(keep + 1):
+            pos = s.find(sentences[i], pos) + (len(sentences[i]) if i < keep else 0)
+        result = s[:pos].rstrip() if pos > 0 else s
+        break
     return result if result.strip() else text.rstrip()
 
 
@@ -284,6 +324,12 @@ _LEAKED_SCAFFOLD_KEYS: tuple[str, ...] = (
     "世界线收束", "世界设定", "剧本时间线锚点", "剧本章节事实", "剧本阶段摘要",
     "当前剧情阶段", "最近剧情摘要", "相关原文片段", "相关角色", "组织/势力/地点",
     "跳跃进度说明", "锚点章节原文",
+    # English headers (retrieval/assemble.py etc. after the English switch); matched case-insensitively
+    "timeline retrieval anchor", "save timeline", "author style sample", "chapterfact timeline",
+    "worldline convergence", "world setting", "script timeline anchor", "script chapter facts",
+    "script phase summar", "current story phase", "recent plot summary", "relevant source excerpts",
+    "relevant characters", "organizations / factions / locations", "jump progress note",
+    "anchor chapter source text", "forbidden names", "relevant past events",
 )
 _SCAFFOLD_HEADER_RE = re.compile(r"^\s*=+\s*(.+?)\s*=+\s*$")
 # 模型"内部推理→开始正文"的转场标记(中文 thinking 泄漏的收尾句)。
@@ -298,7 +344,8 @@ def _is_leaked_scaffold_header(stripped_line: str) -> bool:
     if not m:
         return False
     inner = m.group(1)
-    return any(k in inner for k in _LEAKED_SCAFFOLD_KEYS)
+    inner_low = inner.lower()
+    return any(k in inner or k in inner_low for k in _LEAKED_SCAFFOLD_KEYS)
 
 
 def strip_leaked_scaffold(text: str) -> str:

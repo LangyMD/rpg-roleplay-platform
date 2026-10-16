@@ -32,7 +32,7 @@ class RulesProvider(ContextProvider):
         dice_log = list(data.get("dice_log") or [])[-8:]
 
         lines: list[str] = []
-        lines.append(f"【规则集】{ruleset.get('public_label') or ruleset.get('id') or 'unknown'}")
+        lines.append(f"[Ruleset] {ruleset.get('public_label') or ruleset.get('id') or 'unknown'}")
 
         # Codex #1+#2:硬约束 prompt 由 GamePolicy 统一提供。
         # 一个 policy 类同时负责 preflight (GM 前拦截) + prompt 文本 (GM 真被调用时兜底),
@@ -49,21 +49,21 @@ class RulesProvider(ContextProvider):
                 lines.append(ln)
         if pc:
             lines.append(
-                f"【角色】{pc.get('name')} · Lv {pc.get('level')} {pc.get('class_name', '')} · "
+                f"[Character] {pc.get('name')} · Lv {pc.get('level')} {pc.get('class_name', '')} · "
                 f"HP {pc.get('hp')}/{pc.get('max_hp')} · AC {pc.get('ac')} · "
-                f"熟练 +{pc.get('proficiency_bonus', 0)}"
+                f"proficiency +{pc.get('proficiency_bonus', 0)}"
             )
             abilities = pc.get("abilities") or {}
             if abilities:
-                lines.append("  · 属性：" + " ".join(
+                lines.append("  · Abilities: " + " ".join(
                     f"{a.upper()} {abilities.get(a, 10)}" for a in ("str", "dex", "con", "int", "wis", "cha")
                 ))
             if pc.get("conditions"):
-                lines.append(f"  · 状态：{', '.join(pc['conditions'])}")
+                lines.append(f"  · Conditions: {', '.join(pc['conditions'])}")
         # rule_candidate_actions（Demand Resolver 产出）
         rcas = (demand.rule_candidate_actions or []) if demand else []
         if rcas:
-            lines.append("\n【本轮规则候选动作】")
+            lines.append("\n[Rule candidate actions this turn]")
             for a in rcas[:6]:
                 desc = f"{a.get('kind')} {a.get('skill') or a.get('ability') or a.get('target') or ''}"
                 if a.get("dc") is not None:
@@ -71,9 +71,9 @@ class RulesProvider(ContextProvider):
                 if a.get("reason"):
                     desc += f" — {a['reason']}"
                 lines.append(f"  · {desc}")
-            lines.append("⚠️ GM 不能自己掷骰；必须经 RulesEngine。")
+            lines.append("⚠️ The GM must not roll dice itself; every roll goes through the RulesEngine.")
         if dice_log:
-            lines.append("\n【最近骰子日志】")
+            lines.append("\n[Recent dice log]")
             for d in dice_log:
                 summary = (
                     f"{d.get('kind')} · {d.get('actor', '')} · "
@@ -91,14 +91,14 @@ class RulesProvider(ContextProvider):
             # 用独立 id 避免与 universal_layers 的静态 "rules"(A级缓存)撞 id;
             # 且本层含每回合变的 HP/AC/dice_log,显式 cache_tier="C"(逐回合易变),
             # 否则继承 LAYER_CACHE_TIER["rules"]="A" → 被标 ephemeral 缓存但每回合 miss(零效率)。
-            "rules_state", "规则集状态", text,
+            "rules_state", "Ruleset State", text,
             sticky=False, priority=80, cache_tier="C",
         )
         facts: list[str] = []
         if pc:
-            facts.append(f"角色 HP {pc.get('hp')}/{pc.get('max_hp')}, AC {pc.get('ac')}")
+            facts.append(f"Character HP {pc.get('hp')}/{pc.get('max_hp')}, AC {pc.get('ac')}")
         if rcas:
-            facts.append(f"本轮候选规则动作 {len(rcas)} 条")
+            facts.append(f"{len(rcas)} rule candidate action(s) this turn")
         return ContextContribution(
             provider_id=self.id,
             kind="rules",

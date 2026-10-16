@@ -24,44 +24,44 @@ def _state_schema_layer(state, chars: dict[str, Any]) -> str:
 
     # 已知人物列表（玩家 + 当前 relationships + 角色卡库）
     known_npcs = sorted(set(list(rels.keys()) + [name for name in chars.keys() if name != p.get("name")]))
-    known_npcs_str = "、".join(known_npcs[:20]) if known_npcs else "（尚未识别任何 NPC）"
+    known_npcs_str = ", ".join(known_npcs[:20]) if known_npcs else "(no NPCs identified yet)"
 
     # 用户变量当前值
     user_vars = (worldline.get("user_variables") or {})
     var_names = list(user_vars.keys())[:10]
 
     lines = [
-        "## 状态字段 schema（写入时严格遵循）",
+        "## State field schema (follow it strictly when writing)",
         "",
-        "**player.\\*** — 单字符串类型字段：",
-        f"- `player.name`: 字符串。当前 = {p.get('name', '') or '(空)'}",
-        f"- `player.role`: 字符串。简短角色定位（如「史官」「侦探」「医师」），不是结构体。当前 = {p.get('role', '') or '(空)'}",
-        f"- `player.background`: 字符串。一两句话背景。当前长度 = {len(p.get('background', ''))} 字符",
-        f"- `player.current_location`: 字符串。简短地名（如「城南·旧码头」「废弃矿道入口」「酒馆楼上」）。当前 = {p.get('current_location', '') or '(空)'}",
+        "**player.\\*** - single string fields:",
+        f"- `player.name`: string. Current = {p.get('name', '') or '(empty)'}",
+        f"- `player.role`: string. A short role label (e.g. \"chronicler\", \"detective\", \"physician\"), not a structure. Current = {p.get('role', '') or '(empty)'}",
+        f"- `player.background`: string. One or two sentences of background. Current length = {len(p.get('background', ''))} characters",
+        f"- `player.current_location`: string. A short place name (e.g. \"South City · Old Pier\", \"Abandoned mine entrance\", \"Upstairs at the tavern\"). Current = {p.get('current_location', '') or '(empty)'}",
         "",
-        "**world.\\*** — 时间 / 已知事件：",
-        f"- `world.time`: 字符串。中式（如「申时三刻」）或西式（如「YYYY年M月D日傍晚」）均可，本档要一致。当前 = {w.get('time', '') or '(空)'}",
-        f"- `world.weather`: 字符串可选。当前 = {w.get('weather', '') or '(空)'}",
-        "- `world.known_events`: 字符串数组。append 用【状态追加】或 JSON op=append。",
-        "- `world.timeline.current_phase`: 字符串。剧情阶段名。",
+        "**world.\\*** - time / known events:",
+        f"- `world.time`: string. Any style works (e.g. \"Day 3, late afternoon\" or \"Evening of March 5, YYYY\"), but keep it consistent within this save. Current = {w.get('time', '') or '(empty)'}",
+        f"- `world.weather`: optional string. Current = {w.get('weather', '') or '(empty)'}",
+        "- `world.known_events`: array of strings. Append with the 【状态追加】 tag or JSON op=append.",
+        "- `world.timeline.current_phase`: string. Name of the story phase.",
         "",
-        "**relationships.<角色名>** — 字符串值（关系状态：信任/戒备/敌意/亲近/中立 等）：",
-        f"- 当前已识别角色：{known_npcs_str}",
-        "- **优先使用已存在角色名**；新角色必须先在 GM 叙事里引入，再写 relationships。",
-        "- 错误写法：`relationships = {name: 张三, tier: 5}` （不是对象，是 path）",
-        "- 正确写法：`relationships.张三 = 信任` （path 含角色名，值是字符串）",
+        "**relationships.<character name>** - string value (relationship state: trust / wary / hostile / close / neutral, etc.):",
+        f"- Characters identified so far: {known_npcs_str}",
+        "- **Prefer existing character names**; a new character must first be introduced in the GM narration before you write relationships for them.",
+        "- Wrong: `relationships = {name: John Smith, tier: 5}` (it is not an object; it is a path)",
+        "- Right: `relationships.John Smith = trust` (the path contains the character name; the value is a string)",
         "",
-        "**memory.\\*** — 列表 vs 标量：",
-        "- 列表字段（append 用【状态追加】或 JSON op=append）：`memory.resources` / `memory.abilities` / `memory.facts` / `memory.pinned` / `memory.notes`",
-        "- 标量字段（直接覆盖）：`memory.main_quest` / `memory.current_objective` / `memory.mode`",
-        "- 列表内每项是字符串。",
+        "**memory.\\*** - lists vs scalars:",
+        "- List fields (append with the 【状态追加】 tag or JSON op=append): `memory.resources` / `memory.abilities` / `memory.facts` / `memory.pinned` / `memory.notes`",
+        "- Scalar fields (overwrite directly): `memory.main_quest` / `memory.current_objective` / `memory.mode`",
+        "- Each list item is a string.",
         "",
-        "**worldline.user_variables.<变量名>** — 玩家用 /set 创建的硬约束变量。",
-        f"- 当前已定义变量：{('、'.join(var_names) if var_names else '（无）')}",
-        "- 你可以读，但禁止主动新建（属于玩家硬约束领域）。",
+        "**worldline.user_variables.<variable name>** - hard-constraint variables the player created with /set.",
+        f"- Variables defined so far: {(', '.join(var_names) if var_names else '(none)')}",
+        "- You may read them, but never create new ones yourself (they belong to the player's hard constraints).",
         "",
-        "**禁止写入（硬黑名单）**：`permissions.*` / `history.*` / `schema_version` / `created_at`",
-        "- 写入会被拒并写 audit_log。",
+        "**Never write (hard blacklist)**: `permissions.*` / `history.*` / `schema_version` / `created_at`",
+        "- Such writes are rejected and recorded in audit_log.",
     ]
     return "\n".join(lines)
 
@@ -107,28 +107,28 @@ def _fact_groups_layer(state) -> str:
 
     lines = []
     if canon:
-        lines.append("## 原著事实 (canon) —— 设定边界，不是本局发生过的")
+        lines.append("## Canon facts (canon) - boundaries of the setting, NOT things that happened in this playthrough")
         for it in canon:
             lines.append(f"- {it.get('text', '?')[:80]}")
         lines.append("")
     if runtime:
-        lines.append("## 本局已发生 (runtime) —— 玩家亲历，可叙事复述")
+        lines.append("## Happened in this playthrough (runtime) - lived through by the player; may be retold in narration")
         for it in runtime:
             meta = []
             if it.get("time_label"):
                 meta.append(it["time_label"])
             if it.get("characters"):
-                meta.append("、".join(it["characters"][:3]))
-            meta_str = f"（{' · '.join(meta)}）" if meta else ""
+                meta.append(", ".join(it["characters"][:3]))
+            meta_str = f"({' · '.join(meta)})" if meta else ""
             lines.append(f"- {it.get('text', '?')[:80]} {meta_str}")
         lines.append("")
     elif legacy_facts:
-        lines.append("## 本局已发生 (runtime, legacy) —— 旧存档迁移前数据")
+        lines.append("## Happened in this playthrough (runtime, legacy) - data from before an old save was migrated")
         for f in legacy_facts:
             lines.append(f"- {f[:80]}")
         lines.append("")
     if constraints:
-        lines.append("## 玩家硬约束 (user_constraint) —— 最高优先级，覆盖一切")
+        lines.append("## Player hard constraints (user_constraint) - highest priority, override everything")
         for it in constraints:
             lines.append(f"- {it.get('text', '?')[:80]}")
     if not lines:
@@ -146,12 +146,12 @@ def _candidate_actions_layer(plan: dict[str, Any] | None) -> str:
     if not candidates:
         return ""
     lines = [
-        "Curator 为本轮列出了以下候选动作；**优先在候选范围内**叙事或写状态，",
-        "如果候选都不合适，可以选「其它」（在正文里说明你为什么偏离候选）：",
+        "The curator listed the following candidate actions for this turn; **prefer staying within them** when narrating or writing state.",
+        "If none of them fit, you may choose \"other\" (explain in the prose why you departed from the candidates):",
     ]
     for i, c in enumerate(candidates[:5], 1):
         lines.append(f"{i}. {str(c)[:120]}")
-    lines.append("（候选是建议不是强制；最终输出仍由你判断。）")
+    lines.append("(The candidates are suggestions, not requirements; the final output is still your call.)")
     return "\n".join(lines)
 
 
@@ -166,18 +166,18 @@ def _active_hypotheses_layer(state) -> str:
     if not hypos:
         return ""
     lines = [
-        "以下是本档**尚未确认的推测**（仅你/子代理的猜想，**绝不当作已发生事实复述**）：",
+        "These are this save's **unconfirmed hypotheses** (only guesses by you / the sub-agents; **never retell them as facts that happened**):",
     ]
     for h in hypos[:8]:
-        chars = "、".join(h.get("characters", []) or [])
+        chars = ", ".join(h.get("characters", []) or [])
         time_label = h.get("time_label") or ""
         meta = " · ".join(x for x in [time_label, chars] if x)
-        meta_str = f"（{meta}）" if meta else ""
+        meta_str = f"({meta})" if meta else ""
         lines.append(f"- [{h.get('id', '?')}] {h.get('text', '?')[:60]} {meta_str}")
     lines.append(
-        "如有新信息验证了某条推测，输出 "
-        "`{\"op\":\"confirm_hypothesis\",\"id\":\"...\"}` 升级为事实；"
-        "若被推翻输出 `{\"op\":\"reject_hypothesis\",\"id\":\"...\"}`。"
+        "If new information confirms a hypothesis, output "
+        "`{\"op\":\"confirm_hypothesis\",\"id\":\"...\"}` to promote it to a fact; "
+        "if it is disproved, output `{\"op\":\"reject_hypothesis\",\"id\":\"...\"}`."
     )
     return "\n".join(lines)
 
@@ -200,13 +200,13 @@ def _write_results_layer(state) -> str:
 
     lines = []
     if last_updates:
-        lines.append("上轮你输出的标签实际结果：")
+        lines.append("What actually happened to the tags you output last turn:")
         for u in last_updates[:12]:
             lines.append(f"- {u}")
 
     if pending:
         lines.append("")
-        lines.append(f"当前待玩家审批的写入（共 {len(pending)} 条 · 已入队，不要重写同一路径）：")
+        lines.append(f"Writes currently awaiting player approval ({len(pending)} total · already queued, do not rewrite the same path):")
         for p in pending[-8:]:  # 最近 8 条
             risk = p.get("risk", "?")
             field = p.get("path") or p.get("field", "?")
@@ -216,7 +216,7 @@ def _write_results_layer(state) -> str:
     blocked = [a for a in audit_log[-15:] if a.get("blocked") == "hard_forbidden"]
     if blocked:
         lines.append("")
-        lines.append("上轮被硬黑名单拒绝（permissions.* / history.* 任何形式都禁止，不要再写）：")
+        lines.append("Rejected by the hard blacklist last turn (permissions.* / history.* are forbidden in any form; do not write them again):")
         for a in blocked[-5:]:
             lines.append(f"- {a.get('path')} = {str(a.get('value',''))[:50]}")
 
@@ -224,35 +224,35 @@ def _write_results_layer(state) -> str:
     parse_errors = [a for a in audit_log[-20:] if a.get("kind") == "parse_error"]
     if parse_errors:
         lines.append("")
-        lines.append("⚠️ 上轮你输出的标签**解析失败**（被静默丢弃前已记录，请改格式重试）：")
+        lines.append("⚠️ Tags you output last turn **failed to parse** (recorded before being silently dropped; fix the format and try again):")
         for a in parse_errors[-5:]:
             lines.append(f"- {a.get('raw_spec', '?')[:60]}")
             if a.get("hint"):
-                lines.append(f"  · 原因：{a['hint']}")
-        lines.append("正确格式参考：")
-        lines.append("- JSON：`{\"op\":\"set\",\"path\":\"player.role\",\"value\":\"史官\"}`")
-        lines.append("- 【】：`【状态写入：player.role=史官】`（半角 = 号；path 不要含空格）")
+                lines.append(f"  · Reason: {a['hint']}")
+        lines.append("Correct format examples:")
+        lines.append("- JSON: `{\"op\":\"set\",\"path\":\"player.role\",\"value\":\"chronicler\"}`")
+        lines.append("- 【】 tag: `【状态写入：player.role=chronicler】` (ASCII = sign; no spaces in the path)")
 
     # 洪泛闸反馈 — 没有这一段,闸就只是「悄悄拒绝」,GM 下轮还会原样再写一遍。
     flood = [a for a in audit_log[-20:] if a.get("kind") == "memory_flood_blocked"]
     if flood:
         lines.append("")
-        lines.append("⚠️ 上轮有记忆写入**被洪泛闸拒绝**（同一件事被拆成太多条，玩家面板里每条都要手动删）：")
+        lines.append("⚠️ Some memory writes last turn **were rejected by the flood gate** (one thing was split into too many entries, and the player would have to delete each one by hand in the panel):")
         for a in flood[-5:]:
             lines.append(f"- {a.get('path')} ← {str(a.get('value', ''))[:40]}")
             if a.get("hint"):
-                lines.append(f"  · 原因：{a['hint']}")
-        lines.append("处理办法：把同族条目**合并成一条**（在正文里叙述细节，条目只留一条带进展/层数的总纲），不要逐条追加。")
+                lines.append(f"  · Reason: {a['hint']}")
+        lines.append("What to do: **merge entries of the same kind into one** (tell the details in the prose and keep a single summary entry with the progress / count); do not append them one by one.")
 
     rejected = [a for a in audit_log[-15:] if "rejected" in str(a.get("source", "")) or a.get("kind") == "rejected"]
     if rejected:
         lines.append("")
-        lines.append("玩家拒绝过的最近写入（不要立即重写，先在叙事里铺垫或改用询问）：")
+        lines.append("Recent writes the player rejected (do not rewrite them right away; set them up in the narration first or ask instead):")
         for a in rejected[-5:]:
             lines.append(f"- {a.get('path')} = {str(a.get('value',''))[:50]}")
 
     if not lines:
-        return "（这是本档第一轮，或上轮没有任何标签输出）"
+        return "(This is the first turn of this save, or no tags were output last turn.)"
     return "\n".join(lines)
 
 
@@ -309,14 +309,14 @@ def _timeline_layer(state) -> dict[str, Any]:
         timeline.get("anchor_phase")
         or timeline.get("current_phase")
         or anchor.get("story_phase")
-        or "未知"
+        or "unknown"
     )
     lines = [
-        f"当前锁定时间线：{locked_label}",
-        f"当前阶段：{effective_phase}",
-        f"锚定状态：{timeline.get('anchor_state') or 'locked'}",
-        f"原著检索锚点：第{anchor.get('anchor_chapter') or '?'}章 · {anchor.get('anchor_event') or anchor.get('story_phase') or '未命中'}",
-        f"允许检索章节窗口：{anchor.get('chapter_min') or '?'} - {anchor.get('chapter_max') or '?'}",
+        f"Locked timeline: {locked_label}",
+        f"Current phase: {effective_phase}",
+        f"Anchor state: {timeline.get('anchor_state') or 'locked'}",
+        f"Novel retrieval anchor: chapter {anchor.get('anchor_chapter') or '?'} · {anchor.get('anchor_event') or anchor.get('story_phase') or 'no match'}",
+        f"Allowed retrieval chapter window: {anchor.get('chapter_min') or '?'} - {anchor.get('chapter_max') or '?'}",
     ]
     if pending:
         pending_status = str(pending.get("status") or "")
@@ -330,24 +330,24 @@ def _timeline_layer(state) -> dict[str, Any]:
         #   - 声明在新地点新时间发生的具体场景/选项
         is_awaiting = pending_status in ("awaiting_gm_confirmation", "awaiting", "pending_confirmation")
         lines.extend([
-            f"玩家请求时间跳跃：{pending.get('from', '')} -> {pending.get('to', '')}",
-            f"目标原著匹配：第{target_anchor.get('anchor_chapter') or '?'}章 · {target_anchor.get('anchor_event') or '未能精确匹配'}",
-            f"pending 状态：{pending_status or '未知'}",
+            f"Player requested a time jump: {pending.get('from', '')} -> {pending.get('to', '')}",
+            f"Target novel match: chapter {target_anchor.get('anchor_chapter') or '?'} · {target_anchor.get('anchor_event') or 'no exact match'}",
+            f"pending status: {pending_status or 'unknown'}",
         ])
         if is_awaiting:
             lines.extend([
-                "⚠ 本轮 anchor_state=pending_confirmation：禁止把玩家请求的未来时间/地点当作已发生的事实。",
-                "禁止输出『翌日…』『次日…』『转眼已是…』等任何把场景叙事推进到目标时间的措辞；",
-                "禁止输出标签【时间跳跃确认：…】【当前时间线：目标时间】【当前位置：新地点】【时间：目标时间】；",
-                "禁止给出『新时间/新地点』场景里的对话、动作、选项；",
-                "本轮只允许：① 给出冲突检查（与世界书/时间线锚点是否一致）；② 列出风险/代价/前置条件；"
-                "③ 输出【询问玩家：是否确认跳跃到 <目标时间>？】+ 1-3 个明确选项（确认 / 取消 / 修改目标）；",
-                "下一轮若玩家明确回复『确认』或 /confirm，再正式推进时间线和场景。",
+                "⚠ This turn anchor_state=pending_confirmation: do NOT treat the future time/place the player requested as something that has already happened.",
+                "Do not write anything that moves the scene forward to the target time ('The next morning...', 'The following day...', 'Before you know it...', etc.);",
+                "do not output the tags 【时间跳跃确认：…】【当前时间线：<target time>】【当前位置：<new place>】【时间：<target time>】;",
+                "do not give dialogue, actions or options set in the 'new time / new place' scene.",
+                "This turn you may only: (1) give a conflict check (is it consistent with the worldbook / timeline anchors?); (2) list risks / costs / prerequisites; "
+                "(3) output 【询问玩家：Confirm the jump to <target time>?】 + 1-3 clear options (confirm / cancel / change the target).",
+                "Only if the player clearly replies 'confirm' or /confirm next turn do you actually advance the timeline and the scene.",
             ])
         else:
             lines.extend([
-                "本轮必须先处理时间跳跃事务：默认尊重玩家的跳转/改线意图，接受则写出过渡/落点并输出【时间跳跃确认：目标时间】和【当前时间线：目标时间】；只有目标完全不可解析时才输出【询问玩家：...】。",
-                "在确认前，不要把玩家请求的未来时间当作已经发生；确认后才允许推进场景与更新位置/目标。",
+                "This turn you must deal with the time jump first. By default, respect the player's intent to jump or change course; if you accept, write the transition / landing point and output 【时间跳跃确认：<target time>】 and 【当前时间线：<target time>】; only output 【询问玩家：...】 if the target cannot be interpreted at all.",
+                "Until it is confirmed, do not treat the requested future time as already happened; only after confirmation may you advance the scene and update location / objective.",
             ])
     else:
         # 新增分支:用户当回合刚用 /set 硬覆盖时间线 (last_transition.source="user_set")。
@@ -374,25 +374,25 @@ def _timeline_layer(state) -> dict[str, Any]:
             or (_user_jump_turn == _cur_turn)
         )
         if _is_user_set_now:
-            _from = last_t.get("from") or "(未知)"
-            _to = last_t.get("to") or locked_label or "(未知)"
+            _from = last_t.get("from") or "(unknown)"
+            _to = last_t.get("to") or locked_label or "(unknown)"
             lines.extend([
                 "",
-                f"⚠ 本轮玩家用 /set 硬覆盖时间线:from『{_from}』→ to『{_to}』",
-                "这是**覆盖式跳跃**,不是叙事过渡。GM 的任务是直接在新时间点开场,不要叙事时间过渡过程。",
-                "**禁止**输出以下措辞或剧情(违反会被 strip / warn):",
-                "  · 『穿越』『时空错位/穿梭』『回到过去』『时空裂缝』『时间倒流』",
-                "  · 『醒来』『再次睁开眼睛/眼眸』『从昏迷/沉睡中』",
-                "  · 『拨回时钟』『时钟被拨回』『时间被(一双)?手?[拉拨]回』",
-                "  · 『重启世界』『重置场景/时间』『世界被重写』",
-                "  · 『刺骨的冷』『冷得发抖』等惊厥/失忆/无意识开场",
-                "  · 『当你再次X』『睁开X时,X已经不在了』等模板化过渡",
-                "**应该**:把 state.world.time + state.player.current_location 当成既定事实,"
-                "从『此时此刻』玩家角色正在做什么、看到什么、跟谁在一起开始叙述。"
-                "玩家是有意识地推进游戏,**时间线标签的切换 = 镜头切到新时间点**,角色没有失忆/穿越感。",
+                f"⚠ This turn the player used /set to hard-override the timeline: from \"{_from}\" -> to \"{_to}\"",
+                "This is an **overriding jump**, not a narrative transition. Your job is to open the scene directly at the new point in time; do not narrate the passage of time.",
+                "**Never** write the following phrasing or plot devices (violations get stripped / flagged):",
+                "  · transmigration, time slips / shifting through time, going back to the past, rifts in time, time flowing backwards",
+                "  · waking up, opening your eyes again, coming to from unconsciousness / sleep",
+                "  · the clock being turned back, time being pulled back (by a pair of hands)",
+                "  · the world restarting, the scene / time being reset, the world being rewritten",
+                "  · convulsive / amnesiac / unconscious openings such as 'a bone-deep cold' or 'shivering with cold'",
+                "  · template transitions such as 'When you once again X...' or 'When you open X, X is already gone'",
+                "**Instead**: treat state.world.time + state.player.current_location as established facts, "
+                "and start from what the player character is doing, seeing and who they are with 'right now'. "
+                "The player is deliberately moving the game forward: **a change of timeline label = the camera cutting to a new point in time**; the character feels no amnesia and no sense of having travelled through time.",
             ])
         else:
-            lines.append("没有待确认时间跳跃；生成时必须保持当前时间线锚点，除非玩家本轮提出新跳跃。")
+            lines.append("No pending time jump; keep to the current timeline anchor when generating, unless the player proposes a new jump this turn.")
 
     debug = {
         "anchor_state": timeline.get("anchor_state") or "locked",

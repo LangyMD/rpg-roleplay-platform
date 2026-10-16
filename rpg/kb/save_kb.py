@@ -373,8 +373,8 @@ def maintain_structured_kb(db, save_id: int, script_id: int, commit_id: int,
         if (c.get("type") or "") == "character" and c["name"] != (player_name or "") \
                 and c["name"] not in _ambiguous and c["name"] not in existing_rel:
             live_repo.set_relationship(db, save_id, commit_id, f"_player->{c['name']}",
-                                       from_key="_player", to_key=c["name"], kind="初识",
-                                       note="本回合正文中出现并交互", metadata={})
+                                       from_key="_player", to_key=c["name"], kind="first met",
+                                       note="appeared and interacted in this turn's narration", metadata={})
             existing_rel.add(c["name"])
             n_rel += 1
     return {"entities": n_ent, "relationships": n_rel, "mentioned": mentioned}

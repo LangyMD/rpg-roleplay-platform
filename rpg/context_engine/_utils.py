@@ -14,7 +14,7 @@ def _trim(text: str, max_chars: int) -> str:
     text = (text or "").strip()
     if len(text) <= max_chars:
         return text
-    return text[: max_chars - 20].rstrip() + "\n……（已按预算截断）"
+    return text[: max_chars - 20].rstrip() + "\n...(truncated to fit the budget)"
 
 
 def _preview(text: str, limit: int = 140) -> str:
@@ -77,5 +77,5 @@ def _cache_plan(debug_layers: list[dict[str, Any]], prompt_parts: list[str]) -> 
         "strict_stable_ratio": round(stable_tokens / max(total_tokens, 1), 3),
         "stable_prefix_hash": hashlib.sha256(joined_stable.encode("utf-8")).hexdigest()[:16] if joined_stable else "",
         "cacheable_prefix_hash": hashlib.sha256(joined_extended.encode("utf-8")).hexdigest()[:16] if joined_extended else "",
-        "note": "真实缓存命中率由模型厂商返回的用量字段确认；当前请求形状把动态 RAG/context_agent/recent_chat 都放到末尾。",
+        "note": "The real cache hit rate is confirmed by the usage fields the model vendor returns; the current request shape puts the dynamic RAG/context_agent/recent_chat at the end.",
     }

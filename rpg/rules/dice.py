@@ -34,7 +34,7 @@ def parse_expression(expression: str) -> tuple[int, int, int]:
         raise ValueError("dice expression is None")
     match = _EXPR_RE.match(str(expression))
     if not match:
-        raise ValueError(f"无法解析骰子表达式：{expression!r}")
+        raise ValueError(f"cannot parse dice expression: {expression!r}")
     count_str, sides_str, sign, mod_str = match.groups()
     count = int(count_str) if count_str else 1
     sides = int(sides_str)
@@ -42,9 +42,9 @@ def parse_expression(expression: str) -> tuple[int, int, int]:
     if sign == "-":
         modifier = -modifier
     if count <= 0 or sides <= 0:
-        raise ValueError(f"骰子参数非法：{expression!r}")
+        raise ValueError(f"invalid dice parameters: {expression!r}")
     if count > 100 or sides > 1000:
-        raise ValueError(f"骰子参数过大：{expression!r}")
+        raise ValueError(f"dice parameters too large: {expression!r}")
     return count, sides, modifier
 
 

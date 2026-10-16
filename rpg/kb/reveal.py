@@ -23,7 +23,7 @@ log = logging.getLogger("kb.reveal")
 
 _MIN_SUMMARY_LEN = 6
 _MIN_IMPORTANCE = 40
-_DEFAULT_MAY_VARY = ["地点", "触发时机", "旁观者"]
+_DEFAULT_MAY_VARY = ["place", "timing", "bystanders"]
 
 _TRUTHY = ("1", "true", "on", "yes")
 
@@ -239,7 +239,7 @@ def mark_anchor_reached(save_id: int, anchor_key: str, *, turn: int | None = Non
     sid = int(save_id)
     key = (anchor_key or "").strip()
     if not key:
-        return {"ok": False, "reason": "anchor_key 为空"}
+        return {"ok": False, "reason": "anchor_key is empty"}
 
     def _do(_db) -> dict[str, Any]:
         scr = _script_id_for_save(_db, sid)
@@ -312,7 +312,7 @@ def backfill_entity_reveal_anchors(script_id: int) -> dict[str, Any]:
         # 没有 reveal_anchors(P1 没回填)→ 跳过,避免把所有实体钉到 NULL(那会变成恒可见=剧透)
         has = db.execute("select 1 from reveal_anchors where script_id=%s limit 1", (sid,)).fetchone()
         if not has:
-            return {"ok": False, "script_id": sid, "reason": "reveal_anchors 未回填,先跑 P1 backfill_reveal_anchors"}
+            return {"ok": False, "script_id": sid, "reason": "reveal_anchors has not been backfilled; run the P1 backfill_reveal_anchors first"}
         for table, extra in specs:
             rows = db.execute(
                 f"select id, coalesce(first_revealed_chapter,0) as n from {table} "

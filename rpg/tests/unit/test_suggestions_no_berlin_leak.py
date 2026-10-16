@@ -57,7 +57,8 @@ class SuggestionsDoNotLeakBerlinOnImportedScript(unittest.TestCase):
                 f"task 41：导入剧本上下文下 suggestions 不应含柏林 token『{tok}』；"
                 f"all={sugs!r}")
         # 通用 fallback 应该至少有一条出现
-        generic_markers = ["观察当前场景", "整理当下已知情报", "确认下一步目标", "和关键人物单独", "回顾当前剧本开场"]
+        generic_markers = ["Look over the people", "Sort through what you know", "Settle the next goal",
+                           "Talk to a key person alone", "opening setup of the story"]
         self.assertTrue(any(m in blob for m in generic_markers),
             f"task 41：导入剧本上下文下应至少出现一条通用 fallback；suggestions={sugs!r}")
 

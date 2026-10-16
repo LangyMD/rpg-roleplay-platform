@@ -51,14 +51,14 @@ def grant_item_action(state, item_id: str, name: str | None = None,
     """
     item_id = str(item_id or "").strip()
     if not item_id:
-        return {"ok": False, "error": "缺少 item_id"}
+        return {"ok": False, "error": "missing item_id"}
     try:
         qty = int(qty or 1)
     except (TypeError, ValueError):
         qty = 1
     result = state.grant_inventory_item(item_id, name=name, qty=qty, kind=kind)
     if not result.get("ok"):
-        return {"ok": False, "error": result.get("error") or "grant_item 失败"}
+        return {"ok": False, "error": result.get("error") or "grant_item failed"}
     pc = state.data.get("player_character") or {}
     granted = result.get("granted")
     entry = {
@@ -71,7 +71,7 @@ def grant_item_action(state, item_id: str, name: str | None = None,
         "total": granted,
         "dc": None,
         "success": True,
-        "reason": reason or f"获得 {result.get('item_name')} ×{granted}",
+        "reason": reason or f"gained {result.get('item_name')} ×{granted}",
         "ts": now_iso(),
         "extra": {
             "item_id": result.get("item_id"),
@@ -89,8 +89,8 @@ def grant_item_action(state, item_id: str, name: str | None = None,
             "target": entry["target"],
             "success": True,
             "gm_facts": [
-                f"{entry['actor']} 获得 {result.get('item_name')} ×{granted}"
-                f"（背包共 {result.get('qty_after')}）。"
+                f"{entry['actor']} gains {result.get('item_name')} ×{granted}"
+                f" ({result.get('qty_after')} in the inventory)."
             ],
             "extra": entry["extra"],
         },
@@ -110,14 +110,14 @@ def pickup_loot_action(state, item_id: str, location_id: str | None = None,
     scene = state.data.setdefault("scene", {})
     module_id = scene.get("module_id")
     if not module_id:
-        return {"ok": False, "error": "未加载模组，无法拾取"}
+        return {"ok": False, "error": "no module loaded; cannot pick anything up"}
     cur_id = scene.get("location_id")
     if location_id and str(location_id) != str(cur_id):
         return {"ok": False,
-                "error": f"只能拾取当前房间 {cur_id!r} 的物品（请求的是 {location_id!r}）"}
+                "error": f"you can only pick up items in the current room {cur_id!r} (requested: {location_id!r})"}
     item_id = str(item_id or "").strip()
     if not item_id:
-        return {"ok": False, "error": "缺少 item_id"}
+        return {"ok": False, "error": "missing item_id"}
 
     room = _current_room(state)
     loot = list(room.get("loot") or [])
@@ -125,12 +125,12 @@ def pickup_loot_action(state, item_id: str, location_id: str | None = None,
     target = next((l for l in loot if str(l.get("item_id") or l.get("id") or "") == item_id), None)
     if target is None:
         return {"ok": False,
-                "error": f"当前房间没有可拾取的 {item_id!r}",
+                "error": f"the current room has no {item_id!r} to pick up",
                 "available": [str(l.get("item_id") or l.get("id") or "") for l in loot]}
 
     taken = scene.setdefault("taken_loot", [])
     if item_id in taken:
-        return {"ok": False, "error": f"{item_id} 已被拾取"}
+        return {"ok": False, "error": f"{item_id} has already been picked up"}
 
     catalog = _module_loot_catalog(module_id)
     cat = catalog.get(item_id) or {}
@@ -143,7 +143,7 @@ def pickup_loot_action(state, item_id: str, location_id: str | None = None,
 
     grant = grant_item_action(
         state, item_id=item_id, name=name, qty=qty, kind=kind,
-        reason=reason or f"从 {room.get('name') or cur_id} 拾取 {name}",
+        reason=reason or f"picked up {name} from {room.get('name') or cur_id}",
     )
     if not grant.get("ok"):
         return grant

@@ -196,7 +196,7 @@ def normalize_canon_type(raw) -> str | None:
 
 def canon_type_choices_text() -> str:
     """报错文案用:「人物 character / 势力 faction / …」。"""
-    return " / ".join(f"{CANON_TYPE_LABELS_ZH[t]} {t}" for t in CANON_ENTITY_TYPES)
+    return " / ".join(CANON_ENTITY_TYPES)
 
 
 def canon_logical_key_base(name: str, entity_type: str) -> str:
@@ -221,9 +221,10 @@ def canon_logical_key_problem(key: str) -> str | None:
     """
     k = str(key or "")
     if "/" in k:
-        return "logical_key 里不能有斜杠「/」"
+        return "logical_key must not contain a slash \"/\""
     if k and not k.strip("."):
-        return "logical_key 不能只由点号组成(「.」「..」在网址里会被当成目录,这条实体会打不开)"
+        return ("logical_key must not consist only of dots (\".\" and \"..\" are treated as directories "
+                "in URLs, so the entity could not be opened)")
     return None
 
 

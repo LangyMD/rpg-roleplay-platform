@@ -98,7 +98,7 @@ def get_stat_block(stat_block_id: str) -> dict:
     """返回独立拷贝；调用方修改 hp 等不影响模板。"""
     template = STAT_BLOCKS.get(stat_block_id)
     if not template:
-        raise KeyError(f"未知 stat_block_id: {stat_block_id}")
+        raise KeyError(f"unknown stat_block_id: {stat_block_id}")
     return copy.deepcopy(template)
 
 
