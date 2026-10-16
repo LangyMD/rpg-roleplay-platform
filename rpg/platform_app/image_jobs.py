@@ -14,7 +14,7 @@ worker 集成：在 scripts/run_postproc_worker.py 的 TASK_HANDLERS 里加：
 Phase 3 增量：
   - enqueue_image_generation 加 save_id 参数，透传 create_image_record + payload。
   - 每日配额(确定性)：起点查该 user 近 24h ai_images 行数(非 failed)，
-    ≥ RPG_IMAGE_DAILY_CAP(env,默认 50) 则不入队，返回 quota_exceeded。
+    ≥ RPG_IMAGE_DAILY_CAP(env;未设置时服务器模式默认 50、local 模式不设上限) 则不入队，返回 quota_exceeded。
 """
 from __future__ import annotations
 
@@ -38,6 +38,25 @@ VALUES
 
 # image 任务没有 game save 归属；用固定占位符满足 NOT NULL 约束。
 _IMAGE_SAVE_PLACEHOLDER = "image_job"
+
+
+
+def _image_daily_cap() -> int | None:
+    """每日生图上限。env RPG_IMAGE_DAILY_CAP 显式设置时恒用它;
+    未设置:local 模式(单用户本机)不设上限(None),服务器模式默认 50。"""
+    raw = (os.getenv("RPG_IMAGE_DAILY_CAP") or "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    try:
+        from core.config import is_local_mode
+        if is_local_mode():
+            return None
+    except Exception:
+        pass
+    return 50
 
 
 def enqueue_image_generation(
@@ -70,25 +89,27 @@ def enqueue_image_generation(
     from platform_app.db import connect
 
     # ── 每日配额检查（确定性）─────────────────────────────────────────────
-    daily_cap: int = int(os.getenv("RPG_IMAGE_DAILY_CAP", "50"))
-    try:
-        with connect() as _db:
-            row = _db.execute(
-                """
-                select count(*) as cnt from ai_images
-                 where user_id = %s
-                   and status <> 'failed'
-                   and created_at > now() - interval '24 hours'
-                """,
-                (int(user_id),),
-            ).fetchone()
-        count_24h: int = int(row["cnt"]) if row else 0
-    except Exception as _quota_exc:
-        # 配额查询失败时宽松放行（避免 DB 故障导致所有生图被拦截）
-        log.warning("[image_jobs] quota check failed (allowing): %s", _quota_exc)
-        count_24h = 0
+    daily_cap = _image_daily_cap()
+    count_24h: int = 0
+    if daily_cap is not None:
+        try:
+            with connect() as _db:
+                row = _db.execute(
+                    """
+                    select count(*) as cnt from ai_images
+                     where user_id = %s
+                       and status <> 'failed'
+                       and created_at > now() - interval '24 hours'
+                    """,
+                    (int(user_id),),
+                ).fetchone()
+            count_24h = int(row["cnt"]) if row else 0
+        except Exception as _quota_exc:
+            # 配额查询失败时宽松放行（避免 DB 故障导致所有生图被拦截）
+            log.warning("[image_jobs] quota check failed (allowing): %s", _quota_exc)
+            count_24h = 0
 
-    if count_24h >= daily_cap:
+    if daily_cap is not None and count_24h >= daily_cap:
         log.warning(
             "[image_jobs] quota_exceeded user=%s count_24h=%d cap=%d",
             user_id, count_24h, daily_cap,

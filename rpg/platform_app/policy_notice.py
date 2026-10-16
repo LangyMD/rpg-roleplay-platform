@@ -173,7 +173,7 @@ def dispatch_notice(db, notice_id: str) -> dict:
     rows = db.execute(
         """
         select u.email,
-               coalesce(pe.default_language, 'zh-CN') as lang
+               coalesce(pe.default_language, 'en') as lang
         from   users u
         left   join profile_extras pe on pe.user_id = u.id
         where  u.email_verified = true

@@ -351,7 +351,7 @@ def _init_kb_tables(db) -> None:
           title text not null,
           slug text not null,
           description text not null default '',
-          default_language text not null default 'zh-CN',
+          default_language text not null default 'en',
           metadata jsonb not null default '{}'::jsonb,
           created_at timestamptz not null default now(),
           updated_at timestamptz not null default now(),

@@ -83,23 +83,35 @@ def _match_user_id_by_email(db, contact_email: str) -> int | None:
 _CENTRAL_DISABLED_VALUES = frozenset({"off", "0", "none", "disabled", "false"})
 
 
+def _central_feedback_base() -> str | None:
+    """反馈转发目标(仅 local/desktop 模式使用)。
+
+    隐私默认:只有显式把 RPG_CENTRAL_URL 设成一个 http(s) URL 才转发出本机;
+    未设置 / off / 0 / none / disabled / false → None,反馈存本机库(与服务器模式同一路径)。
+    """
+    import os
+
+    raw = (os.environ.get("RPG_CENTRAL_URL") or "").strip()
+    if not raw or raw.lower() in _CENTRAL_DISABLED_VALUES:
+        return None
+    if not raw.lower().startswith(("http://", "https://")):
+        return None
+    return raw.rstrip("/")
+
+
 async def _forward_feedback_to_central(body: dict, ua: str):
-    """自部署(local/desktop)模式:本机没有「中央 admin」处理反馈 →
-    把反馈转发到我的中央服务器(/api/feedback/anon),让自部署用户的反馈 + 邮件回执闭环走通。
-    中央地址固定取自部署环境变量(非用户/请求可控),不构成 SSRF;默认指向正式站。"""
+    """自部署(local/desktop)模式且显式配置了 RPG_CENTRAL_URL 时:把反馈转发到该中央服务器
+    (/api/feedback/anon)。中央地址固定取自部署环境变量(非用户/请求可控),不构成 SSRF。"""
     import os
 
     import httpx
 
-    raw_central = (os.environ.get("RPG_CENTRAL_URL") or "").strip()
-    # 隐私开关:RPG_CENTRAL_URL=off(或 0/none/disabled/false)→ 反馈绝不出本机。
-    # 未设置时仍默认转发到正式站(行为不变)。
-    if raw_central.lower() in _CENTRAL_DISABLED_VALUES:
+    central = _central_feedback_base()
+    if central is None:
         raise HTTPException(
             status_code=503,
-            detail="Feedback forwarding is disabled on this install (RPG_CENTRAL_URL=off).",
+            detail="Feedback forwarding is not configured on this install (set RPG_CENTRAL_URL to a URL to enable it).",
         )
-    central = (raw_central or "https://rpg-roleplay.stellatrix.icu").rstrip("/")
     url = f"{central}/api/feedback/anon"
     payload = {
         "free_text": body.get("free_text", "") or "",
@@ -121,7 +133,7 @@ async def _forward_feedback_to_central(body: dict, ua: str):
         if resp.status_code >= 400:
             # 透传中央的 4xx 文案(NSFW 终止 / 限流 / 校验),前端已能识别这些 error_key。
             detail = data.get("detail") if isinstance(data, dict) else None
-            raise HTTPException(status_code=resp.status_code, detail=detail or f"中央服务器返回 {resp.status_code}")
+            raise HTTPException(status_code=resp.status_code, detail=detail or f"Central server returned {resp.status_code}")
         return json_response({
             "ok": True,
             "forwarded": True,
@@ -132,7 +144,7 @@ async def _forward_feedback_to_central(body: dict, ua: str):
         raise
     except Exception as exc:
         log.warning("forward feedback to central failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"反馈转发到服务器失败:{exc}")
+        raise HTTPException(status_code=502, detail=f"Failed to forward feedback to the server: {exc}")
 
 
 def _capture_feedback_env(user: dict | None, client_env: dict | None = None) -> dict:
@@ -201,12 +213,14 @@ def _capture_feedback_env(user: dict | None, client_env: dict | None = None) -> 
 
 @router.post("/api/feedback")
 async def submit_feedback(request: Request, user=Depends(require_user)):
-    """FB-01/02: 提交反馈 + 写 consent_log。自部署(local/desktop)模式转发到中央服务器。"""
+    """FB-01/02: 提交反馈 + 写 consent_log。自部署(local/desktop)模式仅在显式配置
+    RPG_CENTRAL_URL 时转发到中央服务器,否则与服务器模式一样存本机库。"""
     body = await request.json()
     ip = _client_ip(request)
     ua = request.headers.get("user-agent", "")
 
-    # 自部署模式:转发到中央服务器(本机库不存),走 anon 收集 + 邮件回执闭环。
+    # 自部署模式:仅当 RPG_CENTRAL_URL 显式配置为 URL 时转发到中央服务器;
+    # 默认(未设置)反馈留在本机库,不出本机。
     try:
         from core.config import deployment_mode as _dmode
 
@@ -214,7 +228,8 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
     except Exception:
         _mode = ""
     from core.config import LOCAL_MODES
-    if _mode in LOCAL_MODES:
+    _is_local = _mode in LOCAL_MODES
+    if _is_local and _central_feedback_base() is not None:
         return await _forward_feedback_to_central(body, ua)
 
     free_text: str = body.get("free_text", "") or ""
@@ -254,7 +269,12 @@ async def submit_feedback(request: Request, user=Depends(require_user)):
     # ── FB-04 NSFW 预审 ────────────────────────────────────────────────────────
     # 只在反馈通道生效；不影响 GM / 对话 / 记忆等主数据流（成人内容产品允许 NSFW）。
     moderation_text = free_text + "\n" + excerpts_raw
-    verdict = await moderate_feedback(moderation_text)
+    if _is_local:
+        # 本机自用:不把反馈送去第三方审核 API(隐私),也不对机主自己的账号做自动终止。
+        from ..moderation import ModerationVerdict
+        verdict = ModerationVerdict(action="pass")
+    else:
+        verdict = await moderate_feedback(moderation_text)
 
     if verdict.action == "auto_reject":
         # CSAM 红线：不存原文，只存 verdict 摘要；立刻终止账号。

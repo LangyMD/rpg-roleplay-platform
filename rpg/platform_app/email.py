@@ -177,7 +177,7 @@ def _send_resend(to: str, subject: str, text: str, html: str) -> None:
         raise EmailSendError(f"Resend API {resp.status_code}: {resp.text[:300]}")
 
 
-def build_verification_email(code: str, lang: str = "zh-CN") -> tuple[str, str, str]:
+def build_verification_email(code: str, lang: str = "en") -> tuple[str, str, str]:
     is_zh = lang.lower().startswith("zh")
     subject = (
         "你的注册验证码 / Your verification code"
@@ -222,13 +222,13 @@ def build_verification_email(code: str, lang: str = "zh-CN") -> tuple[str, str, 
     return subject, text, html
 
 
-def send_verification_email(to: str, code: str, lang: str = "zh-CN") -> None:
+def send_verification_email(to: str, code: str, lang: str = "en") -> None:
     """Send a registration verification code."""
     subject, text, html = build_verification_email(code, lang)
     _send_resend(to, subject, text, html)
 
 
-def build_login_code_email(code: str, lang: str = "zh-CN") -> tuple[str, str, str]:
+def build_login_code_email(code: str, lang: str = "en") -> tuple[str, str, str]:
     is_zh = lang.lower().startswith("zh")
     subject = (
         "你的登录验证码 / Your login code"
@@ -273,13 +273,13 @@ def build_login_code_email(code: str, lang: str = "zh-CN") -> tuple[str, str, st
     return subject, text, html
 
 
-def send_login_code_email(to: str, code: str, lang: str = "zh-CN") -> None:
+def send_login_code_email(to: str, code: str, lang: str = "en") -> None:
     """Send a one-time login code."""
     subject, text, html = build_login_code_email(code, lang)
     _send_resend(to, subject, text, html)
 
 
-def build_password_reset_email(to: str, token: str, lang: str = "zh-CN") -> tuple[str, str, str]:
+def build_password_reset_email(to: str, token: str, lang: str = "en") -> tuple[str, str, str]:
     is_zh = lang.lower().startswith("zh")
     link = f"{_public_base_url()}/Login.html#reset?token={token}"
     subject = "重置你的密码 / Reset your password" if is_zh else "Reset your password — Stellatrix RPG"
@@ -318,7 +318,7 @@ def build_password_reset_email(to: str, token: str, lang: str = "zh-CN") -> tupl
     return subject, text, html
 
 
-def send_password_reset_email(to: str, token: str, lang: str = "zh-CN") -> None:
+def send_password_reset_email(to: str, token: str, lang: str = "en") -> None:
     """Send a password reset link."""
     subject, text, html = build_password_reset_email(to, token, lang)
     _send_resend(to, subject, text, html)
@@ -399,7 +399,7 @@ def build_policy_notice_email(
 
 
 def build_feedback_reply_email(
-    reply_text: str, feedback_preview: str = "", lang: str = "zh-CN"
+    reply_text: str, feedback_preview: str = "", lang: str = "en"
 ) -> tuple[str, str, str]:
     """反馈回执邮件:把管理员对某条反馈的回复发给提交者(或留邮箱的本地版用户)。"""
     is_zh = lang.lower().startswith("zh")
@@ -456,7 +456,7 @@ def build_feedback_reply_email(
 
 
 def send_feedback_reply_email(
-    to: str, reply_text: str, feedback_preview: str = "", lang: str = "zh-CN"
+    to: str, reply_text: str, feedback_preview: str = "", lang: str = "en"
 ) -> None:
     """发送反馈回执邮件。失败抛 EmailSendError,由调用方 catch+warn(同 auth.py 模式)。"""
     subject, text, html = build_feedback_reply_email(reply_text, feedback_preview, lang)

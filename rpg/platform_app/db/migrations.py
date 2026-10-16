@@ -2376,6 +2376,12 @@ MIGRATIONS: list[tuple[int, str, list[str]]] = [
         "create index if not exists idx_provider_failures_ts on provider_failures(ts desc)",
         "create index if not exists idx_provider_failures_cat on provider_failures(category, ts desc)",
     ]),
+    (103, "english_default_language", [
+        # Default UI/content language is English. Only the column defaults change;
+        # existing rows keep whatever the user (or the old default) stored.
+        "alter table if exists books alter column default_language set default 'en'",
+        "alter table if exists profile_extras alter column language set default 'en'",
+    ]),
 
 ]
 
