@@ -171,7 +171,7 @@ def validator_token_blacklist(
 
     for token in blacklist:
         if token in summary:
-            return False, f"含跨 phase token '{token}' (当前 {current_phase})"
+            return False, f"contains cross-phase token '{token}' (current phase {current_phase})"
     return True, ""
 
 
@@ -202,6 +202,12 @@ def validator_hard_constraints(proposal: dict, snapshot: dict) -> tuple[bool, st
             pat = re.compile(rf"{neg}.{{0,3}}{re.escape(str(value))}|{re.escape(str(value))}.{{0,3}}{neg}")
             if pat.search(summary):
                 return False, f"violates locked var: {key}={value}"
+        # English negation within ~3 words before the value (wasn't X / never X / no X)
+        pat_en = re.compile(
+            rf"\b(?:not|no|never|isn't|wasn't|aren't|weren't|won't|cannot|can't)\W+(?:\w+\W+){{0,2}}"
+            rf"{re.escape(str(value))}", re.I)
+        if pat_en.search(summary):
+            return False, f"violates locked var: {key}={value}"
     return True, ""
 
 
@@ -220,7 +226,7 @@ def validator_timeline_anchor(proposal: dict, snapshot: dict) -> tuple[bool, str
 
     invalid = proposed_npcs - active_ids
     if invalid:
-        return False, f"涉及未在场 NPC: {invalid}"
+        return False, f"involves NPCs not present: {invalid}"
     return True, ""
 
 
@@ -312,7 +318,7 @@ def introspection_tools_schema(snapshot: dict) -> list[dict]:
     return [
         {
             "name": "check_npc_active",
-            "description": "查询某 NPC 是否在当前 phase 活跃。返回 active=true/false + 在场 NPC 列表。",
+            "description": "Check whether an NPC is active in the current phase. Returns active=true/false plus the list of NPCs present.",
             "input_schema": {
                 "type": "object",
                 "required": ["npc_id"],
@@ -321,7 +327,7 @@ def introspection_tools_schema(snapshot: dict) -> list[dict]:
         },
         {
             "name": "check_locked_var",
-            "description": "查询某个 locked variable 的当前值。返回 locked/value/exists。",
+            "description": "Look up the current value of a locked variable. Returns locked/value/exists.",
             "input_schema": {
                 "type": "object",
                 "required": ["key"],
@@ -357,18 +363,19 @@ def handle_introspection_tool(name: str, args: dict, snapshot: dict) -> dict:
 # ─── Harness LLM caller ─────────────────────────────────────────
 
 _SWAN_SYSTEM_PROMPT = """\
-你是 RPG 世界事件子代理。你的唯一任务是在玩家闲置/转场时,提出一个符合
-当前现实切片(snapshot)的"黑天鹅事件",可能让世界在玩家不发声时也产生
-合理变化。
+You are the RPG world-event sub-agent. Your only job, while the player is idle or between
+scenes, is to propose one "black swan event" that fits the current reality slice (snapshot),
+so the world can change plausibly even when the player says nothing.
 
-铁律:
-1. **只使用 snapshot.active_npcs 里的 NPC**;不要捏造新角色。
-2. **只使用 snapshot.current_location 或其子区域**;不要瞬移到其它 phase 的地点。
-3. **不能违反 snapshot.locked_variables**(玩家用 /set 锁住的硬约束)。
-4. **不能与 snapshot.recent_events 重复**。
-5. 若无合适事件,event_kind 填 "no_op"。
+Iron rules:
+1. **Use only NPCs from snapshot.active_npcs**; do not invent new characters.
+2. **Use only snapshot.current_location or its sub-areas**; do not teleport to places from
+   other phases.
+3. **Do not violate snapshot.locked_variables** (hard constraints the player locked with /set).
+4. **Do not repeat snapshot.recent_events**.
+5. If no event fits, set event_kind to "no_op".
 
-必须通过 propose_black_swan_event 工具输出,不要写自然语言。
+You must output through the propose_black_swan_event tool. Do not write natural language.
 """
 
 
@@ -377,20 +384,20 @@ def _build_swan_user_prompt(snapshot: dict,
     """组装 swan agent 的 user prompt:snapshot + 上次失败的 validator 反馈。"""
     import json as _json
     parts = [
-        "## 当前现实切片",
+        "## Current reality slice",
         _json.dumps(snapshot, ensure_ascii=False, indent=2),
     ]
     if prev_failure:
         parts.extend([
             "",
-            "## 上一次提议被拒原因(请避免重复):",
+            "## Why the previous proposal was rejected (avoid repeating it):",
         ])
         for name, passed, reason in prev_failure:
             if not passed:
                 parts.append(f"- [{name}] {reason}")
     parts.extend([
         "",
-        "请提出一个**单一**黑天鹅事件,使用 propose_black_swan_event 工具输出。",
+        "Propose a **single** black swan event and output it with the propose_black_swan_event tool.",
     ])
     return "\n".join(parts)
 
@@ -464,8 +471,9 @@ def _make_harness_caller(
                     model=model,
                     system_prompt=(
                         _SWAN_SYSTEM_PROMPT
-                        + "\n\n你可以在提议前先调用 check_npc_active / check_locked_var"
-                          " 自检,确认无误后再调 propose_black_swan_event 提交最终事件。"
+                        + "\n\nBefore proposing, you may call check_npc_active / check_locked_var"
+                          " to check yourself; once everything checks out, call"
+                          " propose_black_swan_event to submit the final event."
                     ),
                     user_prompt=user_prompt,
                     user_id=user_id,

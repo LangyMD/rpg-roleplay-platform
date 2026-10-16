@@ -30,11 +30,13 @@ context provider(rpg/context_providers/world_pulse.py)择机以传闻/路人交�
 from __future__ import annotations
 
 import json
+import re
 import secrets
 from typing import Any
 
 from core.logging import get_logger
 from core.text import normalize_for_fp
+from core.token_estimate import is_cjk_text
 from state.parsers import _clean_item
 
 log = get_logger(__name__)
@@ -49,6 +51,8 @@ SURFACED_RETENTION_TURNS = 5  # 已浮出条目保留 5 回合后确定性剪除
 
 MAX_ITEM_CHARS = 120        # 单条事件文案最大字数(验收器拒绝口径)
 MAX_ITEMS_PER_TICK = 2      # 一次 tick 最多产出条数
+MAX_ITEM_CHARS_LATIN = 360  # 英文等拉丁文字的同口径上限(prompt 要求 ≤55 词)
+_SECOND_PERSON_EN = re.compile(r"\b(?:you|your|yours|yourself)\b", re.I)  # 英文版「你」
 
 
 # ── 指纹归一化(与 state/consequence_ledger._normalize_for_fp 同思路)──────
@@ -155,9 +159,10 @@ def _validate_items(
         text = _clean_item(raw)
         if not text:
             continue
-        if len(text) > MAX_ITEM_CHARS:
+        # MAX_ITEM_CHARS 按中文字数定;英文同样信息量字符更多,按语言换算
+        if len(text) > (MAX_ITEM_CHARS if is_cjk_text(text) else MAX_ITEM_CHARS_LATIN):
             continue
-        if "你" in text:
+        if "你" in text or _SECOND_PERSON_EN.search(text):
             continue
         if player_name and player_name in text:
             continue
@@ -226,36 +231,44 @@ def _build_materials(state_data: dict, pending_anchors: list[dict] | None) -> di
 def _build_prompts(materials: dict) -> tuple[str, str]:
     """构造心跳 tick 的 system + user prompt(设计文档 §2 prompt 要点)。"""
     system_prompt = (
-        "你是一个桌面角色扮演游戏的『世界脉动』写手。你的任务是想象玩家**当前所在地周边、"
-        "但玩家此刻没在盯着看的角落**正在发生的极小事件(村庄级/配角级/环境级的日常琐事),"
-        "让世界显得在自行运转。\n"
-        "硬性规则:\n"
-        "1. 每条不超过80字;\n"
-        "2. 禁止提到玩家本人(不能出现『你』或玩家名);\n"
-        "3. 禁止重大剧情转折、禁止死亡/战争/灾变级事件(那是主线的事);\n"
-        "4. 内容必须与下面给出的已知事实、地点、人物基调保持一致,不得杜撰未出现的重要人物;\n"
-        "5. **地理铁律**:事件只能发生在玩家【当前地点】及其紧邻处。玩家只是【听说过、"
-        "但人还没到】的远方地点/人物(如别处城镇里的某人),【绝对不能】写成本地此刻正在"
-        "发生的事,也不能让本地人凭空知道远方今天的动静。若确实要提远方,只能写成"
-        "『路过的旅人捎来的旧消息/道听途说』,不能是本地实时事件;\n"
-        "6. 只输出 1-2 条,严格输出一个 JSON 字符串数组,不要任何其它文字/解释/markdown围栏。\n"
-        '示例输出: ["村东磨坊主的驴昨夜挣脱缰绳跑进了麦田,踩坏了半垄麦子", "镇上的铁匠铺新到了一批矿石"]'
+        "You write the \"world pulse\" for a tabletop role-playing game. Your job is to imagine tiny "
+        "events happening **around the player's current location, in corners the player is not "
+        "looking at right now** (village-level, side-character-level or environmental everyday "
+        "trifles), so the world feels like it runs on its own.\n"
+        "Hard rules:\n"
+        "1. Each item is at most 55 words;\n"
+        "2. Never mention the player (no \"you\" and no player name);\n"
+        "3. No major plot turns, and no death / war / disaster-level events (those belong to the main plot);\n"
+        "4. Stay consistent with the known facts, places and character tone given below; do not "
+        "invent important characters who have not appeared;\n"
+        "5. **Geography rule**: events may only happen at the player's [current location] and its "
+        "immediate surroundings. Distant places or people the player has only [heard of but not "
+        "yet reached] (such as someone in another town) must [never] be written as something "
+        "happening here right now, and locals cannot somehow know what happened far away today. If "
+        "you really must mention a distant place, write it only as \"old news brought by a passing "
+        "traveler / hearsay\", never as a live local event;\n"
+        "6. Output only 1-2 items, strictly as one JSON array of strings, with no other text, "
+        "explanation or markdown fences.\n"
+        'Example output: ["The east-village miller\'s donkey slipped its halter last night and '
+        'trampled half a row of wheat", "A fresh load of ore arrived at the town smithy"]'
     )
     user_prompt = (
-        "当前世界快照:\n"
-        f"- 时间: {materials.get('time') or '（未知）'}\n"
-        f"- 地点: {materials.get('current_location') or '（未知）'}\n"
-        f"- 阶段: {materials.get('current_phase') or '（未知）'}\n"
-        f"- 最近事实: {json.dumps(materials.get('facts_recent') or [], ensure_ascii=False)}\n"
-        f"- 已知关系人名: {json.dumps(materials.get('relationship_names') or [], ensure_ascii=False)}\n"
-        f"- 在场角色基调: {json.dumps(materials.get('active_entities') or [], ensure_ascii=False)}\n"
-        f"- 最近已产出的世界事件(避免重复方向): "
+        "Current world snapshot:\n"
+        f"- Time: {materials.get('time') or '(unknown)'}\n"
+        f"- Location: {materials.get('current_location') or '(unknown)'}\n"
+        f"- Phase: {materials.get('current_phase') or '(unknown)'}\n"
+        f"- Recent facts: {json.dumps(materials.get('facts_recent') or [], ensure_ascii=False)}\n"
+        f"- Known relationship names: {json.dumps(materials.get('relationship_names') or [], ensure_ascii=False)}\n"
+        f"- Tone of characters present: {json.dumps(materials.get('active_entities') or [], ensure_ascii=False)}\n"
+        f"- World events already produced recently (avoid repeating their direction): "
         f"{json.dumps(materials.get('recent_background_events') or [], ensure_ascii=False)}\n"
-        f"- 世界正在酝酿什么(方向暗示,非确定事实): "
+        f"- What the world is brewing (directional hints, not settled facts): "
         f"{json.dumps(materials.get('pending_anchor_hints') or [], ensure_ascii=False)}\n\n"
-        "请写玩家【当前地点及紧邻处】、此刻没在盯着看的角落正在发生的 1-2 件小事,"
-        "与已知事实一致、与在场剧情无直接因果。**远方只闻其名、人还没到的地点/人物不得"
-        "写成本地实时事件**(地理铁律)。严格输出 JSON 数组。"
+        "Write 1-2 small things happening right now at the player's [current location and its "
+        "immediate surroundings], in corners the player is not looking at, consistent with known "
+        "facts and with no direct causal link to the scene in play. **Places or people known only "
+        "by name, where the player has not yet been, must not be written as live local events** "
+        "(geography rule). Output strictly a JSON array."
     )
     return system_prompt, user_prompt
 

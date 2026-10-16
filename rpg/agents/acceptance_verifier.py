@@ -39,24 +39,25 @@ from core.logging import get_logger
 log = get_logger(__name__)
 
 _VERIFIER_SYSTEM = """\
-你是 acceptance（验收条件）判定器。读 GM 这一轮的叙事正文 + 一组验收条款，
-判断每条条款是否被满足。**不要写小说**，只输出 JSON。
+You judge acceptance criteria. Read the GM's narration for this turn plus a set of acceptance
+clauses, and decide whether each clause is met. **Do not write fiction**; output only JSON.
 
-判定原则：
-- 肯定条款（"应当 X"/"必须 X"/"回应了 X"/"包含 Y"）：GM 叙事里**真的发生了
-  对应行为**才算 met；只是出现关键词、没有展开 → unmet。
-- 否定条款（"不要 X"/"不应 X"/"禁止 X"）：GM 叙事里**没有违反**才算 met；
-  出现禁止的行为/内容 → unmet。
-- 当 acceptance 在描述"玩家的提问/请求被回应"时，重点判断 GM 是否真的展开
-  叙事去推进/回应了这件事，而不是把名词复读一遍。
+Rules:
+- Positive clauses ("should X" / "must X" / "responds to X" / "includes Y"): met only if the
+  corresponding action **actually happens** in the GM narration; a keyword showing up without
+  being developed → unmet.
+- Negative clauses ("do not X" / "should not X" / "never X"): met only if the GM narration
+  **does not violate** it; any forbidden action/content → unmet.
+- When a clause says "the player's question/request is answered", focus on whether the GM
+  really develops the narration to advance/answer it, rather than repeating the nouns.
 
-输出格式（严格 JSON，不要 markdown fence，不要解释）：
-{"unmet": ["条款 1 原文", "条款 3 原文"]}
+Output format (strict JSON, no markdown fence, no explanation):
+{"unmet": ["original text of clause 1", "original text of clause 3"]}
 
-如果所有条款都满足，输出：{"unmet": []}
+If every clause is met, output: {"unmet": []}
 
-只返回 unmet 列表里的"原文"。原文必须与输入条款字符串**完全一致**（用于回填
-audit_log）。
+Return only the "original text" in the unmet list. It must be **exactly identical** to the
+input clause string (it is used to backfill the audit_log).
 """
 
 
@@ -65,15 +66,15 @@ def _build_user_prompt(
 ) -> str:
     """组装 LLM 的 user message：response 正文 + updates + acceptance 条款。"""
     lines: list[str] = []
-    lines.append("## GM 本轮叙事")
+    lines.append("## GM narration this turn")
     lines.append((response_text or "")[:4000])
     if updates:
         lines.append("")
-        lines.append("## 本轮 state updates（结构化变更摘要）")
+        lines.append("## State updates this turn (structured change summary)")
         for u in updates[:30]:
             lines.append(f"- {str(u)[:200]}")
     lines.append("")
-    lines.append("## 待判定 acceptance 条款")
+    lines.append("## Acceptance clauses to judge")
     for i, cond in enumerate(acceptance, start=1):
         lines.append(f"{i}. {str(cond).strip()}")
     return "\n".join(lines)
@@ -301,7 +302,7 @@ def _call_anthropic_tool_use_for_acceptance(
     result = resolve_api_key(user_id, "anthropic", env_fallback="ANTHROPIC_API_KEY")
     key = result.get("key")
     if not key:
-        raise RuntimeError("找不到 Anthropic API Key for acceptance_verifier")
+        raise RuntimeError("No Anthropic API key found for acceptance_verifier")
     # 走统一出站层(不跟随重定向 + 凭据代理),读超时守调用方的 timeout_sec,SDK 不重试。
     client = micro_task_anthropic_client(result, timeout_sec=timeout_sec)
     # enum 必须是非空且 ≤512 个；正常 acceptance 不会超
@@ -311,13 +312,13 @@ def _call_anthropic_tool_use_for_acceptance(
         items_schema["enum"] = enum_vals
     tools = [{
         "name": "emit_acceptance_verdict",
-        "description": "对每条 acceptance 条款判定是否被 GM 这一轮叙事满足。把 unmet 的条款原文放进 unmet 数组；如果全部通过就传 unmet=[]。",
+        "description": "Judge whether each acceptance clause is met by the GM narration this turn. Put the original text of unmet clauses in the unmet array; if all pass, pass unmet=[].",
         "input_schema": {
             "type": "object",
             "properties": {
                 "unmet": {
                     "type": "array",
-                    "description": "未通过的 acceptance 条款原文列表（每项必须与输入条款完全一致）",
+                    "description": "Original text of the clauses that failed (each item must exactly match an input clause)",
                     "items": items_schema,
                 }
             },
