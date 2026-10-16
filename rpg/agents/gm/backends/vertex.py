@@ -585,7 +585,7 @@ class _VertexBackend:
                 try:
                     result = mcp_call(pc["server_id"], pc["tool_name"], pc["arguments"])
                 except Exception as exc:
-                    result = {"ok": False, "error": f"call_tool 异常: {exc}"}
+                    result = {"ok": False, "error": f"call_tool error: {exc}"}
                 yield {
                     "type": "tool_result", "ok": bool(result.get("ok")),
                     "result": result.get("result"), "error": result.get("error"),
@@ -601,7 +601,7 @@ class _VertexBackend:
                     name=pc["name"], response=response_dict,
                 ))
             contents.append(types.Content(role="user", parts=result_parts))
-        yield {"type": "text", "text": "\n\n【已达本轮工具调用上限 (限制为本次回复内的调用次数,下一条消息自动重置),本轮终止】"}
+        yield {"type": "text", "text": "\n\n[Tool-call limit reached for this reply (the limit counts calls within this one reply and resets with your next message); this turn has ended]"}
 
     @staticmethod
     def _to_contents(messages: list[dict], types):

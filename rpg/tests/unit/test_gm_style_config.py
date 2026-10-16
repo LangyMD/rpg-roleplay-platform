@@ -8,7 +8,7 @@ from agents.gm import style_harness as sh
 
 def _target_hi(profile) -> int:
     block = sh.render_style_block(profile)
-    m = re.search(r"目标约 \d+-(\d+) 字", block)
+    m = re.search(r"about \d+-(\d+) words", block)
     assert m, block
     return int(m.group(1))
 
