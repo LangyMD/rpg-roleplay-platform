@@ -137,7 +137,7 @@ class TestBuildUserPrompt(unittest.TestCase):
     def test_empty_state_doesnt_crash(self):
         prompt = self._fn("/set x=1", {})
         self.assertIsInstance(prompt, str)
-        self.assertIn("(空)", prompt)
+        self.assertIn("(empty)", prompt)
 
     def test_long_set_text_truncated(self):
         long_text = "A" * 2000

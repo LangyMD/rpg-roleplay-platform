@@ -35,7 +35,7 @@ class UpdatePreChecksNameCollision(unittest.TestCase):
         )
 
     def test_clash_raises_actionable_valueerror(self):
-        self.assertIn("已存在同名 NPC 角色卡", CARDS_PY)
+        self.assertIn("already has an NPC character card named", CARDS_PY)
         # 必须是 ValueError(端点 ValueError→400 可显示),不是裸 raise
         self.assertRegex(CARDS_PY, r'if clash:\s*\n\s*raise ValueError\(')
 

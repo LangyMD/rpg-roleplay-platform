@@ -14,6 +14,15 @@ from statistics import mean, stdev
 
 NUMBER_TOKEN = r"零一二三四五六七八九十百千万〇两\d０-９"
 
+# 英文章节标题正则的单一真相源在 ingest.adaptive_split(它不 import 本模块,无环)
+from ingest.adaptive_split import (  # noqa: E402
+    EN_CHAPTER_HEADING,
+    EN_HEADING_LINE,
+    EN_PART_HEADING,
+    EN_PART_LINE,
+    EN_SPECIAL_HEADING,
+)
+
 
 @dataclass
 class SplitPattern:
@@ -31,53 +40,53 @@ class ChapterSplitter:
     ACT_HEADING_PATTERN = re.compile(
         rf"^(?:.{{0,80}}?\s+)?(第[{NUMBER_TOKEN}]+[幕卷部集篇](?:\s*[：:、.．\-—]\s*.+|.+)?)$"
     )
-    VOLUME_PATTERN = re.compile(rf"^(.{{0,30}}第[{NUMBER_TOKEN}]+卷.*)$")
+    VOLUME_PATTERN = re.compile(rf"^(.{{0,30}}第[{NUMBER_TOKEN}]+卷.*|(?i:(?:#{{1,3}}\s*)?{EN_PART_HEADING}))$")
 
     STRONG_CHAPTER_PATTERNS = [
         re.compile(rf"^第[{NUMBER_TOKEN}]+(?:[章回卷集部篇幕场].*|节(?:$|[\s　:：、.．\-—]).*)$"),
         re.compile(r"^(?:楔子|引子|序[章言曲]?|后记|尾声|终章|完本感言|番外)(?:$|[\s　:：、.．\-—].*)$"),
         re.compile(r"^#{1,3}\s+\S.+$"),
-        re.compile(r"^(?:chapter|chap\.|part)\s*[0-9０-９ivxlcdm]+.*$", re.IGNORECASE),
-        re.compile(r"^(?:prologue|epilogue).*$", re.IGNORECASE),
+        re.compile(EN_HEADING_LINE),
+        re.compile(EN_PART_LINE),
         re.compile(rf"^(?:正卷|外卷)[－-](?:第|正)?[{NUMBER_TOKEN}]+卷.*?(?:第[{NUMBER_TOKEN}]+[章节]|第[{NUMBER_TOKEN}]+节|尾章).*$"),
     ]
 
     RULE_PATTERNS: dict[str, SplitPattern] = {
         "chapter_cn": SplitPattern(
             re.compile(rf"^(.{{0,30}}(?:第[{NUMBER_TOKEN}]+[章节集回]|[序楔]章|楔子|引[子言]|前言|番外).*)$", re.MULTILINE),
-            "中文章节",
+            "Chinese chapters",
         ),
         "corpus": SplitPattern(
             re.compile(
                 rf"^(.{{0,40}}(?:第[{NUMBER_TOKEN}]+[章节集回卷]|第[{NUMBER_TOKEN}]+部|[序楔终]章|楔子|引[子言]|前言|正文|番外|外传|大结局).*)$",
                 re.MULTILINE,
             ),
-            "语料章节",
+            "Corpus chapters",
         ),
-        "chapter_en": SplitPattern(re.compile(r"^(Chapter\s+[0-9０-９]+.*)$", re.IGNORECASE | re.MULTILINE), "英文章节"),
+        "chapter_en": SplitPattern(re.compile(r"(?im)^((?:#{1,3}\s*)?(?:" + EN_CHAPTER_HEADING + "|" + EN_SPECIAL_HEADING + "))"), "English chapters"),
         # 收紧:只认「真正的章节头」。原 `[0-9]+[.、]\s*.*` 会把正文里的编号也切走
         # (反馈 #70:第13章正文内"3.14""1. 一长段…""2024."等被误当章节头切碎)。
         # 约束:① 编号 ≤3 位(排除年份/长编号)② 点号后紧跟的不能是数字(排除 3.14 等小数)
         # ③ 标题短(≤38 字,排除以"1."开头的整段正文)。章节头如"1.序章""13、死亡"仍命中。
-        "number_dot": SplitPattern(re.compile(r"^([0-9０-９]{1,3}[.、](?![0-9０-９])\s{0,3}\S.{0,38})$", re.MULTILINE), "数字点号"),
-        "paren_num": SplitPattern(re.compile(rf"^(.{{0,10}}[（(]\s*[{NUMBER_TOKEN}]+\s*[)）].*)$", re.MULTILINE), "括号编号"),
+        "number_dot": SplitPattern(re.compile(r"^([0-9０-９]{1,3}[.、](?![0-9０-９])\s{0,3}\S.{0,38})$", re.MULTILINE), "Numbered dot"),
+        "paren_num": SplitPattern(re.compile(rf"^(.{{0,10}}[（(]\s*[{NUMBER_TOKEN}]+\s*[)）].*)$", re.MULTILINE), "Parenthesized number"),
     }
 
     SPLIT_MODE_LABELS = {
-        "empty": "空文本",
-        "custom_pattern": "自定义规则",
-        "numbered_sections": "篇章小节",
-        "pagination_headings": "分页标题",
-        "adaptive_fusion": "规则融合自适应",
-        "rule_chapter_cn": "中文章节规则",
-        "rule_corpus": "语料章节规则",
-        "rule_chapter_en": "英文章节规则",
-        "rule_number_dot": "数字点号规则",
-        "rule_paren_num": "括号编号规则",
-        "strong_headings": "标准章节标题",
-        "weak_headings": "弱标题推断",
-        "fallback_window": "固定窗口兜底",
-        "quality_fallback_window": "质量兜底窗口",
+        "empty": "Empty text",
+        "custom_pattern": "Custom rule",
+        "numbered_sections": "Numbered sections",
+        "pagination_headings": "Paginated headings",
+        "adaptive_fusion": "Adaptive rule fusion",
+        "rule_chapter_cn": "Chinese chapter rule",
+        "rule_corpus": "Corpus chapter rule",
+        "rule_chapter_en": "English chapter rule",
+        "rule_number_dot": "Numbered-dot rule",
+        "rule_paren_num": "Parenthesized-number rule",
+        "strong_headings": "Standard chapter headings",
+        "weak_headings": "Inferred weak headings",
+        "fallback_window": "Fixed-window fallback",
+        "quality_fallback_window": "Quality fallback window",
     }
 
     # (Phase A.0) 已删除 REMULINA_* 书本特化硬编码 — 反模式。
@@ -149,6 +158,7 @@ class ChapterSplitter:
             title=title or "",
         )
         chapters = self._post_process_chapters(chapters)
+        self._localize_default_titles(chapters, cleaned)
         # 三道过滤之 作者非正文 + 怪标题 (广告/乱码已在 sanitize_corpus 完成)
         from ingest.filters import annotate_weird_titles, filter_non_content
         filter_non_content(chapters)
@@ -157,6 +167,25 @@ class ChapterSplitter:
         report["split_rule"] = split_rule or "auto"
         self._augment_report_v2(report, chapters, cleaning_report, adaptive_report)
         return chapters, report
+
+    _CN_DEFAULT_TITLE_RE = re.compile(r"^第(\d+)章$")
+
+    @classmethod
+    def _localize_default_titles(cls, chapters: list[dict], text: str) -> None:
+        """英文书:切分器兜底生成的中文默认标题(前言/序章/第N章)换成英文。中文书不动。"""
+        from core.token_estimate import is_cjk_text
+        if not chapters or is_cjk_text(text):
+            return
+        for ch in chapters:
+            t = str(ch.get("title") or "")
+            if t == "前言":
+                ch["title"] = "Preface"
+            elif t == "序章":
+                ch["title"] = "Prologue"
+            else:
+                m = cls._CN_DEFAULT_TITLE_RE.match(t)
+                if m:
+                    ch["title"] = f"Chapter {m.group(1)}"
 
     def _split_chapters_internal(
         self,
@@ -617,6 +646,7 @@ class ChapterSplitter:
         return prev_blank and next_blank
 
     def _post_process_chapters(self, chapters: list[dict]) -> list[dict]:
+        from core.token_estimate import is_cjk_text
         cleaned: list[dict] = []
         for chapter in chapters:
             title = str(chapter.get("title") or "").strip()[:200]
@@ -626,11 +656,12 @@ class ChapterSplitter:
                 # 零正文即丢弃(不管有没有标题):有标题无正文的幽灵章(如栏目头/
                 # 分隔符提升出的伪标题)之前靠 title 非空躲过丢弃,是幽灵空章根因之一。
                 continue
-            if content and len(content) > 50000:
-                for idx, sub_chapter in enumerate(self._fallback_split(content, min_window=6000, max_window=9000), start=1):
+            _k = 1 if is_cjk_text(content) else 4  # 英文同等篇幅约 4x 字符
+            if content and len(content) > 50000 * _k:
+                for idx, sub_chapter in enumerate(self._fallback_split(content, min_window=6000 * _k, max_window=9000 * _k), start=1):
                     cleaned.append(
                         {
-                            "title": f"{title or '章节'}（{idx}）"[:200],
+                            "title": (f"{title or '章节'}（{idx}）" if _k == 1 else f"{title or 'Chapter'} ({idx})")[:200],
                             "content": sub_chapter["content"],
                             "chapter_number": len(cleaned) + 1,
                             "volume_title": volume_title,
@@ -666,7 +697,7 @@ class ChapterSplitter:
     def _fallback_split(self, text: str, min_window: int = 3000, max_window: int = 5000) -> list[dict]:
         chapters: list[dict] = []
         start = 0
-        boundary_punctuation = "。！？!?\n"
+        boundary_punctuation = "。！？!?.\n"
         while start < len(text):
             ideal_end = min(start + max_window, len(text))
             if ideal_end >= len(text):
@@ -683,7 +714,9 @@ class ChapterSplitter:
         return chapters
 
     def _build_split_report(self, *, chapters: list[dict], split_mode: str, source_text: str) -> dict:
-        lengths = [len((chapter.get("content") or "").strip()) for chapter in chapters]
+        # 「字数」口径:中文按字、英文按词(core.token_estimate.count_words),阈值 300/12000 两种语言通用
+        from core.token_estimate import count_words
+        lengths = [count_words((chapter.get("content") or "").strip()) for chapter in chapters]
         chapter_count = len(chapters)
         total_words = sum(lengths)
         average_words = int(total_words / chapter_count) if chapter_count else 0
@@ -695,12 +728,12 @@ class ChapterSplitter:
         short_numbers = [
             int(chapter.get("chapter_number") or idx)
             for idx, chapter in enumerate(chapters, start=1)
-            if len((chapter.get("content") or "").strip()) < 300
+            if lengths[idx - 1] < 300
         ]
         long_numbers = [
             int(chapter.get("chapter_number") or idx)
             for idx, chapter in enumerate(chapters, start=1)
-            if len((chapter.get("content") or "").strip()) > 12000
+            if lengths[idx - 1] > 12000
         ]
 
         confidence = {
@@ -721,32 +754,32 @@ class ChapterSplitter:
         }.get(split_mode, 0.5)
         reasons: list[str] = []
         if split_mode in {"fallback_window", "quality_fallback_window"}:
-            reasons.append("未找到可靠章节标题，已按固定字数窗口兜底切分")
+            reasons.append("No reliable chapter headings found; fell back to fixed-length windows")
         if split_mode == "weak_headings":
-            reasons.append("仅识别到弱标题，建议人工确认章节边界")
+            reasons.append("Only weak headings were detected; please confirm the chapter boundaries manually")
         if split_mode == "pagination_headings":
-            reasons.append("检测到分页式标题，已按同名连续页码切分")
+            reasons.append("Paginated headings detected; split by consecutive page numbers of the same title")
         if split_mode == "numbered_sections":
-            reasons.append("检测到篇章标题下的独立小节编号，已按小节编号切分")
+            reasons.append("Numbered sections under part headings detected; split by section number")
         if split_mode == "adaptive_fusion":
-            reasons.append("规则融合自适应切分：候选规则结构性评分选优 + 离群块漏切回收")
+            reasons.append("Adaptive rule fusion: best candidate rule by structural score + recovery of missed splits in outlier blocks")
         if split_mode.startswith("rule_") or split_mode == "custom_pattern":
-            reasons.append("按用户选择的旧项目规则切分")
+            reasons.append("Split with the rule chosen by the user")
 
         if chapter_count <= 1 and len(source_text) > 5000:
             confidence -= 0.25
-            reasons.append("长文本只识别到一个章节，可能存在漏切")
+            reasons.append("Only one chapter was detected in a long text; some splits may have been missed")
         if short_numbers:
             confidence -= min(0.2, len(short_numbers) / max(1, chapter_count) * 0.25)
-            reasons.append(f"有 {len(short_numbers)} 个章节短于300字，建议检查是否误切")
+            reasons.append(f"{len(short_numbers)} chapters are shorter than 300 words; check for wrong splits")
         if long_numbers:
             confidence -= min(0.16, len(long_numbers) / max(1, chapter_count) * 0.2)
-            reasons.append(f"有 {len(long_numbers)} 个章节超过12000字，建议检查是否漏切")
+            reasons.append(f"{len(long_numbers)} chapters are longer than 12000 words; check for missed splits")
         if chapter_count >= 3 and min_words > 0 and max_words / max(1, min_words) >= 8:
             confidence -= 0.12
-            reasons.append("章节长度差异较大，可能存在边界异常")
+            reasons.append("Chapter lengths vary widely; some boundaries may be off")
         if not chapters and source_text.strip():
-            reasons.append("文本存在内容，但未能识别有效章节")
+            reasons.append("The text has content, but no valid chapters were detected")
 
         problem = self._classify_split_problem(
             split_mode=split_mode,
@@ -804,7 +837,7 @@ class ChapterSplitter:
                 pass
             if selection.get("used_best_below_threshold"):
                 report.setdefault("reasons", []).append(
-                    "所有自动切分规则置信度均低于0.80，已选择当前最高置信度结果"
+                    "Every automatic split rule scored below 0.80 confidence; the highest-confidence result was chosen"
                 )
         report["rule_chosen"] = ar.get("rule_chosen")
         report["rule_runnerup"] = ar.get("rule_runnerup")
@@ -886,30 +919,30 @@ class ChapterSplitter:
 
     def _problem_label(self, problem: str) -> str:
         return {
-            "ok": "未发现明显异常",
-            "empty": "空文本",
-            "no_chapters": "未识别章节",
-            "no_heading_match": "未匹配标题",
-            "fallback_used": "质量兜底",
-            "single_huge_chapter": "单章过大",
-            "heading_too_sparse": "标题过稀",
-            "heading_too_dense": "标题过密",
-            "many_tiny_chapters": "短章过多",
-            "many_huge_chapters": "长章过多",
-            "high_variance": "长度波动大",
+            "ok": "No obvious problems",
+            "empty": "Empty text",
+            "no_chapters": "No chapters detected",
+            "no_heading_match": "No headings matched",
+            "fallback_used": "Quality fallback",
+            "single_huge_chapter": "One oversized chapter",
+            "heading_too_sparse": "Headings too sparse",
+            "heading_too_dense": "Headings too dense",
+            "many_tiny_chapters": "Too many short chapters",
+            "many_huge_chapters": "Too many long chapters",
+            "high_variance": "Highly uneven lengths",
         }.get(problem, problem)
 
     def _problem_reason(self, problem: str) -> str:
         return {
-            "no_chapters": "未能切出有效章节，需要人工设置章节边界",
-            "no_heading_match": "没有匹配到稳定章节标题，当前切分仅适合预览和人工修正",
-            "fallback_used": "规则切分质量不足，已转入兜底切分",
-            "single_huge_chapter": "长文本只形成一个超大章节，疑似漏切",
-            "heading_too_sparse": "长文本章节数偏少，疑似标题识别过稀",
-            "heading_too_dense": "平均章节过短且章节数较多，疑似把正文短行误切成标题",
-            "many_tiny_chapters": "短章节占比偏高，疑似误切",
-            "many_huge_chapters": "超长章节占比偏高，疑似漏切",
-            "high_variance": "章节长度离散度过高，建议重点检查边界",
+            "no_chapters": "No valid chapters could be split out; set the chapter boundaries manually",
+            "no_heading_match": "No stable chapter headings matched; the current split is only good for preview and manual correction",
+            "fallback_used": "Rule-based splitting was not good enough; switched to the fallback split",
+            "single_huge_chapter": "The long text formed a single oversized chapter; splits were probably missed",
+            "heading_too_sparse": "Too few chapters for a long text; headings were probably under-detected",
+            "heading_too_dense": "Chapters are very short on average and numerous; short body lines were probably taken as headings",
+            "many_tiny_chapters": "A high share of very short chapters; probably wrong splits",
+            "many_huge_chapters": "A high share of very long chapters; probably missed splits",
+            "high_variance": "Chapter lengths are highly dispersed; check the boundaries carefully",
         }.get(problem, "")
 
     def _coefficient_of_variation(self, lengths: list[int]) -> float:

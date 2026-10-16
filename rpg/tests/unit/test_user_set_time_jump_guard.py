@@ -145,6 +145,20 @@ class DetectViolationsUnit(unittest.TestCase):
             "应命中'刺骨的冷开场'",
         )
 
+    def test_detects_english_transition_narration(self):
+        from agents.timeline_narrative_guard import detect_time_jump_violations
+        state = self._state_user_set_now()
+        for text in ("You wake up to find the city gone.",
+                     "The clock was turned back to the very beginning.",
+                     "When you open your eyes again, the harbor is silent.",
+                     "Time itself rewound around you."):
+            self.assertTrue(detect_time_jump_violations(text, state), text)
+        # ordinary English prose with the same words must not trip the guard
+        for text in ("She turned back toward the harbor.",
+                     "He woke up early and found the kettle cold.",
+                     "The timeline on the wall listed every king."):
+            self.assertEqual(detect_time_jump_violations(text, state), [], text)
+
     def test_clean_text_no_violation(self):
         from agents.timeline_narrative_guard import detect_time_jump_violations
         state = self._state_user_set_now()

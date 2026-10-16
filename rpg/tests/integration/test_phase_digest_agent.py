@@ -92,7 +92,7 @@ class NormalizeDigestTests(unittest.TestCase):
             "key_decisions": [{"turn": i, "choice": "c"} for i in range(50)],
             "emotion_arc": "y" * 1000,
         })
-        self.assertLessEqual(len(d["summary"]), 2000)
+        self.assertLessEqual(len(d["summary"]), 3000)
         self.assertEqual(len(d["key_events"]), 5)
         self.assertEqual(len(d["key_npcs"]), 8)
         self.assertEqual(len(d["key_locations"]), 6)
@@ -301,8 +301,8 @@ class CompactPhaseIntegration(unittest.TestCase):
         compact_phase(save_id, phase_index, user_id=uid, force=False, _backend=fake)
         self.assertIn("玩家发言 turn 1", fake.last_user)
         self.assertIn("GM 在 turn 2", fake.last_user)
-        self.assertIn("阶段元信息", fake.last_user)
-        self.assertIn("严格", fake.last_system)
+        self.assertIn("Phase metadata", fake.last_user)
+        self.assertIn("strict", fake.last_system)
         self.assertIn("JSON", fake.last_system)
 
     def test_short_circuit_when_already_closed(self):

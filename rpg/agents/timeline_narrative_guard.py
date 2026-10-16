@@ -48,6 +48,16 @@ _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
     (r"^冷[,，]\s*刺骨的冷", "刺骨的冷开场"),
     (r"^冷得发[抖颤栗]", "发抖开场"),
     (r"当你再次[^,，。]{0,8}时", "当你再次X时模板"),
+    # English equivalents (GM 输出默认英文;只收过渡叙事的固定短语,宁漏勿误)
+    (r"(?i)\btravel(?:l?ed|s|ing)?\s+back\s+(?:in\s+time|to\s+the\s+past)\b", "time-travel narration"),
+    (r"(?i)\b(?:went|go|goes|going|sent)\s+back\s+in\s+time\b", "back-in-time narration"),
+    (r"(?i)\btime\s+(?:itself\s+)?(?:rewound|reversed|flowed\s+backwards?|was\s+rewritten)\b", "time-rewind narration"),
+    (r"(?i)\b(?:you|the\s+player)\s+(?:wake|woke|awaken|awoke)\s+(?:up\s+)?to\s+find\b", "wake-up-to-find narration"),
+    (r"(?i)\bopen(?:s|ed)?\s+(?:your|his|her|their)\s+eyes\s+(?:once\s+)?again\b", "eyes-open-again narration"),
+    (r"(?i)\b(?:clock|clocks|time)\s+(?:was\s+|were\s+|had\s+been\s+)?(?:turned|wound|rolled|pushed|dragged)\s+back\b",
+     "clock-turned-back narration"),
+    (r"(?i)\b(?:the\s+world|the\s+timeline|the\s+story)\s+(?:was\s+|had\s+been\s+)?(?:reset|restarted|rebooted|rewritten)\b",
+     "world-reset narration"),
 ]
 
 
@@ -162,9 +172,8 @@ def record_violations_to_audit(state: Any, violations: list[dict[str, Any]]) -> 
             for v in violations
         ],
         "hint": (
-            "GM 在 user_set 时间跳跃当回合写了"
-            f"{len(violations)} 处过渡叙事禁词,"
-            "可考虑 /retry 重新生成。"
+            f"On the turn of a /set time jump, the GM wrote {len(violations)} forbidden "
+            "transition phrase(s). Consider /retry to regenerate."
         ),
     })
     if len(audit) > 200:
@@ -282,7 +291,8 @@ def run_narrative_guards(response: str, player_message: str, state: Any) -> list
             record_violations_to_audit(state, tj)
             events.append(("agent", {
                 "phase": "timeline_guard",
-                "message": f"GM 时间跳跃叙事检测到 {len(tj)} 处禁词(穿越/醒来/拨回 等过渡叙事)",
+                "message": (f"Found {len(tj)} forbidden phrase(s) in the GM's time-jump narration "
+                            "(time travel / waking up / clock turned back, etc.)"),
                 "status": "warning", "elapsed_ms": 0,
                 "violations": [{"label": v.get("pattern_label"), "match": v.get("match")} for v in tj],
             }))

@@ -106,6 +106,6 @@ def test_prompt_uses_the_helper_not_head_truncation():
 def test_prompt_end_to_end_has_current_scene():
     st = _FakeState(_long_turns())
     prompt = _curator_task_prompt(st, "（继续推进剧情）", [])
-    assert "【最近对话】" in prompt
+    assert "[Recent dialogue]" in prompt
     assert "GM正文3" in prompt, "无信号输入(点「继续」)时,当前场景是子代理唯一的锚"
     assert "激光通道" not in prompt

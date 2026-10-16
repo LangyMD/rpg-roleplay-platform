@@ -44,9 +44,29 @@ def test_fence_stripped():
     assert validate_refined(ok, _CONTENT) is not None
 
 
+_EN_CONTENT = ("The miller's daughter carried the letter across the frozen river at dawn, "
+               "and nobody in the village saw her leave. ") * 8
+
+
+def test_accepts_english_summary_longer_than_cjk_cap():
+    # ~70 words ≈ 420 chars: over the 200-char CJK cap, within the English equivalent
+    summary = ("Mara slips out of the village before sunrise to deliver a sealed letter to the garrison. "
+               "On the way she meets a deserter who warns her that the captain is not who he claims to be, "
+               "and she must decide whether to trust him or finish the errand. She hides the letter, "
+               "follows the deserter to an abandoned mill, and learns the garrison plans to burn the bridge.")
+    assert len(summary) > 200
+    out = validate_refined(_raw(summary, "dawn of the first frost"), _EN_CONTENT)
+    assert out and out["summary"] == summary and out["in_world_time"] == "dawn of the first frost"
+
+
+def test_rejects_english_copy_of_source():
+    copied = "The miller's daughter carried the letter across the frozen river at dawn, and nobody saw it."
+    assert validate_refined(_raw(copied), _EN_CONTENT) is None
+
+
 def test_prompts_carry_title_and_body():
     sys_p, usr_p = build_refine_prompts("第1章 穿越", "正文内容" * 10)
-    assert "绝不照抄" in sys_p and "第1章 穿越" in usr_p
+    assert "Never copy" in sys_p and "第1章 穿越" in usr_p
 
 
 # ── _sentence_truncate(R2 确定性侧) ─────────────────────────────────

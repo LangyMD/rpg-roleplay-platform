@@ -22,8 +22,10 @@ from platform_app.knowledge._character_cards_repo import _db_set_protagonist
 from platform_app.knowledge._utils import _require_script_owner
 
 _AUDIT_SYSTEM = (
-    "你是中文小说角色卡审计员。下面给你一部小说自动提取出的 NPC 角色卡(可能有错)。"
-    "**只依据卡面信息**审核,拿不准就不动(宁可漏判不可错判)。**只输出一个 JSON 对象**,不要解释。"
+    "You audit character cards extracted from a novel. Below are NPC character cards that were "
+    "extracted automatically from one novel (they may contain mistakes). Review them **using only the "
+    "information on the cards**; when unsure, change nothing (better to miss a fix than to make a wrong "
+    "one). **Output only one JSON object**, with no explanation."
 )
 
 
@@ -57,27 +59,31 @@ def _roster(cards: list[dict]) -> str:
     lines = []
     for c in cards:
         al = _as_list(c.get("aliases"))
-        al_s = "、".join(al[:6]) if al else "-"
+        al_s = ", ".join(al[:6]) if al else "-"
         idt = (c.get("identity") or "").strip().replace("\n", " ")[:150] or "-"
         lines.append(
-            f"[id={c['id']}] {c['name']} | 别名:{al_s} | 身份:{idt} | 出场频次:{int(c.get('importance') or 0)}"
+            f"[id={c['id']}] {c['name']} | aliases: {al_s} | identity: {idt} | appearances: {int(c.get('importance') or 0)}"
         )
     return "\n".join(lines)
 
 
 def _build_user_prompt(title: str, cards: list[dict]) -> str:
     return (
-        f"小说标题:《{title or '未知'}》\n\n"
-        f"请审核下列 {len(cards)} 张 NPC 角色卡,找出三类错误并给出修正:\n"
-        "1) merges:哪些卡其实是【同一个人】的不同称呼(本名/小名/昵称/敬称,如『金玉/玉儿/小玉』、"
-        "『红姑/红姑娘』),应合并成一张。每组:keep=保留哪张卡的 id,merge_ids=被并入的 id 列表。"
-        "不同人即使共享一字也【绝不可】合并。\n"
-        "2) protagonist_id:这部小说的【主角】是哪张卡的 id(叙事中心、贯穿全书、读者代入的那个人;"
-        "常是身份/简介里写明『主角/主人公/穿越者/重生者』或第一视角的那张,**不一定是出场频次最高的**——"
-        "反派/势力名往往频次更高但不是主角);全部看完再判,拿不准填 null。\n"
-        "3) non_person_ids:哪些卡其实【不是具体人物】(官职/头衔/泛称/地名,如『将军/单于/众人/无忧宫』),应删除。\n\n"
-        "【角色卡】\n" + _roster(cards) + "\n\n"
-        "只输出这个 JSON(id 必须用上面给的数字 id,不要编造):\n"
+        f"Novel title: \"{title or 'unknown'}\"\n\n"
+        f"Review the {len(cards)} NPC character cards below, find three kinds of errors, and give the fixes:\n"
+        "1) merges: which cards are really [the same person] under different names (full name / pet name / "
+        "nickname / honorific, e.g. \"Elizabeth / Lizzy / Eliza\", \"Mr. Darcy / Darcy\"), and should be merged into "
+        "one card. Each group: keep = the id of the card to keep, merge_ids = the list of ids merged into it. "
+        "Different people must [never] be merged, even if they share part of a name (e.g. a surname).\n"
+        "2) protagonist_id: the id of the card for this novel's [protagonist] (the narrative center who runs "
+        "through the whole book and whom the reader identifies with; often the card whose identity/summary says "
+        "protagonist / main character / transmigrator / reincarnator, or the first-person narrator. **Not "
+        "necessarily the card with the most appearances**: villains and faction names often appear more but are "
+        "not the protagonist). Decide only after reading every card; if unsure, use null.\n"
+        "3) non_person_ids: which cards are [not specific people] (official posts / titles / generic terms / place "
+        "names, e.g. \"the General\", \"the King\", \"the crowd\", \"Thornfield Hall\"), and should be deleted.\n\n"
+        "[Character cards]\n" + _roster(cards) + "\n\n"
+        "Output only this JSON (ids must be the numeric ids given above; do not make any up):\n"
         '{"merges":[{"keep":1,"merge_ids":[2,3]}],"protagonist_id":1,"non_person_ids":[4,5],"confidence":0.0}'
     )
 
@@ -152,7 +158,7 @@ def audit_character_cards(user_id: int, script_id: int, api_id: str = "", model:
     cards = [dict(r) for r in rows]
     if len(cards) < 2:
         return {"summary": {"merged": [], "protagonist": None, "dropped": []},
-                "message": "NPC 卡不足 2 张,无需复核", "cards_reviewed": len(cards),
+                "message": "Fewer than 2 NPC cards; nothing to review", "cards_reviewed": len(cards),
                 "model": f"{api_id}/{model}"}
 
     # 凭证预检(用户当场选的 provider)。强鉴权下缺 key → 抛错让前端引导去配。
@@ -205,7 +211,7 @@ def audit_character_cards(user_id: int, script_id: int, api_id: str = "", model:
                 pass
 
     if total and parse_failures == total:
-        raise ValueError("AI 复核返回无法解析,请重试或换一个模型")
+        raise ValueError("Could not parse the AI review output. Try again or switch to another model.")
 
     # 全局主角:取自第 0 批(若该卡已在某批被并走则跳过,保守)。
     if protagonist_id and protagonist_id in cards_by_id:

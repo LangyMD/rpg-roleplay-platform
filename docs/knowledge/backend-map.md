@@ -43,13 +43,14 @@ Python FastAPI 后端逐包/逐模块职责。给 AI 协作者:找「某功能�
 - `core/text.py` — 文本工具权威缝:`slugify`(URL/目录/文件名安全化,保留中文,`fallback` 参数化)/ `normalize_for_fp`(指纹归一化,去标点空白只留文字数字)。散落的 `_slugify`/`_normalize_for_fp` 统一委托此处。
 - `core/clock.py` — 时间戳权威缝:`now_iso()`(本地时间、秒级 ISO 8601)。散落的 `datetime.now().isoformat(timespec="seconds")` 统一走它。
 - `core/vecmath.py` — 向量数学权威缝:`cosine(a, b)`(余弦相似度,零向量返回 0.0)。散落的 `ingest/filters.py`/`extract/resolve.py` 各自的 `_cosine` 统一委托此处(本地名保留)。
+- `core/token_estimate.py` — 语种感知 token 粗估权威缝:`estimate_tokens`(CJK ~1.6 字符/token、拉丁 ~4)/`truncate_to_tokens`/`cjk_chars_to_budget`(把按中文密度定的字符预算换算到当前文本语种)/`count_words`(中文按字、英文按词)。
 - `core/config.py` / `feature_flags.py` — 配置与 flag。`deployment_mode_normalized`/`is_local_deployment_mode`/`LOCAL_MODES`(部署模式权威缝,散落的 `{"local","desktop","self_hosted","self-hosted"}` 判定统一引用;`deployment_mode_normalized` 把空串兜底成 local,只能用于展示,放宽类判定用 `is_local_deployment_mode()` 或 `effective_auth_required()`,空串一律按 server)。`security.py`、`text_gates.py`(露骨内容门控)、`channel_fallback.py`、`request_cache.py`、`startup.py`、`version.py`、`vertex_sa.py`、`logging.py`。
 
 ## 平台层(platform_app/)
 
 - `platform_app/perms.py` — **归属/权限权威判断**(`owns_save`/`script_readable`/`script_owned` + `require_*`)。
 - `platform_app/user_credentials.py` — `resolve_api_key`(BYOK 凭据解析落地)。`user_models.py`/`user_cards.py`/`persona_skills.py`/`tavern_persona.py` — 用户资产。
-- `platform_app/import_pipeline/` **[热路径]** — 剧本导入编排:`runner.py`(主)、`control.py`、`stages_core.py`/`stages_llm.py`(阶段)、`rebuild_*`(重建 worker/scheduler/registry)。
+- `platform_app/import_pipeline/` **[热路径]** — 剧本导入编排:`runner.py`(主)、`control.py`、`stages_core.py`/`stages_llm.py`(阶段)、`en_names.py`(英文书高频专名候选,`_stage_entities` 的英文路径)、`rebuild_*`(重建 worker/scheduler/registry)。
 - `platform_app/script_import/` — 剧本导入触发 / 章节编辑编排(原 `script_import.py` 1443 行已按语义分段包化:`imports`(`import_script`/`preview_split`/正则校验)、`chapters`(章节 CRUD/合并/拆分/删除 + 负区两段式重排锁)、`sync_jobs`(无 BYOK 时零 LLM 的 `knowledge_sync` durable 任务 + `_SYNC_POOL`)、`uploads`(分片上传 + 跨平台 meta 文件锁)、`_base`(BASE 根 + 上传上限常量),`__init__` 薄门面 re-export 全部名并保留 `delete_script`/`resplit_script`)。
 - `platform_app/workspace/` — 存档工作区:存档/剧本列表·概览·创建·初始快照(原 `workspace.py` 1280 行已按职责包化:`listing`(`overview`/`scripts(_page)`/`saves(_page)`/`save_detail` + `ensure_default` 遗留存档 backfill 兜底 + `_readiness_for_scripts` 就绪度计数)、`snapshot`(**⚠️出生点/进度信号病灶**:`_build_initial_snapshot` 写 `worldline.progress_chapter` + `_apply_script_opening` 从出生锚点章派生情境 + `_scrub_berlin_default` 清 DEFAULT_STATE 硬编码)、`creation`(`create_save`/`create_tavern_save` + `_seed_kb_at_creation` 创建即 seed KB,初始 state 委托 `snapshot._build_initial_snapshot`),`__init__` 薄门面 re-export 全部名;`workspace.create_save`/`ensure_default` 是既有 monkeypatch 目标,消费方走门面属性查找)。
 - `platform_app/db/` — **[别碰]** `migrations.py` 的 `MIGRATIONS` 是 **append-only**(version 单调递增,`_assert_migrations_monotonic` 守卫;绝不改旧条目)。`connection.py`(连接池)、`init.py`、`pgvector.py`、`utils.py`(分页/游标)。

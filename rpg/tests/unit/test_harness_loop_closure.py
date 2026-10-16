@@ -97,23 +97,23 @@ class SummarizeJobResult(unittest.TestCase):
             {"id": "worldbook", "label": "世界书", "status": "skipped"},
         ]}
         s = ip.summarize_job_result(res, "测试")
-        self.assertIn("完成", s)
+        self.assertIn("finished", s)
         self.assertIn("角色卡:12", s)
         self.assertNotIn("世界书", s)  # skipped 不展示
 
     def test_done_with_errors(self):
         s = ip.summarize_job_result({"status": "done_with_errors", "warnings": "X"}, "测试")
-        self.assertIn("部分", s)
+        self.assertIn("some stages", s)
 
     def test_failed(self):
         s = ip.summarize_job_result({"status": "failed", "error": "boom"}, "测试")
-        self.assertIn("失败", s)
+        self.assertIn("failed", s)
         self.assertIn("boom", s)
 
     def test_cancelled_and_timeout_and_notfound(self):
-        self.assertIn("取消", ip.summarize_job_result({"status": "cancelled"}, "X"))
-        self.assertIn("后台", ip.summarize_job_result({"status": "running", "timed_out": True}, "X"))
-        self.assertIn("未找到", ip.summarize_job_result({"status": "not_found"}, "X"))
+        self.assertIn("cancelled", ip.summarize_job_result({"status": "cancelled"}, "X"))
+        self.assertIn("background", ip.summarize_job_result({"status": "running", "timed_out": True}, "X"))
+        self.assertIn("not found", ip.summarize_job_result({"status": "not_found"}, "X"))
 
 
 # ════════════════════════════════════════════════════════════

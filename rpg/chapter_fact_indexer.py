@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any
 
 from config.glossary import get_concept_seeds, get_location_seeds, get_npc_name_seeds
+from core.token_estimate import estimate_tokens, is_cjk_text
+from ingest.adaptive_split import EN_NUM, parse_en_number
 from timeline_index import ensure_timeline_schema
 
 BASE = Path(__file__).parent
@@ -66,6 +68,18 @@ EVENT_KEYWORDS = [
     "死亡", "失踪", "失守", "会面", "讨论", "调查", "追查", "暴露", "隐藏", "背叛",
     "保护", "启动", "交涉", "拒绝", "答应", "怀疑", "安排", "撤走", "清空", "突破",
 ]
+# 英文正文的事件动词(整词、小写匹配;只在非 CJK 文本里用)
+EVENT_KEYWORDS_EN = (
+    "decided", "discovered", "found", "confirmed", "realized", "told", "received", "ordered",
+    "attacked", "fled", "escaped", "died", "killed", "vanished", "disappeared", "met",
+    "investigated", "revealed", "exposed", "hid", "betrayed", "protected", "refused",
+    "agreed", "suspected", "arranged", "broke", "captured", "rescued", "arrived",
+)
+# 英文关系动词词干(\b 前缀匹配)
+RELATION_KEYWORDS_EN = (
+    "protect", "trust", "suspect", "order", "investigat", "handed", "told", "tell",
+    "hid", "hide", "betray", "allied", "together",
+)
 
 # IP-specific seeds loaded from config/novel_glossary.json (gitignored).
 # Do NOT hardcode novel names here; edit novel_glossary.json instead.
@@ -326,7 +340,7 @@ def _extract_fact(chapter: dict[str, Any], summaries: dict[str, Any], known_name
         "story_phase": _story_phase(chapter_num, body, script_key=script_key),
         "story_time_label": _story_time_label(chapter_num, title, body, known_summary),
         "scene_count": len(scenes),
-        "token_estimate": max(1, len(body) // 2),
+        "token_estimate": max(1, estimate_tokens(body)),
         "characters": characters,
         "locations": locations,
         "factions": factions,
@@ -429,7 +443,7 @@ def _strip_frontmatter(text: str) -> str:
 
 
 def _strip_notes(text: str) -> str:
-    return re.split(r"\n\s*(?:ps|PS|作者|本章说)[。.:：]", text, maxsplit=1)[0]
+    return re.split(r"\n\s*(?:ps|PS|作者|本章说|(?i:a/n|author'?s\s+note))\s*[。.:：]", text, maxsplit=1)[0]
 
 
 def _split_scenes(text: str) -> list[str]:
@@ -439,12 +453,27 @@ def _split_scenes(text: str) -> list[str]:
 
 def _sentences(text: str) -> list[str]:
     text = re.sub(r"#+\s*.+", "", text)
-    raw = re.split(r"(?<=[。！？!?])\s*|\n+", text)
-    return [_clean_sentence(x) for x in raw if 16 <= len(_clean_sentence(x)) <= 220]
+    if is_cjk_text(text):
+        raw = re.split(r"(?<=[。！？!?])\s*|\n+", text)
+        lo, hi = 16, 220
+    else:
+        # 英文:句末 .!? (可带收引号) + 空白 + 大写/引号开头才切;英文句子按字符更长
+        _abbr = r"(?<!\bMr\.)(?<!\bMrs\.)(?<!\bMs\.)(?<!\bDr\.)(?<!\bSt\.)"
+        raw = re.split(rf"(?<=[.!?][\"”’'])\s+(?=[\"“‘'A-Z])|{_abbr}(?<=[.!?])\s+(?=[\"“‘'A-Z])|\n+", text)
+        lo, hi = 24, 400
+    out = []
+    for x in raw:
+        c = _clean_sentence(x)
+        if lo <= len(c) <= hi:
+            out.append(c)
+    return out
 
 
 def _clean_sentence(text: str) -> str:
-    return re.sub(r"\s+", "", text).strip(" 　")
+    if is_cjk_text(text):
+        return re.sub(r"\s+", "", text).strip(" 　")
+    # 拉丁文字:空格是词界,只压缩不删除
+    return " ".join(text.split()).strip(" 　")
 
 
 def _viewpoint(text: str) -> str:
@@ -490,11 +519,15 @@ def _extract_events(sentences: list[str], scenes: list[str], aliases: dict[str, 
     scored = []
     for index, sentence in enumerate(sentences):
         score = sum(3 for key in EVENT_KEYWORDS if key in sentence)
+        if not is_cjk_text(sentence):
+            words = set(re.findall(r"[a-z]+", sentence.lower()))
+            score += sum(3 for key in EVENT_KEYWORDS_EN if key in words)
         participants = _names_in(sentence, aliases)
         locs = [loc for loc in locations if loc in sentence][:4]
         cons = [concept for concept in concepts if concept in sentence][:5]
         score += len(participants) * 2 + len(locs) + len(cons)
-        if "。" in sentence or "！" in sentence or "？" in sentence:
+        if ("。" in sentence or "！" in sentence or "？" in sentence
+                or sentence.rstrip("\"”’' ").endswith((".", "!", "?"))):
             score += 1
         if score >= 5:
             scored.append((score, index, sentence, participants, locs, cons))
@@ -518,7 +551,10 @@ def _extract_relationships(sentences: list[str], aliases: dict[str, str]) -> lis
     out = []
     for sentence in sentences:
         names = _names_in(sentence, aliases)
-        if len(names) >= 2 and any(key in sentence for key in ("保护", "信任", "怀疑", "命令", "追查", "交给", "告诉", "隐瞒", "合作")):
+        low = sentence.lower()
+        if len(names) >= 2 and (
+                any(key in sentence for key in ("保护", "信任", "怀疑", "命令", "追查", "交给", "告诉", "隐瞒", "合作"))
+                or any(re.search(r"\b" + key, low) for key in RELATION_KEYWORDS_EN)):
             out.append({"source": names[0], "target": names[1], "note": sentence[:120]})
         if len(out) >= 8:
             break
@@ -547,8 +583,15 @@ def _sentence_truncate(s: str, cap: int = 240) -> str:
         return s
     cut = s[:cap]
     best = max(cut.rfind(p) for p in ("。", "！", "？", "」", "”", "；"))
+    # 英文句界:". " / "! " / "? " / "; "(后面紧跟空白才算,避开 3.5 这类)
+    for m in re.finditer(r"[.!?;](?=\s)", cut):
+        best = max(best, m.start())
     if best >= cap // 2:
         return cut[: best + 1]
+    if not is_cjk_text(cut):
+        sp = cut.rfind(" ")
+        if sp >= cap // 2:
+            return cut[:sp]
     return cut
 
 
@@ -556,8 +599,15 @@ def _summary_from_events(events: list[dict[str, Any]], sentences: list[str]) -> 
     # 注意:此为确定性占位(metadata.source=deterministic_import,本质是原文残句而非摘要)。
     # 真摘要由 extract/facts_refine.py 的 LLM 精炼层按需覆盖(source=llm_refined)。
     if events:
-        return _sentence_truncate("；".join(event["event"] for event in events[:3]))
-    return _sentence_truncate("；".join(sentences[:3]))
+        return _sentence_truncate(_join_sentences(event["event"] for event in events[:3]))
+    return _sentence_truncate(_join_sentences(sentences[:3]))
+
+
+def _join_sentences(parts) -> str:
+    parts = [p for p in parts if p]
+    if parts and not is_cjk_text("".join(parts)):
+        return " ".join(p if p.rstrip()[-1:] in ".!?\"”’'" else p + "." for p in parts)
+    return "；".join(parts)
 
 
 def _story_phase(chapter: int, text: str, script_key: str | None = None) -> str:
@@ -609,7 +659,7 @@ def _strip_chapter_prefix(t: str) -> str:
         return ""
     s = t.lstrip().lstrip("#").strip()
     s = _CHAPTER_PREFIX_RE.sub("", s).strip()
-    s = re.sub(r"^[Cc]hapter\s*\d+[\s\-:：]*", "", s).strip()
+    s = re.sub(rf"^(?i:(?:chapter|chap\.?|ch\.)\s*{EN_NUM}\b)[\s\-:：.\u2013\u2014]*", "", s).strip()
     return s
 
 
@@ -618,9 +668,10 @@ def _good_title(title: str) -> str:
     if not title:
         return ""
     s = _strip_chapter_prefix(title)
-    if not s or len(s) < 2 or len(s) > 28:
+    max_len = 28 if is_cjk_text(s) else 60
+    if not s or len(s) < 2 or len(s) > max_len:
         return ""
-    if _GENERIC_CHAPTER_RE.match(s):
+    if _GENERIC_CHAPTER_RE.match(s) or parse_en_number(s) is not None:
         return ""
     if any(kw in s for kw in _AUTHOR_META_KEYWORDS):
         return ""
@@ -635,6 +686,12 @@ def _good_summary_lead(summary: str) -> str:
     if not summary:
         return ""
     # 切第一个句号/分号/换行
+    if not is_cjk_text(summary):
+        # 英文:首句按 ". " / ";" 切,长度按词(3-12 词,约等中文 4-40 字)
+        first = re.split(r"(?<=[.!?])\s+|[;\n]", summary.strip())[0].strip().strip("“”\"'").rstrip(".")
+        if 3 <= len(first.split()) <= 12:
+            return first
+        return ""
     first = re.split(r"[。;；\n]", summary)[0].strip()
     if 4 <= len(first) <= 40:
         # 去引号包裹
@@ -687,7 +744,7 @@ def _evidence(text: str, needle: str) -> str:
         return ""
     start = max(0, index - 30)
     end = min(len(text), index + len(needle) + 50)
-    return re.sub(r"\s+", "", text[start:end])
+    return _clean_sentence(text[start:end])
 
 
 def _json(value: Any) -> str:

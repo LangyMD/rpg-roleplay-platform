@@ -77,7 +77,9 @@ def _slug(name: str) -> str:
 # 而不是丢弃)。纯函数、零 LLM、可单测。
 
 # 模板化/占位 gloss 的弱信号词——命中越多说明这句话越像随手一填的空话,应优先被更具体的替换。
-_GLOSS_TEMPLATE_WORDS = ("一种", "某种", "相关", "有关", "泛指", "统称", "指代", "简称")
+_GLOSS_TEMPLATE_WORDS = ("一种", "某种", "相关", "有关", "泛指", "统称", "指代", "简称",
+                         "a kind of", "a type of", "some kind of", "related to", "refers to",
+                         "general term", "short for")
 
 # 机制词信号:数字/型号编号/条件句连词——出现即说明这句 gloss 带了具体机制细节
 # (护盾档位"三级"、型号"MK-II"、代价"需消耗"、限制"仅限"等)。
@@ -86,6 +88,10 @@ _MECH_MODEL_RE = re.compile(r"[A-Za-z]{1,6}[-_]?\d{1,4}")  # 型号编号:MK-II 
 _MECH_CONDITION_WORDS = (
     "若", "需", "需要", "须", "必须", "才能", "否则", "消耗", "代价", "限制", "仅限",
     "上限", "下限", "条件", "前提", "只能", "不可", "禁止", "解锁", "对应", "分为", "分级",
+    # English equivalents (matched case-insensitively, as whole words)
+    "if", "requires", "require", "must", "only", "otherwise", "unless", "consumes", "cost",
+    "costs", "limit", "limited", "maximum", "minimum", "condition", "cannot", "forbidden",
+    "unlock", "unlocks", "divided", "tier", "tiers", "grade", "grades", "rank", "ranks",
 )
 
 
@@ -103,7 +109,9 @@ def _mech_tokens(s: str) -> set[str]:
     toks: set[str] = set()
     toks.update(m.group(0) for m in _MECH_MODEL_RE.finditer(s) if any(ch.isdigit() for ch in m.group(0)))
     toks.update(m.group(0) for m in _MECH_NUMBER_RE.finditer(s) if m.group(0).strip())
-    toks.update(w for w in _MECH_CONDITION_WORDS if w in s)
+    _words = set(re.findall(r"[a-z]+", s.lower()))
+    toks.update(w for w in _MECH_CONDITION_WORDS
+                if ((w in _words) if w.isascii() else (w in s)))
     return toks
 
 
@@ -126,8 +134,11 @@ def merge_gloss(old: str, new: str) -> str:
     if old == new:
         return old
 
-    old_is_template = _gloss_template_score(old) > 0 and len(old) <= 20
-    new_is_template = _gloss_template_score(new) > 0 and len(new) <= 20
+    from core.token_estimate import cjk_chars_to_budget
+    _short = cjk_chars_to_budget(old + new, 20)
+    _cap = cjk_chars_to_budget(old + new, 160)
+    old_is_template = _gloss_template_score(old) > 0 and len(old) <= _short
+    new_is_template = _gloss_template_score(new) > 0 and len(new) <= _short
 
     # 择优:新 gloss 更长且不是模板空话,旧的是模板或明显更短 → 新的直接胜出
     if not new_is_template and len(new) > len(old) and (old_is_template or len(new) >= len(old) * 1.3):
@@ -141,9 +152,9 @@ def merge_gloss(old: str, new: str) -> str:
         extra = new
 
     if extra:
-        merged = f"{base};新增:{extra}"
-        return merged[:160]
-    return base[:160] if len(base) > 160 else base
+        merged = f"{base}; additionally: {extra}"
+        return merged[:_cap]
+    return base[:_cap] if len(base) > _cap else base
 
 
 def _clean_name(s: str) -> str:
@@ -281,10 +292,29 @@ _GENERIC_REFERENT_BLACKLIST = frozenset({
 # 归一形式(供 _norm_name 后比对;成员本身已是简体)
 _GENERIC_REFERENT_NORMS = frozenset(re.sub(r"[\s·_、.\-]", "", w) for w in _GENERIC_REFERENT_BLACKLIST)
 
+# English equivalents (compared lower-cased, after the same separator stripping).
+_GENERIC_REFERENT_BLACKLIST_EN = frozenset({
+    "he", "she", "it", "they", "him", "her", "them", "someone", "somebody", "anyone", "everyone",
+    "the man", "the woman", "that man", "that woman", "this man", "this woman", "that guy", "this guy",
+    "the guy", "the fellow", "the stranger", "stranger", "the other", "the other one", "the newcomer",
+    "old man", "the old man", "old woman", "the old woman", "the girl", "the boy", "girl", "boy",
+    "man", "woman", "kid", "the kid", "child", "the child", "young man", "the young man",
+    "young lady", "the young lady", "lady", "gentleman", "the gentleman", "sir", "madam", "ma'am",
+    "miss", "mister", "master", "young master",
+    "father", "mother", "dad", "mom", "mum", "papa", "mama", "brother", "sister", "son", "daughter",
+    "husband", "wife", "uncle", "aunt", "grandfather", "grandmother", "grandpa", "grandma",
+    "boyfriend", "girlfriend", "friend", "my friend", "big brother", "big sister", "little sister",
+    "little brother",
+})
+_GENERIC_REFERENT_NORMS_EN = frozenset(
+    re.sub(r"[\s·_、.\-]", "", w) for w in _GENERIC_REFERENT_BLACKLIST_EN
+)
+
 
 def _is_generic_referent(s: str) -> bool:
     """归一后整词命中通用指代黑名单 → True(不是专有姓名,不应作实体名/别名/合并桥)。"""
-    return _norm_name(s) in _GENERIC_REFERENT_NORMS
+    n = _norm_name(s)
+    return n in _GENERIC_REFERENT_NORMS or n.lower() in _GENERIC_REFERENT_NORMS_EN
 
 
 # RC2: 中文敬称/称谓前后缀。剥离后产出"基名"作【额外别名信号】喂回 surfaces,
@@ -458,6 +488,20 @@ _NON_PERSON_TITLE_WORDS = frozenset({
     "众人", "众将", "群臣", "百官", "丫鬟", "婢女", "下人", "仆人", "护卫", "亲兵", "门客",
 })
 _LOC_NAME_SUFFIX = ("宫", "府", "邸", "城", "楼", "塔", "港", "岛", "庄园", "宅", "关", "营", "寨", "驿")
+# English equivalents: whole-word title/collective nouns (lower-cased) and place-name suffixes.
+_NON_PERSON_TITLE_WORDS_EN = frozenset({
+    "general", "the general", "captain", "the captain", "colonel", "commander", "king", "the king",
+    "queen", "the queen", "prince", "the prince", "princess", "the princess", "emperor", "the emperor",
+    "empress", "duke", "duchess", "lord", "my lord", "lady", "my lady", "your majesty", "his majesty",
+    "her majesty", "your highness", "soldier", "soldiers", "guard", "guards", "servant", "servants",
+    "maid", "maids", "villager", "villagers", "merchant", "merchants", "the crowd", "crowd",
+    "everyone", "the officers", "officers", "the troops", "troops", "townsfolk", "the townsfolk",
+})
+_LOC_NAME_SUFFIX_EN = (
+    " palace", " castle", " manor", " hall", " tower", " harbor", " harbour", " port", " island",
+    " fort", " fortress", " keep", " abbey", " inn", " tavern", " street", " square", " park",
+    " estate", " house", " lodge", " cottage", " village", " town", " city",
+)
 
 
 def _looks_like_non_person(name: str) -> bool:
@@ -466,6 +510,12 @@ def _looks_like_non_person(name: str) -> bool:
     if not n:
         return True
     if n in _NON_PERSON_TITLE_WORDS:
+        return True
+    raw = re.sub(r"\s+", " ", (name or "").strip().lower())
+    if raw in _NON_PERSON_TITLE_WORDS_EN or n.lower() in {
+            re.sub(r"[\s·_、.\-]", "", w) for w in _NON_PERSON_TITLE_WORDS_EN}:
+        return True
+    if " " in raw and any(raw.endswith(s) for s in _LOC_NAME_SUFFIX_EN):
         return True
     if len(n) >= 2 and any(n.endswith(s) for s in _LOC_NAME_SUFFIX):
         return True
@@ -761,7 +811,7 @@ def build_timeline(db, script_id: int, chapter_extracts: list) -> int:
     for ex in sorted(chapter_extracts, key=lambda e: e.chapter):
         label = _clean_timeline_label((ex.story_time or {}).get("label", ""))
         if not label:
-            label = last_label or "序章"
+            label = last_label or "Prologue"
         last_label = label
         summary = (getattr(ex, "chapter_summary", "") or "").strip()
         if segments and segments[-1]["label"] == label:
@@ -783,7 +833,7 @@ def build_timeline(db, script_id: int, chapter_extracts: list) -> int:
                 picks.append(sums[len(sums) // 2])
             if len(sums) >= 2:
                 picks.append(sums[-1])
-            sample_summary = " / ".join(f"第{ch}章:{s}" for ch, s in picks)[:1900]
+            sample_summary = " / ".join(f"Ch.{ch}: {s}" for ch, s in picks)[:1900]
         else:
             sample_summary = ""
         db.execute(
@@ -836,6 +886,18 @@ def _reclassify_canon_type(name: str, current_type: str) -> str:
                   "庄园", "宅", "广场", "街", "巷")
     if any(n.endswith(s) for s in LOC_SUFFIX):
         return "location"
+    # English: multi-word names with a place-type head noun / organization head noun.
+    low = n.lower()
+    _EN_MILITARY = ("army", "navy", "corps", "regiment", "division", "brigade", "battalion",
+                    "fleet", "legion", "guard", "air force")
+    if " " in low and not any(k in low for k in _EN_MILITARY):
+        if re.search(r"\b(palace|castle|manor|tower|harbou?r|island|mountains?|river|lake|sea|"
+                     r"street|square|lane|forest|woods|abbey|fortress|valley|bay)$", low):
+            return "location"
+        if re.search(r"\b(band|orchestra|troupe|choir|club|studio|agency|company|firm)$", low):
+            return "organization"
+    if re.search(r"[a-z]{3,}ism$", low):
+        return "concept"
     # 2. organization 强信号(文艺/商业组织)— 优先于军政规则,避免"XX乐团/乐队"被钉死为 faction
     ORG_KEYWORDS = (
         "乐队", "乐团", "组合", "剧团", "歌剧团", "合唱团", "舞团",
@@ -862,10 +924,14 @@ _CONTAMINATION_WORDS = (
     "拿着", "拿起", "举着", "握着", "手持", "提着",
     "正在", "此时", "刚才", "刚刚", "瞬间", "突然",
     "腿上", "身上", "脸上", "手上", "胸前",
+    # English equivalents (scene descriptions, not lasting setting)
+    "is wearing", "was wearing", "were wearing", "is holding", "was holding", "were holding",
+    "is carrying", "was carrying", "suddenly", "at that moment", "at this moment", "just now",
 )
 
 def _is_contaminated(summary: str) -> bool:
-    return any(w in summary for w in _CONTAMINATION_WORDS)
+    low = (summary or "").lower()
+    return any(w in low for w in _CONTAMINATION_WORDS)
 
 def _enrich(name: str, fallback_brief: str, canon_by_name) -> str:
     c = canon_by_name.get(name)
@@ -880,13 +946,13 @@ def _enrich(name: str, fallback_brief: str, canon_by_name) -> str:
         parts = [fallback_brief]
         aliases = c.get("aliases") or []
         if aliases:
-            parts.append("别名: " + "、".join(str(x) for x in aliases[:5]))
+            parts.append("Aliases: " + ", ".join(str(x) for x in aliases[:5]))
         first = c.get("first_revealed_chapter")
         if first:
-            parts.append(f"首次出场: 第 {first} 章")
+            parts.append(f"First appearance: chapter {first}")
         imp = c.get("importance")
         if imp:
-            parts.append(f"出场频次: {imp}")
+            parts.append(f"Mentions: {imp}")
         return " · ".join(parts)
     return fallback_brief
 
@@ -988,21 +1054,21 @@ def build_constant_worldbook(db, script_id: int, book_id: int, seed) -> int:
     entries: list[tuple[str, str, int, list[str]]] = []
     if getattr(seed, "era", ""):
         entries.append((
-            "纪元",
-            f"本作纪元固定为「{seed.era}」。所有时间表述以此为准,绝不套用现实世界年代。",
+            "Era",
+            f"This work's era is fixed as \"{seed.era}\". All time references follow it; never substitute real-world dates.",
             100, [],
         ))
     # 头部聚合索引(留给 GM 一眼看全貌)
     if getattr(seed, "power_system", None):
         entries.append((
-            "力量体系 · 索引",
-            "本作核心力量体系名录(详条另查): " + "、".join(seed.power_system),
+            "Power systems · Index",
+            "Core power systems of this work (look up the detailed entries separately): " + ", ".join(seed.power_system),
             95, [],
         ))
     if getattr(seed, "key_factions", None):
         entries.append((
-            "主要势力 · 索引",
-            "本作主要势力名录(详条另查): " + "、".join(seed.key_factions[:20]),
+            "Major factions · Index",
+            "Major factions of this work (look up the detailed entries separately): " + ", ".join(seed.key_factions[:20]),
             90, [],
         ))
     # P0 大改:按 subtype 聚类(开放标签 group by)+ parent 树状渲染
@@ -1029,7 +1095,7 @@ def build_constant_worldbook(db, script_id: int, book_id: int, seed) -> int:
     # 用 dict 保持插入顺序;每组内按 importance desc 排
     groups: dict[tuple[str, str], list[dict]] = {}
     for c in candidates:
-        key = (c["_eff_type"], (c.get("entity_subtype") or "").strip() or "其他")
+        key = (c["_eff_type"], (c.get("entity_subtype") or "").strip() or "other")
         groups.setdefault(key, []).append(c)
     for v in groups.values():
         v.sort(key=lambda c: int(c.get("importance") or 0), reverse=True)
@@ -1039,27 +1105,27 @@ def build_constant_worldbook(db, script_id: int, book_id: int, seed) -> int:
     seed_powers = list((getattr(seed, "power_system", None) or [])[:30])
     seen_titles: set[str] = set()
     for fac in seed_factions:
-        title = f"势力·{fac}"
+        title = f"Faction·{fac}"
         if title in seen_titles:
             continue
         seen_titles.add(title)
-        content = _enrich(fac, f"势力名称: {fac}", canon_by_name)
+        content = _enrich(fac, f"Faction name: {fac}", canon_by_name)
         entries.append((title, content, 82, _entry_trigger_keys(fac, canon_by_name)))
     for power in seed_powers:
-        title = f"力量·{power}"
+        title = f"Power·{power}"
         if title in seen_titles:
             continue
         seen_titles.add(title)
-        content = _enrich(power, f"力量体系条目: {power}", canon_by_name)
+        content = _enrich(power, f"Power system entry: {power}", canon_by_name)
         entries.append((title, content, 75, _entry_trigger_keys(power, canon_by_name)))
 
     # 按 subtype 分组渲染 — 每组先一条索引(列出本 subtype 所有成员)+ 单条 detail
     # 例:subtype="军队" 索引条 = "军队类:德军、美军、俄军";单条 = "势力·德军 = ..."
     SUBTYPE_DISPLAY_PREFIX = {
-        "faction": "势力",
-        "organization": "组织",
-        "location": "地点",
-        "concept": "概念",
+        "faction": "Faction",
+        "organization": "Organization",
+        "location": "Location",
+        "concept": "Concept",
     }
     SUBTYPE_INDEX_PRIORITY = 88  # 索引在头部
     SUBTYPE_DETAIL_PRIORITY = {"faction": 78, "organization": 76, "location": 65, "concept": 70}
@@ -1071,10 +1137,10 @@ def build_constant_worldbook(db, script_id: int, book_id: int, seed) -> int:
         prefix = SUBTYPE_DISPLAY_PREFIX.get(eff_type, eff_type)
         # 索引条:把同 subtype 的所有成员名字列出来,GM 一眼看到本类有哪些
         names = [m.get("name", "") for m in members if m.get("name")]
-        idx_title = f"{prefix}索引·{subtype}"
+        idx_title = f"{prefix} index·{subtype}"
         if idx_title not in seen_titles and len(names) >= 2:
             seen_titles.add(idx_title)
-            idx_content = f"【{subtype}类 {eff_type}】" + "、".join(names[:30])
+            idx_content = f"[{subtype} ({eff_type})] " + ", ".join(names[:30])
             entries.append((idx_title, idx_content, SUBTYPE_INDEX_PRIORITY, []))
         # 每个 entity 一条 detail,跟 parent 显式关联,GM 能看到层级
         for c in members:
@@ -1095,13 +1161,13 @@ def build_constant_worldbook(db, script_id: int, book_id: int, seed) -> int:
             if parent_lk:
                 p = canon_by_lk.get(parent_lk)
                 if p and p.get("name"):
-                    parent_label = f" · 归属: {p['name']}"
+                    parent_label = f" · Belongs to: {p['name']}"
             # 拼子级标签(本 entity 下有哪些 child)
             my_lk = (c.get("logical_key") or "").strip()
             child_names = [ch.get("name", "") for ch in (children_by_lk.get(my_lk) or []) if ch.get("name")]
             child_label = ""
             if child_names:
-                child_label = f" · 下辖: {', '.join(child_names[:6])}"
+                child_label = f" · Includes: {', '.join(child_names[:6])}"
             content = base + parent_label + child_label
             entries.append((title, content, SUBTYPE_DETAIL_PRIORITY.get(eff_type, 70),
                             _entry_trigger_keys(nm, canon_by_name)))

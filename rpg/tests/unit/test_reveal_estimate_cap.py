@@ -61,4 +61,4 @@ def test_source_guard_floor_key_sticky():
 
 def test_source_guard_recorder_private_scene_exclusion():
     src = (_ROOT / "agents" / "recorder.py").read_text(encoding="utf-8")
-    assert "纯私人/日常/感情场景" in src, "估章 prompt 必须排除生活流场景(save 268 误判根源)"
+    assert "Purely private / everyday / romantic scenes" in src, "估章 prompt 必须排除生活流场景(save 268 误判根源)"

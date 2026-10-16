@@ -36,10 +36,10 @@ def _raise_http(resp, api_id: str, label: str) -> None:
     """非 200 → 抛 ImageGenError。401/403 给「Key 无效」的可行动文案(而非裸 HTTP 401)。"""
     code = resp.status_code
     if code in (401, 403):
-        hint = "(OpenRouter 的 key 形如 sk-or-v1-…)" if api_id == "openrouter" else ""
+        hint = " (OpenRouter keys look like sk-or-v1-…)" if api_id == "openrouter" else ""
         raise ImageGenError(
-            f"{api_id} 鉴权失败(HTTP {code}): provider 拒绝了你的 API Key。请到「设置 → API 凭证」"
-            f"检查 {api_id} 的 Key 是否正确、有效{hint}"
+            f"{api_id} authentication failed (HTTP {code}): the provider rejected your API Key. Under Settings → API & Models, "
+            f"check that the {api_id} key is correct and valid{hint}"
         )
     try:
         detail = resp.json()
@@ -61,7 +61,7 @@ def _resolve_base_url(api_id: str, base_url: str | None) -> str:
     except Exception:
         pass
     raise ImageGenError(
-        f"openai_compat: 找不到 {api_id} 的 base_url(请在「设置 → API 凭证」填写中转站 Base URL)"
+        f"openai_compat: no base_url for {api_id} (fill in the relay Base URL under Settings → API & Models)"
     )
 
 
@@ -114,9 +114,9 @@ def _try_images_api(
                 endpoint, json=body, headers=headers,
             )
     except httpx.TimeoutException as exc:
-        raise ImageGenError(f"openai_compat: images/generations 超时 ({exc})") from exc
+        raise ImageGenError(f"openai_compat: images/generations timed out ({exc})") from exc
     except Exception as exc:
-        raise ImageGenError(f"openai_compat: 网络错误 ({exc})") from exc
+        raise ImageGenError(f"openai_compat: network error ({exc})") from exc
 
     # 端点不存在 → 交给调用方回退 chat 模态(OpenRouter 等)
     if resp.status_code in (404, 405):
@@ -127,11 +127,11 @@ def _try_images_api(
     try:
         payload = resp.json()
     except Exception as exc:
-        raise ImageGenError(f"openai_compat: 响应非 JSON: {exc}") from exc
+        raise ImageGenError(f"openai_compat: response is not JSON: {exc}") from exc
 
     data = payload.get("data")
     if not data or not isinstance(data, list):
-        raise ImageGenError(f"openai_compat: 响应结构异常: {str(payload)[:300]}")
+        raise ImageGenError(f"openai_compat: unexpected response shape: {str(payload)[:300]}")
 
     out: list[bytes] = []
     for item in data:
@@ -139,7 +139,7 @@ def _try_images_api(
         if b:
             out.append(b)
     if not out:
-        raise ImageGenError("openai_compat: images/generations 返回空(无 url/b64)")
+        raise ImageGenError("openai_compat: images/generations returned nothing (no url/b64)")
     return out
 
 
@@ -182,25 +182,25 @@ def _try_chat_modality(
                 endpoint, json=body, headers=headers,
             )
     except httpx.TimeoutException as exc:
-        raise ImageGenError(f"openai_compat: chat 图像模态超时 ({exc})") from exc
+        raise ImageGenError(f"openai_compat: chat image modality timed out ({exc})") from exc
     except Exception as exc:
-        raise ImageGenError(f"openai_compat: 网络错误 ({exc})") from exc
+        raise ImageGenError(f"openai_compat: network error ({exc})") from exc
 
     if resp.status_code != 200:
-        _raise_http(resp, api_id, "chat 图像模态")
+        _raise_http(resp, api_id, "chat image modality")
 
     try:
         payload = resp.json()
     except Exception as exc:
-        raise ImageGenError(f"openai_compat: 响应非 JSON: {exc}") from exc
+        raise ImageGenError(f"openai_compat: response is not JSON: {exc}") from exc
 
     choices = payload.get("choices") or []
     if not choices:
-        raise ImageGenError(f"openai_compat: chat 响应无 choices: {str(payload)[:300]}")
+        raise ImageGenError(f"openai_compat: chat response has no choices: {str(payload)[:300]}")
     out = _collect_chat_images((choices[0] or {}).get("message") or {}, proxy=proxy)
     if not out:
         raise ImageGenError(
-            "openai_compat: 该模型未返回图像 —— 可能不是生图模型,或该 provider 用非标准接口。"
+            "openai_compat: the model returned no image. It may not be an image model, or the provider uses a non-standard API."
         )
     return out
 
@@ -219,7 +219,7 @@ def generate(
 
     proxy:凭据代理(调用方传 core.outbound.credential_proxy 的结果,本地模式才有值)。"""
     if not api_key:
-        raise ImageGenError(f"openai_compat: {api_id} 缺少 API Key")
+        raise ImageGenError(f"openai_compat: {api_id} is missing an API Key")
     base = _resolve_base_url(api_id, base_url)
     headers = _headers(api_key)
 

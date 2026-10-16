@@ -62,6 +62,7 @@ import json
 from typing import Any
 
 from core.json_parse import parse_llm_json
+from core.language import agent_language_directive
 from core.logging import get_logger
 
 log = get_logger(__name__)
@@ -76,42 +77,42 @@ log = get_logger(__name__)
 _CARD_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "name": {"type": "string", "description": "角色名,≤30 字符,不与现有 NPC 重名"},
-        "gender": {"type": "string", "description": "性别 / 自我认同"},
-        "age": {"type": "string", "description": "年龄,允许 '约 200 岁' 等非数字"},
-        "appearance": {"type": "string", "description": "一段外貌描写"},
-        "personality": {"type": "string", "description": "性格关键词 + 简述"},
-        "background": {"type": "string", "description": "起源故事 / 来历"},
-        "motivation": {"type": "string", "description": "当前目标 / 驱动力"},
+        "name": {"type": "string", "description": "Character name, ≤30 characters, must not duplicate an existing NPC"},
+        "gender": {"type": "string", "description": "Gender / self-identity"},
+        "age": {"type": "string", "description": "Age; non-numeric values such as 'about 200' are allowed"},
+        "appearance": {"type": "string", "description": "A paragraph describing appearance"},
+        "personality": {"type": "string", "description": "Personality keywords plus a short description"},
+        "background": {"type": "string", "description": "Origin story / background"},
+        "motivation": {"type": "string", "description": "Current goal / driving motive"},
         "speaking_style": {
             "type": "string",
-            "description": "说话风格说明 + 2-3 段实际对话样本 (用 / 分隔)",
+            "description": "Speaking style notes plus 2-3 actual dialogue samples (separated by /)",
         },
         "abilities": {
             "type": "array", "items": {"type": "string"},
-            "description": "技能 / 能力清单",
+            "description": "List of skills / abilities",
         },
         "relationship_hints": {
             "type": "object",
-            "description": "{NPC 名: 关系描述} key 应来自现有名单,可空",
+            "description": "{NPC name: relationship description}; keys should come from the existing roster; may be empty",
             "additionalProperties": {"type": "string"},
         },
         "phase_availability": {
             "type": "array", "items": {"type": "string"},
-            "description": "该卡适用的 phase 列表 (剧本宏观阶段标签)",
+            "description": "Phases this card applies to (the script's macro phase labels)",
         },
         "consistency_check_self": {
             "type": "string",
-            "description": "LLM 自我说明:为何符合目标 phase 与世界观",
+            "description": "Self-check: why the card fits the target phase and the setting",
         },
         # 5E 模组才填的可选字段
-        "race": {"type": "string", "description": "(5E) 种族,非模组留空"},
-        "class": {"type": "string", "description": "(5E) 职业"},
+        "race": {"type": "string", "description": "(5E) Race; leave empty outside a 5E module"},
+        "class": {"type": "string", "description": "(5E) Class"},
         "level": {"type": "integer", "minimum": 0, "maximum": 20,
-                  "description": "(5E) 等级,非模组填 0"},
+                  "description": "(5E) Level; 0 outside a 5E module"},
         "ability_scores": {
             "type": "object",
-            "description": "(5E) STR/DEX/CON/INT/WIS/CHA 6 个属性整数",
+            "description": "(5E) The 6 ability scores STR/DEX/CON/INT/WIS/CHA as integers",
             "additionalProperties": {"type": "integer"},
         },
     },
@@ -157,7 +158,7 @@ def generate_character_card_draft(
     if not brief:
         return {
             "ok": False, "draft": None,
-            "validations": [{"layer": "input", "ok": False, "reason": "brief 为空"}],
+            "validations": [{"layer": "input", "ok": False, "reason": "brief is empty"}],
             "retries": 0, "diagnostics": {},
         }
     slice_ = _layer1_reality_slice(user_id=user_id, script_id=script_id, target_phase=phase)
@@ -181,14 +182,14 @@ def refine_character_card_draft(
         return {
             "ok": False, "draft": None,
             "validations": [{"layer": "input", "ok": False,
-                             "reason": "previous_draft 缺失"}],
+                             "reason": "previous_draft is missing"}],
             "retries": 0, "diagnostics": {},
         }
     if not feedback:
         return {
             "ok": False, "draft": previous_draft,
             "validations": [{"layer": "input", "ok": False,
-                             "reason": "feedback 为空"}],
+                             "reason": "feedback is empty"}],
             "retries": 0, "diagnostics": {},
         }
     # 推断目标 phase 优先用 previous_draft.phase_availability[0]
@@ -239,7 +240,7 @@ def _layer1_reality_slice(
                 except Exception:
                     _ok = False
                 if not _ok:
-                    slice_["warnings"].append(f"script {script_id} 无读权限,已跳过剧本参考")
+                    slice_["warnings"].append(f"no read access to script {script_id}; skipped the script reference")
                     script_id = None
             # 剧本 NPC 名单
             if script_id is not None:
@@ -295,7 +296,7 @@ def _layer1_reality_slice(
                         keys.append(title)
                 slice_["worldbook_keys"] = list({k for k in keys if k.strip()})[:80]
             else:
-                slice_["warnings"].append("script_id 缺失,跳过剧本 NPC / worldbook 查询")
+                slice_["warnings"].append("script_id is missing; skipped the script NPC / worldbook lookup")
 
             # user 自创卡名单 (查重补充)
             user_rows = db.execute(
@@ -304,7 +305,7 @@ def _layer1_reality_slice(
             ).fetchall() or []
             slice_["user_card_names"] = [r["name"] for r in user_rows if r.get("name")]
     except Exception as exc:
-        slice_["warnings"].append(f"DB 切片失败: {type(exc).__name__}: {exc}")
+        slice_["warnings"].append(f"DB slice failed: {type(exc).__name__}: {exc}")
 
     # baseline 跨 phase token (手工短表,后续可拓展为按 phase 配置)
     # 思路: 月球篇里出现"柏林"算泄漏,反之亦然;管控关键词来自 worldbook + 内置
@@ -343,44 +344,44 @@ def _derive_other_phase_tokens(slice_: dict[str, Any]) -> list[str]:
 
 
 def _build_system_prompt(slice_: dict[str, Any]) -> str:
-    target_phase = slice_.get("target_phase") or "(未指定)"
+    target_phase = slice_.get("target_phase") or "(unspecified)"
     existing = ", ".join(slice_.get("existing_npc_names") or [])[:600]
     refs = slice_.get("phase_reference_cards") or []
     ref_lines = []
     for r in refs:
         ref_lines.append(
-            f"  · {r.get('name')}: 性格={r.get('personality')} / 状态={r.get('current_status')}"
+            f"  · {r.get('name')}: personality={r.get('personality')} / status={r.get('current_status')}"
         )
-    refs_block = "\n".join(ref_lines) if ref_lines else "  (本 phase 暂无现成 NPC 可参考)"
+    refs_block = "\n".join(ref_lines) if ref_lines else "  (no existing NPCs to reference in this phase)"
     worldbook_keys = ", ".join(slice_.get("worldbook_keys") or [])[:400]
     blacklist = ", ".join(slice_.get("other_phase_tokens") or [])
     ruleset = slice_.get("ruleset_id") or ""
     is_5e = ruleset == "dnd5e"
 
     parts = [
-        "你是 RPG 平台的角色卡生成助手。把用户简短描述扩展为一张符合当前剧本规范的完整 NPC 卡。",
+        "You generate character cards for an RPG platform. Expand the user's short description into a complete NPC card that fits the current script's conventions.",
         "",
-        f"【目标剧本 phase】{target_phase}",
-        f"【已存在 NPC 姓名(不可重名)】{existing or '(无)'}",
-        f"【本 phase 风格参考】\n{refs_block}",
-        f"【世界书关键词(可在背景里引用)】{worldbook_keys or '(无)'}",
-        f"【禁止出现的跨 phase token】{blacklist or '(无)'}",
+        f"[Target script phase] {target_phase}",
+        f"[Existing NPC names (do not duplicate)] {existing or '(none)'}",
+        f"[Style reference for this phase]\n{refs_block}",
+        f"[Worldbook keywords (may be referenced in the background)] {worldbook_keys or '(none)'}",
+        f"[Forbidden cross-phase tokens] {blacklist or '(none)'}",
     ]
     if is_5e:
-        parts.append("【ruleset】5E compatible — 请填 race / class / level / ability_scores")
+        parts.append("[ruleset] 5E compatible — fill in race / class / level / ability_scores")
     else:
-        parts.append("【ruleset】freeform — race/class/level/ability_scores 可留空")
+        parts.append("[ruleset] freeform — race/class/level/ability_scores may be left empty")
     parts += [
         "",
-        "硬约束:",
-        "  · name 不得与 existing NPC 重名 (大小写不敏感)",
-        "  · phase_availability 必须包含目标 phase",
-        "  · 全文 (appearance/background/motivation/...) 不得出现『禁止出现的跨 phase token』",
-        "  · 所有 required 字段必填,内容具体,不允许 'TBD' / '待定'",
-        "  · speaking_style 至少给 2-3 段对话样本",
-        "  · consistency_check_self 解释 1-2 句为何契合 phase 与世界观",
+        "Hard constraints:",
+        "  · name must not duplicate an existing NPC (case-insensitive)",
+        "  · phase_availability must include the target phase",
+        "  · No text (appearance/background/motivation/...) may contain any of the forbidden cross-phase tokens",
+        "  · Every required field must be filled with specific content; 'TBD' is not allowed",
+        "  · speaking_style must include at least 2-3 dialogue samples",
+        "  · consistency_check_self explains in 1-2 sentences why the card fits the phase and the setting",
         "",
-        "通过 emit_card 工具一次性输出完整卡片 JSON,不要写解释文字。",
+        "Output the complete card JSON in one emit_card tool call. Do not write any explanation.",
     ]
     return "\n".join(parts)
 
@@ -389,20 +390,20 @@ def _build_user_message(
     *, brief: str, previous_draft: dict | None, feedback: str | None,
     last_violations: list[dict] | None,
 ) -> str:
-    lines = [f"用户原始描述: {brief}"]
+    lines = [f"User's original description: {brief}"]
     if previous_draft:
         lines.append("")
-        lines.append("上一版草稿:")
+        lines.append("Previous draft:")
         lines.append(json.dumps(previous_draft, ensure_ascii=False, indent=2)[:1500])
     if feedback:
         lines.append("")
-        lines.append(f"用户反馈: {feedback}")
+        lines.append(f"User feedback: {feedback}")
     if last_violations:
         lines.append("")
-        lines.append("上一次生成被 validator 拒绝,违规项:")
+        lines.append("The previous generation was rejected by the validator. Violations:")
         for v in last_violations:
             lines.append(f"  · [{v.get('layer')}] {v.get('reason')}")
-        lines.append("请在本次生成中修正以上违规。")
+        lines.append("Fix the violations above in this generation.")
     return "\n".join(lines)
 
 
@@ -420,7 +421,7 @@ def _call_llm_for_card(
         schema_hint = json.dumps(_CARD_SCHEMA, ensure_ascii=False, indent=2)[:2000]
         full_sys = (
             system
-            + "\n\n你必须只返回符合以下 JSON Schema 的 JSON 对象,不要包含 Markdown 围栏或解释:\n"
+            + "\n\nReturn only a JSON object that matches the JSON Schema below, with no Markdown fences or explanation:\n"
             + schema_hint
         )
         text = backend.call_structured(
@@ -436,7 +437,7 @@ def _anthropic_emit_card(backend, system: str, user_msg: str) -> dict | None:
     """Anthropic native tool_use 路径。"""
     tool = {
         "name": "emit_card",
-        "description": "输出生成的角色卡。",
+        "description": "Output the generated character card.",
         "input_schema": _CARD_SCHEMA,
     }
     try:
@@ -496,7 +497,7 @@ def _select_backend(user_id: int | None, role: str = "generator"):
         from agents.gm import _VertexBackend
         return _VertexBackend()
     except Exception as exc:
-        raise RuntimeError(f"无可用 LLM backend: {exc}") from exc
+        raise RuntimeError(f"No usable LLM backend: {exc}") from exc
 
 
 def _resolve_preferred_model(user_id: int | None, role: str) -> str | None:
@@ -538,7 +539,7 @@ def _run_validators(
     """跑 5 个 validator,返回每个的结果 [{layer, ok, reason}]"""
     results: list[dict[str, Any]] = []
     if not isinstance(draft, dict):
-        return [{"layer": "schema", "ok": False, "reason": "draft 不是 dict"}]
+        return [{"layer": "schema", "ok": False, "reason": "draft is not a dict"}]
 
     # 3a 姓名查重
     results.append(_v_name_uniqueness(draft, slice_))
@@ -556,7 +557,7 @@ def _run_validators(
 def _v_name_uniqueness(draft: dict, slice_: dict) -> dict:
     name = (draft.get("name") or "").strip()
     if not name:
-        return {"layer": "name_uniqueness", "ok": False, "reason": "name 为空"}
+        return {"layer": "name_uniqueness", "ok": False, "reason": "name is empty"}
     lower = name.lower()
     pool: set[str] = set()
     for n in (slice_.get("existing_npc_names") or []):
@@ -568,37 +569,37 @@ def _v_name_uniqueness(draft: dict, slice_: dict) -> dict:
     if lower in pool:
         return {
             "layer": "name_uniqueness", "ok": False,
-            "reason": f"名字与已有角色重名: {name!r}",
+            "reason": f"name duplicates an existing character: {name!r}",
         }
-    return {"layer": "name_uniqueness", "ok": True, "reason": "唯一"}
+    return {"layer": "name_uniqueness", "ok": True, "reason": "unique"}
 
 
 def _v_phase_consistency(draft: dict, slice_: dict) -> dict:
     target_phase = (slice_.get("target_phase") or "").strip()
     if not target_phase:
         return {"layer": "phase_consistency", "ok": True,
-                "reason": "skipped: 缺数据 (无目标 phase)"}
+                "reason": "skipped: missing data (no target phase)"}
     avail = draft.get("phase_availability") or []
     if not isinstance(avail, list):
         return {"layer": "phase_consistency", "ok": False,
-                "reason": "phase_availability 不是列表"}
+                "reason": "phase_availability is not a list"}
     if target_phase in avail:
         return {"layer": "phase_consistency", "ok": True,
-                "reason": f"包含目标 phase: {target_phase}"}
+                "reason": f"includes target phase: {target_phase}"}
     # 宽松匹配: 包含子串也算
     for p in avail:
         if isinstance(p, str) and target_phase in p:
             return {"layer": "phase_consistency", "ok": True,
-                    "reason": f"宽松匹配: {p}"}
+                    "reason": f"loose match: {p}"}
     return {"layer": "phase_consistency", "ok": False,
-            "reason": f"phase_availability {avail} 不含目标 phase {target_phase!r}"}
+            "reason": f"phase_availability {avail} does not include target phase {target_phase!r}"}
 
 
 def _v_cross_phase_tokens(draft: dict, slice_: dict) -> dict:
     blacklist = slice_.get("other_phase_tokens") or []
     if not blacklist:
         return {"layer": "cross_phase_tokens", "ok": True,
-                "reason": "skipped: 缺数据 (无黑名单)"}
+                "reason": "skipped: missing data (no blacklist)"}
     # 把 draft 的所有字符串字段拼起来扫
     text_fields = [
         str(draft.get("appearance") or ""),
@@ -612,8 +613,8 @@ def _v_cross_phase_tokens(draft: dict, slice_: dict) -> dict:
     hits = [tok for tok in blacklist if tok and tok in blob]
     if hits:
         return {"layer": "cross_phase_tokens", "ok": False,
-                "reason": f"包含其他 phase 专有 token: {hits}"}
-    return {"layer": "cross_phase_tokens", "ok": True, "reason": "无泄漏"}
+                "reason": f"contains tokens specific to other phases: {hits}"}
+    return {"layer": "cross_phase_tokens", "ok": True, "reason": "no leak"}
 
 
 def _v_critic_score(draft: dict, slice_: dict, user_id: int) -> dict:
@@ -622,12 +623,13 @@ def _v_critic_score(draft: dict, slice_: dict, user_id: int) -> dict:
     target_phase = slice_.get("target_phase") or ""
     if not target_phase and not refs:
         return {"layer": "critic_score", "ok": True,
-                "reason": "skipped: 缺数据 (无 phase 或 reference)"}
+                "reason": "skipped: missing data (no phase or reference)"}
     try:
         backend = _select_backend(user_id, role="critic")
         sys = (
-            "你是 RPG 角色卡一致性评审。给候选卡和 phase reference 打分 0.0-1.0,"
-            "<0.6 视为不通过。只返回 JSON {\"score\": float, \"reason\": str},不写解释。"
+            "You review RPG character cards for consistency. Score the candidate card against the "
+            "phase reference from 0.0 to 1.0; below 0.6 fails. Return only JSON "
+            "{\"score\": float, \"reason\": str}, with no explanation."
         )
         payload = {
             "target_phase": target_phase,
@@ -643,12 +645,12 @@ def _v_critic_score(draft: dict, slice_: dict, user_id: int) -> dict:
         reason = parsed.get("reason") or ""
         if score < 0.6:
             return {"layer": "critic_score", "ok": False,
-                    "reason": f"critic 评 {score:.2f} < 0.6: {reason}", "score": score}
+                    "reason": f"critic scored {score:.2f} < 0.6: {reason}", "score": score}
         return {"layer": "critic_score", "ok": True,
-                "reason": f"critic 评 {score:.2f} ≥ 0.6", "score": score}
+                "reason": f"critic scored {score:.2f} ≥ 0.6", "score": score}
     except Exception as exc:
         return {"layer": "critic_score", "ok": True,
-                "reason": f"skipped: critic 调用失败 ({type(exc).__name__}: {exc})"}
+                "reason": f"skipped: critic call failed ({type(exc).__name__}: {exc})"}
 
 
 def _v_schema_completeness(draft: dict) -> dict:
@@ -666,8 +668,8 @@ def _v_schema_completeness(draft: dict) -> dict:
             continue
     if missing:
         return {"layer": "schema_completeness", "ok": False,
-                "reason": f"缺必填字段: {missing}"}
-    return {"layer": "schema_completeness", "ok": True, "reason": "字段齐全"}
+                "reason": f"missing required fields: {missing}"}
+    return {"layer": "schema_completeness", "ok": True, "reason": "all fields present"}
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -683,7 +685,7 @@ def _generate_with_retry(
     previous_draft: dict | None, feedback: str | None,
     kind: str, timeout_sec: int,
 ) -> dict[str, Any]:
-    system = _build_system_prompt(slice_)
+    system = _build_system_prompt(slice_) + agent_language_directive(user_id)
     all_validations: list[list[dict]] = []
     last_draft: dict | None = previous_draft
     last_backend = ""
@@ -701,7 +703,7 @@ def _generate_with_retry(
         last_backend = backend_kind
         if draft is None:
             attempt_result = [{"layer": "generate", "ok": False,
-                               "reason": f"LLM 未返回 draft (backend={backend_kind})"}]
+                               "reason": f"LLM returned no draft (backend={backend_kind})"}]
             all_validations.append(attempt_result)
             last_violations = attempt_result
             continue

@@ -87,12 +87,12 @@ def estimate_budget(
         "ok": True,
         "model": {"api_id": model_api_id, "real_name": model_real_name, "pricing": pricing},
         "stages": [
-            _stage("chunks",    "切块入库", 0, 0, 0.0, chapter_count / 100, deterministic=True),
-            _stage("facts",     "章节事实", 0, 0, 0.0, chapter_count / 100, deterministic=True),
-            _stage("entities",  "人物提取", 0, 0, 0.0, 0.5,                deterministic=True),
-            _stage("cards",     "人设卡生成", cards_input, cards_output, cards_cost,
+            _stage("chunks",    "Chunking", 0, 0, 0.0, chapter_count / 100, deterministic=True),
+            _stage("facts",     "Chapter facts", 0, 0, 0.0, chapter_count / 100, deterministic=True),
+            _stage("entities",  "Character detection", 0, 0, 0.0, 0.5,                deterministic=True),
+            _stage("cards",     "Character cards", cards_input, cards_output, cards_cost,
                    cards_calls * 3, enabled=enable_cards, calls=cards_calls),
-            _stage("worldbook", "世界书建立", wb_input, wb_output, wb_cost,
+            _stage("worldbook", "Worldbook", wb_input, wb_output, wb_cost,
                    worldbook_calls * 3, enabled=enable_worldbook, calls=worldbook_calls),
         ],
         # 全局聚合 — 同时给新名 + 老名

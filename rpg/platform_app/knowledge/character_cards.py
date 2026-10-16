@@ -68,7 +68,7 @@ def upsert_character_card(user_id: int, script_id: int, payload: dict[str, Any],
     init_db()
     name = (payload.get("name") or "").strip()
     if not name:
-        raise ValueError("character.name 不能为空")
+        raise ValueError("character.name must not be empty")
     card_id = payload.get("id")
     fields = {
         "name": name,
@@ -107,15 +107,15 @@ def upsert_character_card(user_id: int, script_id: int, payload: dict[str, Any],
                 (script_id, name),
             ).fetchone()
             if clash:
-                raise ValueError(f"该剧本已存在同名 NPC 角色卡「{name}」,请换个名字,"
-                                 "或直接打开那张卡编辑")
+                raise ValueError(f"This script already has an NPC character card named \"{name}\". "
+                                 "Choose another name, or open that card and edit it.")
         if card_id:
             owned = db.execute(
                 "select 1 from character_cards where id = %s and script_id = %s and card_type='npc'",
                 (int(card_id), script_id),
             ).fetchone()
             if not owned:
-                raise ValueError("character_card 不存在或不属于该剧本")
+                raise ValueError("character_card does not exist or does not belong to this script")
             # 改名预检:把卡改成已被**别的** NPC 占用的名字会撞 uq_character_cards_npc_name
             # (script_id,name)唯一约束 → 裸 UniqueViolation 冒成 500、前端「保存没反应」。
             # 先查冲突给出可行动 ValueError(端点 ValueError→400,前端能显示原因)。
@@ -126,8 +126,8 @@ def upsert_character_card(user_id: int, script_id: int, payload: dict[str, Any],
                 (script_id, name, int(card_id)),
             ).fetchone()
             if clash:
-                raise ValueError(f"该剧本已存在同名 NPC 角色卡「{name}」,请改用不同的名字"
-                                 "(或先删除/合并重名卡)")
+                raise ValueError(f"This script already has an NPC character card named \"{name}\". "
+                                 "Use a different name (or delete/merge the duplicate card first).")
             db.execute(
                 """
                 update character_cards set
@@ -237,7 +237,7 @@ def import_character_card(user_id: int, script_id: int, payload: dict[str, Any])
     init_db()
     name = (payload.get("name") or "").strip()
     if not name:
-        raise ValueError("character.name 不能为空")
+        raise ValueError("character.name must not be empty")
     with connect() as db:
         # 写路径,owner-only(订阅者不能改原作者剧本的 NPC 卡)。upsert 里还会再校验一次,
         # 这里先校验是为了「无权」比「同名查询结果」更早返回。
@@ -265,7 +265,7 @@ def set_character_card_enabled(user_id: int, script_id: int, card_id: int, enabl
         _require_script_owner(db, user_id, script_id)
         row = _db_set_character_card_enabled(db, script_id, card_id, enabled)
     if not row:
-        raise ValueError("character_card 不存在")
+        raise ValueError("character_card does not exist")
     return card_to_dto(row) or {}
 
 
@@ -284,5 +284,5 @@ def set_character_card_protagonist(user_id: int, script_id: int, card_id: int) -
         _require_script_owner(db, user_id, script_id)
         row = _db_set_protagonist(db, script_id, int(card_id))
     if not row:
-        raise ValueError("character_card 不存在或不属于该剧本")
+        raise ValueError("character_card does not exist or does not belong to this script")
     return card_to_dto(row) or {}

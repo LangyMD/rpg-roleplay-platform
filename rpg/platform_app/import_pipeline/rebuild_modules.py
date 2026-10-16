@@ -26,7 +26,7 @@ def rebuild_chunks_from_db(user_id: int, script_id: int) -> dict[str, Any]:
         before_count = int(before["c"]) if before else 0
         script = script_owned(db, script_id, user_id)
         if not script:
-            return {"ok": False, "error": "无权访问该剧本"}
+            return {"ok": False, "error": "You do not have access to this script"}
         book = knowledge._ensure_book(db, script)
         chapters = db.execute(
             "select * from script_chapters where script_id = %s order by chapter_index",
@@ -65,7 +65,7 @@ def rebuild_facts_from_db(user_id: int, script_id: int) -> dict[str, Any]:
         before_count = int(before["c"]) if before else 0
         script = script_owned(db, script_id, user_id)
         if not script:
-            return {"ok": False, "error": "无权访问该剧本"}
+            return {"ok": False, "error": "You do not have access to this script"}
         book = knowledge._ensure_book(db, script)
         chapters = db.execute(
             "select * from script_chapters where script_id = %s order by chapter_index",
@@ -125,7 +125,7 @@ def rebuild_cards_from_canon(user_id: int, script_id: int, *,
         before_count = int(before["c"]) if before else 0
         script = script_owned(db, script_id, user_id)
         if not script:
-            return {"ok": False, "error": "无权访问该剧本"}
+            return {"ok": False, "error": "You do not have access to this script"}
         book = knowledge._ensure_book(db, script)
         # 优先用 canon entity (LLM extract 已有);否则用 facts 聚合。
         # 补取 first_revealed_chapter:① 透传给 _sync 修「重建后丢防剧透章」② chapter_max 区间过滤。
@@ -235,7 +235,7 @@ def rebuild_worldbook_with_llm(user_id: int, script_id: int, *,
         ).fetchone()
         before_count = int(before["c"]) if before else 0
         if not script_owned(db, script_id, user_id):
-            return {"ok": False, "error": "无权访问该剧本"}
+            return {"ok": False, "error": "You do not have access to this script"}
     if source == "canon":
         with connect() as db:
             from extract.rebuild import rebuild_worldbook_from_db
@@ -260,6 +260,6 @@ def rebuild_worldbook_with_llm(user_id: int, script_id: int, *,
         }
     # source == 'llm' — 走 _stage_worldbook (一次 LLM)。job_id 由调用方传入 ctl
     raise NotImplementedError(
-        "rebuild_worldbook_with_llm(source='llm') 必须从 rebuild job runner 调用,"
-        "需要 JobController 上下文以记 usage_actual"
+        "rebuild_worldbook_with_llm(source='llm') must be called from the rebuild job runner; "
+        "it needs a JobController context to record usage_actual"
     )

@@ -35,14 +35,14 @@ from .stages_llm import (
 #   anchors       → 报告时间线条数(canon_extract 已写,这里只 verify+report)
 #   embeddings    → 触发 chunks/cards/worldbook 向量化(canon embed 在 canon_extract 内已做)
 STAGES = [
-    ("chunks",        "切块入库"),
-    ("facts",         "章节事实"),
-    ("entities",      "人物提取"),
-    ("cards",         "人设卡生成"),
-    ("worldbook",     "世界书建立"),
-    ("canon_extract", "规范实体提取"),
-    ("anchors",       "时间线锚点"),
-    ("embeddings",    "向量化"),
+    ("chunks",        "Chunking"),
+    ("facts",         "Chapter facts"),
+    ("entities",      "Character detection"),
+    ("cards",         "Character cards"),
+    ("worldbook",     "Worldbook"),
+    ("canon_extract", "Canon entity extraction"),
+    ("anchors",       "Timeline anchors"),
+    ("embeddings",    "Embeddings"),
 ]
 
 
@@ -145,7 +145,7 @@ def schedule_full_import(
             (user_id,),
         ).fetchone()
         if int(active["n"] if active else 0) >= 1:
-            raise ValueError("您已有 1 个导入任务在跑，请等其完成或取消")
+            raise ValueError("You already have an import job running; wait for it to finish or cancel it")
 
         job_id = f"imp_{script_id}_{secrets.token_hex(6)}"
         # kind='full_pipeline' — 区别于 llm_extract(纯 LLM 重提取);
@@ -190,7 +190,7 @@ def get_job_status(user_id: int, job_id: str | None = None, script_id: int | Non
                 (script_id, user_id),
             ).fetchone()
         else:
-            return {"ok": False, "error": "需要 job_id 或 script_id"}
+            return {"ok": False, "error": "job_id or script_id is required"}
         if not row:
             return {"ok": True, "found": False}
         job = expose(row) or {}
@@ -289,11 +289,11 @@ def summarize_job_result(res: dict[str, Any], action: str) -> str:
     status = (res.get("status") or "").strip()
     if res.get("timed_out"):
         prog, tot = res.get("overall_progress"), res.get("overall_total")
-        prog_s = f"(进度 {prog}/{tot})" if prog is not None and tot else ""
-        return (f"{action}仍在后台进行{prog_s}:任务会继续跑完,"
-                f"稍后用 get_import_status / list_my_import_jobs 查最终结果。")
+        prog_s = f" (progress {prog}/{tot})" if prog is not None and tot else ""
+        return (f"{action} is still running in the background{prog_s}: the job will run to completion; "
+                f"check the final result later with get_import_status / list_my_import_jobs.")
     if status in ("done", "done_with_errors"):
-        parts = [f"{action}完成"]
+        parts = [f"{action} finished"]
         stages = res.get("stages") or []
         cnts = [
             f"{s.get('label') or s.get('id')}:{s.get('count')}"
@@ -304,15 +304,15 @@ def summarize_job_result(res: dict[str, Any], action: str) -> str:
             parts.append("(" + " / ".join(cnts) + ")")
         if status == "done_with_errors":
             w = res.get("warnings")
-            parts.append(f"— 部分阶段有问题:{w}" if w else "— 部分阶段未完全成功")
+            parts.append(f"- some stages had problems: {w}" if w else "- some stages did not fully succeed")
         return " ".join(parts)
     if status == "failed":
-        return f"{action}失败:{res.get('error') or '未知错误'}"
+        return f"{action} failed: {res.get('error') or 'unknown error'}"
     if status == "cancelled":
-        return f"{action}已被取消。"
+        return f"{action} was cancelled."
     if status == "not_found":
-        return f"{action}任务未找到(可能已被清理或越权)。"
-    return f"{action}当前状态:{status or '未知'}。"
+        return f"{action}: job not found (it may have been cleaned up, or you lack access)."
+    return f"{action} current status: {status or 'unknown'}."
 
 
 def cancel_job(user_id: int, job_id: str) -> dict[str, Any]:
@@ -325,7 +325,7 @@ def cancel_job(user_id: int, job_id: str) -> dict[str, Any]:
             (job_id, user_id),
         ).fetchone()
     if not row:
-        raise ValueError("job 不存在")
+        raise ValueError("job does not exist")
     return {"ok": True, "current_status": row.get("status")}
 
 
@@ -482,15 +482,15 @@ def _run_pipeline(job_id: str, user_id: int, script_id: int, options: dict[str, 
                 _e = int(cards_entry["exceptions"] or 0)
                 _why = []
                 if _u:
-                    _why.append(f"{_u} 个候选的模型输出解析不出 JSON(提取模型不适配结构化输出,可在设置里换提取模型重试)")
+                    _why.append(f"for {_u} candidates the model output could not be parsed as JSON (the extraction model does not handle structured output well; try a different extraction model in Settings)")
                 if _e:
-                    _why.append(f"{_e} 个候选 LLM 调用报错"
-                                + (f",剩下 {cards_aborted} 个候选没有再试" if cards_aborted else ""))
+                    _why.append(f"the LLM call failed for {_e} candidates"
+                                + (f", the remaining {cards_aborted} candidates were not tried" if cards_aborted else ""))
                 # 原因(分类后的可读文案)挂在 job 级 ctl 上;以前这里只有计数,用户看不到为什么报错。
                 _hint = ctl.stage_error_hints.get("cards")
                 cards_entry["error"] = (
-                    ";".join(_why) + f";共 {cards_targets} 个候选,生成 {cards_n} 张人物卡"
-                    + (f"。原因:{_hint}" if _hint else "")
+                    "; ".join(_why) + f"; {cards_targets} candidates in total, {cards_n} character cards generated"
+                    + (f". Reason: {_hint}" if _hint else "")
                 )
             stages_progress.append(cards_entry)
         else:
@@ -539,9 +539,9 @@ def _run_pipeline(job_id: str, user_id: int, script_id: int, options: dict[str, 
             # 没有 error 字段时结果卡显示「未知错误」。canon 成功但锚点为 0 也是 error(见
             # _stage_canon_extract),那不是报错,只是没整理出时间线,照实说。
             anchors_entry["error"] = (
-                "规范实体提取失败,时间线锚点没有生成(原因见上一项)"
+                "Canon entity extraction failed, so no timeline anchors were generated (see the previous item for the reason)"
                 if canon_stage_status == "error" else
-                "规范实体已提取,但没有从中整理出时间线锚点"
+                "Canon entities were extracted, but no timeline anchors could be derived from them"
             )
         stages_progress.append(anchors_entry)
         ctl.update(stages=stages_progress, overall_progress=7)

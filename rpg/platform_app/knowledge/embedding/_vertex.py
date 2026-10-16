@@ -105,8 +105,8 @@ def _embed_via_vertex(model: str, texts: list[str], task_type: str = "RETRIEVAL_
         # overwrite=False:上面平台 Gemini 原生那一路若已真打并失败(如 429),以它为准 ——
         # 否则一次限流会被记成「没凭据」,连写库路径也被短路。
         _breaker.note(_breaker.KIND_NO_CRED, overwrite=False, friendly=(
-            "没有可用的 Agent Platform / Vertex Service Account,向量嵌入不可用。"
-            "请在「设置 → API 设置」上传 Service Account JSON,或在「设置 → RAG / 向量模型」换一个供应商。"
+            "No usable Agent Platform / Vertex Service Account, so embeddings are unavailable. "
+            "Upload a Service Account JSON under Settings → API & Models, or choose another provider under Settings → RAG / Embedding model."
         ))
         return None
     try:
@@ -121,7 +121,7 @@ def _embed_via_vertex(model: str, texts: list[str], task_type: str = "RETRIEVAL_
         log.warning("[embedding] vertex embed failed (%d items): %s", len(texts), e)
         code = getattr(e, "code", None)  # google.genai.errors.APIError 带 int code
         if isinstance(code, int) and 100 <= code < 600:
-            _breaker.note_http(code, body=str(e), friendly=f"Vertex 向量嵌入请求失败(HTTP {code})。")
+            _breaker.note_http(code, body=str(e), friendly=f"Vertex embedding request failed (HTTP {code}).")
         else:
             _breaker.note_exception(e, "Vertex AI")
         return None

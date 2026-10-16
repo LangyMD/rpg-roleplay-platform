@@ -541,7 +541,7 @@ def test_direct_gemini_geo_ban_skip_opens_config_cooldown(monkeypatch, clock, ca
         assert embedding.embed_query(text, user_id=5) is None
     st = _breaker.status(_breaker.key_for(5, "gemini", "gemini-embedding-001", "", "AIza-user"))
     assert st is not None and st["kind"] == _breaker.KIND_CONFIG
-    assert "地区" in _breaker.last_error_for(5)
+    assert "region" in _breaker.last_error_for(5)
     no_vec_warns = [r for r in caplog.records
                     if "returned no vectors" in r.getMessage() and r.levelno == logging.WARNING]
     assert len(no_vec_warns) == 1 and len(_cooldown_warnings(caplog)) == 1

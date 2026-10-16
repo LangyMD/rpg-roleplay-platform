@@ -52,42 +52,48 @@ from core.json_parse import parse_llm_json
 # ────────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = """\
-你是 TRPG 阶段摘要器。读玩家与 GM 的多轮对话原文,产出一段结构化摘要,让一个
-完全不知情的 GM 能在 100 turn 之后还记得这段剧情发生了什么。
+You are a TRPG phase summarizer. Read the raw multi-turn dialogue between the player and
+the GM and produce a structured summary, so that a GM with no prior knowledge can still
+remember what happened in this stretch of the story 100 turns later.
 
-【硬规则】
-1. 只看输入材料,绝不发挥想象。材料里没说的人物、地点、决定一律不写。
-2. summary 用 300-500 个汉字 (注意是汉字数,不是 token 数),第三人称、中性语
-   气、像史官在记录。不要直接引用大段原文,要做提炼。
-3. key_events 最多 5 条,挑剧情转折点 (新人物登场、关键道具变化、重大冲突、
-   选择带来后果)。每条形如 {"turn": <整数>, "summary": "<一句话>"}。
-4. key_npcs 最多 8 个,只列对剧情/玩家有持续影响的 NPC。每个形如
-   {"name": "<姓名>", "first_turn": <整数>, "role": "<身份/职业>",
-    "current_status": "<截至这段末尾对玩家的态度或处境>"}.
-5. key_locations 最多 6 条,列玩家实际涉足过、对剧情有意义的地点,纯字符串
-   数组。
-6. key_decisions 最多 5 条,只列玩家显式做出的选择,以及那次选择"短期内"已经
-   显现的后果。每条形如 {"turn": <整数>, "choice": "...", "consequence": "..."}.
-7. emotion_arc 用 2-5 个汉语短词连成"→"分隔的链,描述玩家心境在这段内的变化,
-   例如 "好奇 → 紧张 → 怀疑 → 坚定"。
-8. 如果某字段没有合适内容 (例如这段没有显式选择),输出空数组 [] 或空字符串
-   ""。不要编。
-9. 你将得到上一段摘要 (如果存在) 和剧本预期段落 (如果存在),仅作衔接参考,
-   不要把它们的内容当成本段发生过。
-10. 注意去重: 同一个 NPC 不要在 key_npcs 里写两次。
+[Hard rules]
+1. Use only the input material. Never invent anything. Do not write characters, places or
+   decisions the material does not mention.
+2. summary is 200-350 words (words, not tokens), third person, neutral tone, like a
+   chronicler keeping a record. Do not quote long passages of the source; distill them.
+3. key_events: at most 5 items. Pick plot turning points (a new character appears, a key
+   item changes hands, a major conflict, a choice that has consequences). Each item is
+   {"turn": <integer>, "summary": "<one sentence>"}.
+4. key_npcs: at most 8. List only NPCs with a lasting effect on the plot or the player.
+   Each item is {"name": "<name>", "first_turn": <integer>, "role": "<identity/occupation>",
+   "current_status": "<their attitude toward the player or their situation as of the end of
+   this stretch>"}.
+5. key_locations: at most 6. List places the player actually visited that matter to the
+   plot, as a plain array of strings.
+6. key_decisions: at most 5. List only choices the player made explicitly, plus the
+   consequences of each choice that have already shown up in the short term. Each item is
+   {"turn": <integer>, "choice": "...", "consequence": "..."}.
+7. emotion_arc: a chain of 2-5 short words joined by "→", describing how the player's
+   state of mind changed during this stretch, e.g. "curious → tense → suspicious → resolute".
+8. If a field has nothing suitable (e.g. no explicit choices in this stretch), output an
+   empty array [] or an empty string "". Do not make things up.
+9. You may get the previous summary (if any) and the script's expected passage (if any).
+   They are only for continuity. Do not treat their content as having happened in this
+   stretch.
+10. Deduplicate: do not list the same NPC twice in key_npcs.
 
-【输出格式 (严格)】
-仅输出一个 JSON object,直接以 `{` 开头,以 `}` 结尾。不要 markdown,不要
-``` 代码围栏,不要任何解释文字。Schema:
+[Output format (strict)]
+Output exactly one JSON object, starting with `{` and ending with `}`. No markdown, no
+``` code fences, no explanatory text. Schema:
 
 {
-  "summary": "<300-500 汉字>",
+  "summary": "<200-350 words>",
   "key_events": [{"turn": 5, "summary": "..."}, ...],
   "key_npcs": [{"name": "...", "first_turn": 3, "role": "...",
                 "current_status": "..."}, ...],
   "key_locations": ["...", "..."],
   "key_decisions": [{"turn": 12, "choice": "...", "consequence": "..."}, ...],
-  "emotion_arc": "好奇 → 紧张 → 坚定"
+  "emotion_arc": "curious → tense → resolute"
 }
 """
 
@@ -165,7 +171,7 @@ def compact_phase(
     if not commits:
         # 这类行重试多少次都不会成功 —— 标成终态,别让 cron 每天选中它、挤掉真该重试的行。
         _mark_digest_empty(save_id, phase_index)
-        return {"error": f"这一段没有可摘要的回合(turn {turn_start}-{turn_end})",
+        return {"error": f"This stretch has no turns to summarize (turn {turn_start}-{turn_end})",
                 "code": "empty_range",
                 "save_id": save_id, "phase_index": phase_index}
 
@@ -352,43 +358,43 @@ def _build_user_prompt(
     script_anchor: dict[str, Any] | None,
 ) -> str:
     lines: list[str] = []
-    lines.append("# 阶段元信息")
+    lines.append("# Phase metadata")
     lines.append(f"- save_id = {save_id}")
     lines.append(f"- phase_index = {phase_index}")
-    lines.append(f"- phase_label = {(phase_row.get('phase_label') or '(未命名)')!r}")
-    lines.append(f"- story_time_label = {(phase_row.get('story_time_label') or '(未知)')!r}")
+    lines.append(f"- phase_label = {(phase_row.get('phase_label') or '(unnamed)')!r}")
+    lines.append(f"- story_time_label = {(phase_row.get('story_time_label') or '(unknown)')!r}")
     lines.append(f"- turn_start = {phase_row.get('turn_start')}")
     lines.append(f"- turn_end = {phase_row.get('turn_end')}")
     lines.append(f"- commit_count = {len(commits)}")
 
     if prev_digest:
         lines.append("")
-        lines.append("# 衔接参考: 上一段阶段摘要 (仅参考,不要复述)")
-        lines.append(f"- 上段 phase_index = {prev_digest.get('phase_index')}")
-        lines.append(f"- 上段 phase_label = {prev_digest.get('phase_label') or '(未命名)'}")
-        lines.append(f"- 上段时间 = {prev_digest.get('story_time_label') or '(未知)'}")
-        lines.append(f"- 上段 summary: {(prev_digest.get('summary') or '')[:600]}")
+        lines.append("# Continuity reference: previous phase summary (reference only, do not restate)")
+        lines.append(f"- previous phase_index = {prev_digest.get('phase_index')}")
+        lines.append(f"- previous phase_label = {prev_digest.get('phase_label') or '(unnamed)'}")
+        lines.append(f"- previous story time = {prev_digest.get('story_time_label') or '(unknown)'}")
+        lines.append(f"- previous summary: {(prev_digest.get('summary') or '')[:600]}")
         ev = prev_digest.get("key_events") or []
         if ev:
-            lines.append("- 上段 key_events:")
+            lines.append("- previous key_events:")
             for e in ev[:5]:
                 if isinstance(e, dict):
                     lines.append(f"    · turn {e.get('turn', '?')}: {e.get('summary', '')[:80]}")
         if prev_digest.get("emotion_arc"):
-            lines.append(f"- 上段 emotion_arc: {prev_digest['emotion_arc']}")
+            lines.append(f"- previous emotion_arc: {prev_digest['emotion_arc']}")
 
     if script_anchor:
         lines.append("")
-        lines.append("# 剧本期望参考 (剧本本来在这段大概应该发生什么,仅参考)")
-        lines.append(f"- 剧本 phase_label = {script_anchor.get('phase_label')}")
-        lines.append(f"- 剧本时间段 = {script_anchor.get('story_time_label_start') or ''} "
+        lines.append("# Script expectation (roughly what the script says should happen here; reference only)")
+        lines.append(f"- script phase_label = {script_anchor.get('phase_label')}")
+        lines.append(f"- script time span = {script_anchor.get('story_time_label_start') or ''} "
                      f"→ {script_anchor.get('story_time_label_end') or ''}")
         s_sum = (script_anchor.get("summary") or "")[:800]
         if s_sum:
-            lines.append(f"- 剧本摘要: {s_sum}")
+            lines.append(f"- script summary: {s_sum}")
 
     lines.append("")
-    lines.append("# 本段对话原文 (要摘要的就是这个)")
+    lines.append("# Raw dialogue of this stretch (this is what you summarize)")
     for c in commits:
         turn = c.get("turn_index")
         kind = c.get("kind") or ""
@@ -399,15 +405,15 @@ def _build_user_prompt(
         if kind and kind != "user":
             block.append(f"[kind={kind}]")
         if player:
-            block.append(f"[玩家] {player}")
+            block.append(f"[Player] {player}")
         if gm:
             block.append(f"[GM] {gm}")
         lines.append("\n".join(block))
         lines.append("")
 
-    lines.append("# 输出要求")
-    lines.append("严格按 system prompt 的 JSON schema 输出。仅 JSON object,不要任何"
-                 "额外文字。")
+    lines.append("# Output requirements")
+    lines.append("Follow the JSON schema in the system prompt exactly. Output only the JSON "
+                 "object, with no extra text.")
     return "\n".join(lines)
 
 
@@ -494,8 +500,9 @@ def _call_llm_with_retry(
 
     # 第二次
     repaired_system = (
-        system_prompt + "\n\n【重要】上一次输出无法解析为 JSON。请严格按上文的"
-        "JSON schema 重新输出,不要 markdown,不要解释,直接以 `{` 开始。"
+        system_prompt + "\n\n[IMPORTANT] Your previous output could not be parsed as JSON. "
+        "Output again following the JSON schema above exactly: no markdown, no explanation, "
+        "start directly with `{`."
     )
     # 结构化微任务禁深思(268 实锤族)+ 空正文护栏(此为解析失败后的修复重调,结构不变)
     text2, usage2 = call_agent_json_guarded(
@@ -512,8 +519,8 @@ def _call_llm_with_retry(
         return parsed2, usage2
 
     raise ValueError(
-        f"LLM 输出两次都不是合法 JSON。第一次异常: {_last_err}; "
-        f"第二次输出片段: {(text2 or '')[:200]!r}"
+        f"LLM output was not valid JSON on both attempts. First error: {_last_err}; "
+        f"second output excerpt: {(text2 or '')[:200]!r}"
     )
 
 
@@ -531,8 +538,9 @@ def _legacy_backend_retry(backend: Any, system_prompt: str,
         _last_err = exc
 
     repaired_system = (
-        system_prompt + "\n\n【重要】上一次输出无法解析为 JSON。请严格按上文的"
-        "JSON schema 重新输出,不要 markdown,不要解释,直接以 `{` 开始。"
+        system_prompt + "\n\n[IMPORTANT] Your previous output could not be parsed as JSON. "
+        "Output again following the JSON schema above exactly: no markdown, no explanation, "
+        "start directly with `{`."
     )
     text2 = backend.call_structured(repaired_system, messages, max_tokens=2400)
     parsed2 = _parse_json(text2)
@@ -540,8 +548,8 @@ def _legacy_backend_retry(backend: Any, system_prompt: str,
         return parsed2, dict(getattr(backend, "last_usage", None) or {})
 
     raise ValueError(
-        f"LLM 输出两次都不是合法 JSON。第一次异常: {_last_err}; "
-        f"第二次输出片段: {text2[:200]!r}"
+        f"LLM output was not valid JSON on both attempts. First error: {_last_err}; "
+        f"second output excerpt: {text2[:200]!r}"
     )
 
 
@@ -576,7 +584,7 @@ def _normalize_digest(d: dict[str, Any]) -> dict[str, Any]:
     emotion_arc = str(d.get("emotion_arc") or "").strip()[:200]
 
     # 单条上限
-    summary = summary[:2000]
+    summary = summary[:3000]  # 200-350 English words ≈ 2100 chars
     for ev in key_events:
         if "summary" in ev:
             ev["summary"] = str(ev["summary"])[:300]
@@ -662,7 +670,7 @@ def _persist_digest(
         decisions = digest.get("key_decisions") or []
         record_history_anchor(
             save_id,
-            summary=f"【Phase {phase_index} 浓缩】" + (digest.get("summary") or "")[:600],
+            summary=f"[Phase {phase_index} digest] " + (digest.get("summary") or "")[:600],
             importance=60,
             turn_occurred=turn_end,
             tags=["phase_digest", "compact"],

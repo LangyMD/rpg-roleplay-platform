@@ -93,6 +93,6 @@ def list_context_runs(user_id: int, save_id: int, limit: int | str | None = None
     before_id = _cursor_int(cursor)
     with connect() as db:
         if not owns_save(db, save_id, user_id):
-            raise ValueError("无权访问该存档")
+            raise ValueError("You do not have access to this save")
         rows = _db_select_context_runs(db, save_id, before_id, page_limit)
     return page_payload(rows, page_limit)

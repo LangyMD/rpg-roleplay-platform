@@ -70,7 +70,7 @@ def run_extraction(
     if sample_chapters:
         chapters = chapters[:sample_chapters]
     if not chapters:
-        return {"ok": False, "error": "无可提取章节"}
+        return {"ok": False, "error": "No chapters to extract"}
 
     # —— 以下 Pass0/Pass1 全程不持有 DB 连接 ——
     # P2-1: seed 阶段用独立 ExtractLLM(algorithm="seed"),使记账标签正确;
@@ -128,7 +128,7 @@ def run_extraction(
                 _t.sleep(0.5 * (2 ** attempt))
                 continue
             if not getattr(ex, "raw_ok", True):
-                _record_failure(idx, ch, getattr(ex, "error", "") or "模型输出不可用")
+                _record_failure(idx, ch, getattr(ex, "error", "") or "model output unusable")
                 return idx, None
             return idx, ex
         return idx, None
@@ -166,9 +166,9 @@ def run_extraction(
         if failed_chapters:
             # 章号可能是 None(chapter_index 缺值),和 int 混比会 TypeError
             _first = min(failed_chapters, key=lambda t: (t[0] is None, t[0] if isinstance(t[0], int) else 0))
-            first_error = f"{_first[1]}(提取模型 {api_id}/{model})"
+            first_error = f"{_first[1]} (extraction model {api_id}/{model})"
         return {"ok": False,
-                "error": "全部章节 LLM 提取失败" + (f":{first_error}" if first_error else ""),
+                "error": "LLM extraction failed for every chapter" + (f": {first_error}" if first_error else ""),
                 "first_error": first_error}
 
     # Pass 2:消歧聚合 → 规范层(短连接,写完即释放)

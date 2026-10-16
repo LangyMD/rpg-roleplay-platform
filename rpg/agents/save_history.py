@@ -56,7 +56,7 @@ def record_history_anchor(
     """
     summary = (summary or "").strip()
     if not summary:
-        return {"ok": False, "error": "summary 必填"}
+        return {"ok": False, "error": "summary is required"}
     if len(summary) > 800:
         summary = summary[:800]
     importance = max(0, min(100, int(importance)))
@@ -173,7 +173,7 @@ def _cascade_impl(db: Any, save_id: int, key: str, anchor_summary: str, new_stat
         return
     head = (anchor_summary or "").strip()[:200]
     body = (detail or "").strip()[:400]
-    summary = f"[锚点 {key} → {new_status}] " + (f"{head}｜{body}" if head and body else (head or body))
+    summary = f"[Anchor {key} → {new_status}] " + (f"{head} | {body}" if head and body else (head or body))
     record_history_anchor(
         int(save_id), summary=summary,
         importance=_cascade_importance(new_status),
