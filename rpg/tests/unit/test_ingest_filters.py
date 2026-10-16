@@ -53,6 +53,47 @@ def test_embedder_injection_lowers_confidence_on_low_sim() -> None:
     assert chs[0]["title_confidence"] < 1.0
 
 
+# ── English equivalents (sample text is original filler, not from any novel) ──
+_EN_PROSE = ("The lantern swung in the wind while the travelers argued about the road. "
+             "\"We should turn back,\" Mara said. Nobody answered her. ") * 30
+
+
+def test_english_author_note_by_title() -> None:
+    chs = [
+        {"title": "Author's Note", "content": "Thanks everyone, the next chapter comes Friday."},
+        {"title": "A/N: hiatus", "content": "I need a short break, sorry for the delay."},
+        {"title": "Announcement", "content": "New update schedule below."},
+    ]
+    filter_non_content(chs)
+    assert all(c["is_author_note"] for c in chs)
+
+
+def test_english_author_note_by_structure() -> None:
+    chs = [{"title": "Chapter 12", "content": "Sorry for the delay, I was sick. Next chapter on Monday, stay tuned!"}]
+    filter_non_content(chs)
+    assert chs[0]["is_author_note"]
+
+
+def test_english_story_titles_not_flagged() -> None:
+    chs = [{"title": t, "content": _EN_PROSE} for t in (
+        "Chapter 3: The Announcement", "An Ending", "The Vote", "Notice of Eviction", "Chapter 9")]
+    filter_non_content(chs)
+    assert not any(c["is_author_note"] for c in chs), [c["title"] for c in chs if c["is_author_note"]]
+
+
+def test_english_title_meme_words_are_whole_word() -> None:
+    chs = [{"title": t, "content": _EN_PROSE} for t in ("Chapter 4: Lost", "Chapter 5: The Rose")]
+    annotate_weird_titles(chs)
+    assert all(c["title_confidence"] >= 0.8 for c in chs), [c["title_confidence"] for c in chs]
+
+
+def test_english_ordinal_and_descriptor() -> None:
+    from ingest.filters import _content_descriptor, _strip_ordinal
+    assert _strip_ordinal("Chapter Twelve: The Storm") == "The Storm"
+    assert _strip_ordinal("CHAPTER IV. Home") == "Home"
+    assert _content_descriptor(_EN_PROSE) == "The lantern swung in the wind while the"
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):
