@@ -17,7 +17,10 @@ const NODE_GROUPS = [
 const api = () => (typeof window !== 'undefined' ? window.api : null);
 const toast = (msg, opts) => { try { window.__apiToast?.(msg, opts); } catch (_) {} };
 // 章节标题存「裸标题」(不含「第N章」),显示时由前端加序号前缀。剥掉任何已混入的前缀,防重命名/重建出现「第5章 第5章 …」双序号。
-const stripChapterPrefix = (s) => String(s || '').replace(/^\s*第\s*[0-9一二三四五六七八九十百千零〇两]+\s*章\s*/, '');
+// 英文界面的序号前缀是「Chapter N」/「Ch. N」,同样剥掉(后接分隔符或结尾才算前缀)。
+const stripChapterPrefix = (s) => String(s || '')
+  .replace(/^\s*第\s*[0-9一二三四五六七八九十百千零〇两]+\s*章\s*/, '')
+  .replace(/^\s*(?:chapter|ch\.)\s*\d+(?=\s|[:：.\-–—]|$)[\s:：.\-–—]*/i, '');
 // Canon 实体类型本地化 → i18n md_editor.canon_type.* 键。含常见同义词回退。
 // organization 是后端合法类型(提取链路会把乐团/工作室等标成它),单独显示「组织」,不再混成「势力」。
 const CANON_TYPE_KEYS = { character: 'character', person: 'character', faction: 'faction', organization: 'organization', org: 'organization', location: 'location', place: 'location', item: 'item', concept: 'concept', event: 'event' };

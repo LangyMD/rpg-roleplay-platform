@@ -67,7 +67,7 @@ function ViewOverview({ nav, user }) {
   const topAchv = (achv || []).filter(a => a.unlocked).sort((a, b) => (TIER_RANK[b.tier] || 0) - (TIER_RANK[a.tier] || 0)).slice(0, 6);
 
   // 以后端 type(turn/branch/script)过滤;旧后端只给中文 tag 时兜底映射(与桌面 MeOverview 孪生)。
-  const _actType = (a) => (a && (a.type || ({ '回合': 'turn', '分支': 'branch', '剧本': 'script' })[a.tag])) || '';
+  const _actType = (a) => (a && (a.type || ({ '回合': 'turn', '分支': 'branch', '剧本': 'script', Turn: 'turn', Branch: 'branch', Script: 'script' })[a.tag])) || '';
   const filteredAct = actFilter === 'all' ? (activity || []) : (activity || []).filter(a => _actType(a) === actFilter);
 
   return (
