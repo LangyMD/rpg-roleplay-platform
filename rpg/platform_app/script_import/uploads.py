@@ -51,11 +51,11 @@ except ImportError:  # Windows:无 fcntl,退化到进程内线程锁
 def init_upload(user_id: int, filename: str, total_bytes: int, total_chunks: int) -> dict[str, Any]:
     """开始一次分片上传，返回 upload_id。"""
     if not user_id:
-        raise ValueError("分片上传需要登录用户")
+        raise ValueError("Chunked upload requires a logged-in user")
     if total_bytes <= 0 or total_bytes > MAX_SCRIPT_UPLOAD_BYTES:
-        raise ValueError(f"total_bytes 越界（最大 {MAX_SCRIPT_UPLOAD_BYTES}）")
+        raise ValueError(f"total_bytes out of range (max {MAX_SCRIPT_UPLOAD_BYTES})")
     if total_chunks <= 0 or total_chunks > 4096:
-        raise ValueError("total_chunks 越界（最大 4096）")
+        raise ValueError("total_chunks out of range (max 4096)")
     upload_id = f"up_{user_id}_{_secrets.token_hex(8)}"
     user_dir = UPLOAD_CHUNK_ROOT / f"user_{user_id}" / upload_id
     user_dir.mkdir(parents=True, exist_ok=True)
@@ -74,16 +74,16 @@ def put_chunk(user_id: int, upload_id: str, chunk_index: int, blob: bytes) -> di
     """写一块到磁盘。返回累计已收 chunks/bytes。"""
     user_dir = _upload_dir(user_id, upload_id)
     if len(blob) > MAX_UPLOAD_CHUNK_BYTES:
-        raise ValueError(f"chunk 超过 {MAX_UPLOAD_CHUNK_BYTES} 字节")
+        raise ValueError(f"chunk exceeds {MAX_UPLOAD_CHUNK_BYTES} bytes")
     meta_path = user_dir / "meta.json"
     with open(meta_path, "r+") as fp:
         _lock_meta_file(fp)  # 跨平台:POSIX=fcntl 跨进程锁,Windows=进程内回退(见模块顶部)
         try:
             meta = _json.loads(fp.read())
             if chunk_index < 0 or chunk_index >= meta["total_chunks"]:
-                raise ValueError("chunk_index 越界")
+                raise ValueError("chunk_index out of range")
             if meta["received_bytes"] + len(blob) > meta["total_bytes"]:
-                raise ValueError("累计字节超过 total_bytes 声明")
+                raise ValueError("Accumulated bytes exceed the declared total_bytes")
             chunk_path = user_dir / f"chunk_{chunk_index:04d}.bin"
             if chunk_path.exists():
                 # 幂等：同 chunk_index 重传忽略大小调整
@@ -108,9 +108,9 @@ def finish_upload(user_id: int, upload_id: str) -> dict[str, Any]:
     user_dir = _upload_dir(user_id, upload_id)
     meta = _read_meta(user_dir)
     if meta["received_chunks"] != meta["total_chunks"]:
-        raise ValueError(f"分片未齐：{meta['received_chunks']}/{meta['total_chunks']}")
+        raise ValueError(f"Chunks incomplete: {meta['received_chunks']}/{meta['total_chunks']}")
     if meta["received_bytes"] != meta["total_bytes"]:
-        raise ValueError(f"字节不匹配：收到 {meta['received_bytes']} ≠ 声明 {meta['total_bytes']}")
+        raise ValueError(f"Byte count mismatch: received {meta['received_bytes']} != declared {meta['total_bytes']}")
     # 拼装
     payload_path = user_dir / "payload.bin"
     total_size = 0
@@ -118,7 +118,7 @@ def finish_upload(user_id: int, upload_id: str) -> dict[str, Any]:
         for i in range(meta["total_chunks"]):
             p = user_dir / f"chunk_{i:04d}.bin"
             if not p.exists():
-                raise ValueError(f"缺失 chunk {i}")
+                raise ValueError(f"Missing chunk {i}")
             data = p.read_bytes()
             total_size += len(data)
             out.write(data)
@@ -150,33 +150,33 @@ def _upload_dir(user_id: int, upload_id: str) -> Path:
     import re as _re
     # 1) slug 校验：禁止任何分隔符 / 控制字符 / ..
     if not _re.fullmatch(r"up_\d+_[A-Za-z0-9_-]{1,64}", upload_id):
-        raise ValueError("upload_id 格式非法")
+        raise ValueError("Invalid upload_id format")
     # 2) 前缀必须对应当前 user_id
     if not upload_id.startswith(f"up_{int(user_id)}_"):
-        raise ValueError("无权访问该 upload_id")
+        raise ValueError("No access to this upload_id")
     # 3) 解析后路径必须在该用户的分片根下（双保险，防止 OS 层符号链接欺骗）
     user_root = (UPLOAD_CHUNK_ROOT / f"user_{int(user_id)}").resolve()
     candidate = (user_root / upload_id).resolve()
     if user_root != candidate and user_root not in candidate.parents:
-        raise ValueError("upload_id 路径越界")
+        raise ValueError("upload_id path is out of bounds")
     return candidate
 
 
 def _read_meta(user_dir: Path) -> dict[str, Any]:
     meta_path = user_dir / "meta.json"
     if not meta_path.exists():
-        raise ValueError("upload_id 不存在或已过期")
+        raise ValueError("upload_id does not exist or has expired")
     return _json.loads(meta_path.read_text(encoding="utf-8"))
 
 
 def _consume_upload_chunks(user_id: int | None, upload_id: str, peek: bool = False) -> bytes:
     """preview/import 时读取已上传文件。peek=True 不删原文件。"""
     if not user_id:
-        raise ValueError("缺 user_id")
+        raise ValueError("Missing user_id")
     user_dir = _upload_dir(user_id, upload_id)
     meta = _read_meta(user_dir)
     if meta["received_chunks"] != meta["total_chunks"]:
-        raise ValueError("分片未齐，无法消费")
+        raise ValueError("Chunks incomplete; cannot consume")
     payload_path = user_dir / "payload.bin"
     if payload_path.exists():
         out = payload_path.read_bytes()

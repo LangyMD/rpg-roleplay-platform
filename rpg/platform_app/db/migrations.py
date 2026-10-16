@@ -2382,6 +2382,52 @@ MIGRATIONS: list[tuple[int, str, list[str]]] = [
         "alter table if exists books alter column default_language set default 'en'",
         "alter table if exists profile_extras alter column language set default 'en'",
     ]),
+    (104, "achievement_defs_english", [
+        # 内置成就目录的名称/描述改为英文。只改仍是原始中文种子名的行(admin 改过的保留)。
+        # category 值是前端排序 key(lib/achievements-const.js),不动。
+        "update achievement_defs set name = 'First Departure', description = 'Create your first save', updated_at = now() "
+        "where id = 'first_save' and name = '初次启程'",
+        "update achievement_defs set name = 'First Words', description = 'Play your first turn', updated_at = now() "
+        "where id = 'first_turn' and name = '落笔成文'",
+        "update achievement_defs set name = 'Through the Mist', description = 'Play 100 turns in total', updated_at = now() "
+        "where id = 'turns_100' and name = '破雾之刻'",
+        "update achievement_defs set name = 'A Thousand Turns', description = 'Play 1,000 turns in total', updated_at = now() "
+        "where id = 'turns_1k' and name = '千回百转'",
+        "update achievement_defs set name = 'Ten Thousand Words', description = 'Play 10,000 turns in total', updated_at = now() "
+        "where id = 'turns_10k' and name = '万语千言'",
+        "update achievement_defs set name = 'Forking Fates', description = 'Open 5 story branches', updated_at = now() "
+        "where id = 'branch_5' and name = '命运分叉'",
+        "update achievement_defs set name = 'Parallel Worlds', description = 'Reach a branch tree depth of 10', updated_at = now() "
+        "where id = 'depth_10' and name = '平行世界'",
+        "update achievement_defs set name = 'Multiverse', description = 'Reach a branch tree depth of 20', updated_at = now() "
+        "where id = 'depth_20' and name = '多重宇宙'",
+        "update achievement_defs set name = 'Budding Library', description = 'Import 3 scripts', updated_at = now() "
+        "where id = 'scripts_3' and name = '藏书初成'",
+        "update achievement_defs set name = 'Overflowing Shelves', description = 'Import 10 scripts', updated_at = now() "
+        "where id = 'scripts_10' and name = '汗牛充栋'",
+        "update achievement_defs set name = 'Sailing a Sea of Words', description = 'Import 1 million words in total', updated_at = now() "
+        "where id = 'words_1m' and name = '字海泛舟'",
+        "update achievement_defs set name = 'Prolific Collector', description = 'Import 10 scripts and 10 million words in total', updated_at = now() "
+        "where id = 'words_10m' and name = '著作等身'",
+        "update achievement_defs set name = 'A Thousand Chapters', description = 'Import 1,000 chapters in total', updated_at = now() "
+        "where id = 'chapters_1k' and name = '通读千章'",
+        "update achievement_defs set name = 'Steady Pen', description = 'Log in 7 days in a row', updated_at = now() "
+        "where id = 'streak_7' and name = '笔耕不辍'",
+        "update achievement_defs set name = 'Perseverance', description = 'Log in 30 days in a row', updated_at = now() "
+        "where id = 'streak_30' and name = '持之以恒'",
+        "update achievement_defs set name = 'Come Rain or Shine', description = 'Reach a longest login streak of 100 days', updated_at = now() "
+        "where id = 'streak_100' and name = '风雨无阻'",
+        "update achievement_defs set name = 'First Fork', description = 'Open your first story branch', updated_at = now() "
+        "where id = 'first_fork' and name = '初次分叉'",
+        "update achievement_defs set name = 'Convergence', description = 'Record 10 history anchors in total', updated_at = now() "
+        "where id = 'anchor_10' and name = '收束之时'",
+        "update achievement_defs set name = 'Long Night Alone', description = 'Play 500 turns in a single save', updated_at = now() "
+        "where id = 'solo_500' and name = '长夜独行'",
+        "update achievement_defs set name = 'Night Owl', description = 'Play 30 turns late at night (0-6 am) in total', updated_at = now() "
+        "where id = 'night_owl' and name = '深夜笔耕'",
+        "update achievement_defs set name = 'Carved into History', description = 'Record 50 history anchors in total', updated_at = now() "
+        "where id = 'anchor_50' and name = '镌刻史册'",
+    ]),
 
 ]
 
@@ -2394,10 +2440,10 @@ def _assert_migrations_monotonic() -> None:
     last = 0
     for version, name, _ in MIGRATIONS:
         if version in seen:
-            raise RuntimeError(f"migration v{version} 重复（{name}）")
+            raise RuntimeError(f"migration v{version} is duplicated ({name})")
         if version <= last:
             raise RuntimeError(
-                f"migration v{version}（{name}）顺序错乱：必须严格递增，前一个是 v{last}"
+                f"migration v{version} ({name}) is out of order: versions must strictly increase; the previous one is v{last}"
             )
         seen.add(version)
         last = version
@@ -2446,18 +2492,18 @@ def _assert_schema_up_to_date() -> None:
             ).fetchone()
             if not row or not row.get("exists_"):
                 raise RuntimeError(
-                    "schema_migrations 表不存在；请先运行 `python -m platform_app.migrate up`"
+                    "schema_migrations table does not exist; run `python -m platform_app.migrate up` first"
                 )
             applied = {int(r["version"]) for r in db.execute(
                 "select version from schema_migrations"
             ).fetchall()}
     except psycopg.OperationalError as exc:
-        raise RuntimeError(f"无法连接数据库做版本检查: {exc}") from exc
+        raise RuntimeError(f"Cannot connect to the database for the version check: {exc}") from exc
     missing = sorted(expected_versions - applied)
     if missing:
         raise RuntimeError(
-            f"schema 落后于代码：缺少 migration {missing}。"
-            f"请运行 `python -m platform_app.migrate up` 后再启动服务。"
+            f"Schema is behind the code: missing migrations {missing}. "
+            f"Run `python -m platform_app.migrate up` before starting the service."
         )
 
 

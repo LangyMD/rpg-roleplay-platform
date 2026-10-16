@@ -92,7 +92,7 @@ async def api_save_export_bundle(save_id: int, tier: str = "no_vectors", user=De
     try:
         zip_bytes, filename = save_bundle.export_save_bundle(user["id"], save_id, tier=tier)
     except PermissionError:
-        return json_response({"ok": False, "error": "只能完整导出自己拥有的剧本(订阅的公开剧本不可打包,版权)"}, status_code=403)
+        return json_response({"ok": False, "error": "You can only fully export scripts you own (subscribed public scripts cannot be packaged, for copyright reasons)"}, status_code=403)
     except ValueError as exc:
         return value_error_response(exc, status_code=403)
     ascii_fallback = filename.encode("ascii", "ignore").decode("ascii") or f"save-bundle-{save_id}.zip"
@@ -129,21 +129,21 @@ async def api_save_import(request: Request, user=Depends(require_user)):
                 from .. import save_bundle
                 return json_response(save_bundle.import_save_bundle(user["id"], raw))
             if len(raw) > _MAX_SAVE_IMPORT_BYTES:
-                raise HTTPException(status_code=400, detail=f"文件过大 (>{_MAX_SAVE_IMPORT_BYTES // 1024 // 1024}MB)")
+                raise HTTPException(status_code=400, detail=f"File too large (>{_MAX_SAVE_IMPORT_BYTES // 1024 // 1024}MB)")
             try:
                 payload = _json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, _json.JSONDecodeError) as exc:
-                raise HTTPException(status_code=400, detail=f"JSON 解析失败: {exc}") from exc
+                raise HTTPException(status_code=400, detail=f"JSON parse error: {exc}") from exc
         else:
             # JSON body 路径也要受大小约束(multipart 已有 _MAX_SAVE_IMPORT_BYTES 关,
             # 这条原来直接 request.json() 无上限 → 超大 body 撑内存)。先按 raw 长度卡再解析。
             raw_body = await request.body()
             if len(raw_body) > _MAX_SAVE_IMPORT_BYTES:
-                raise HTTPException(status_code=400, detail=f"文件过大 (>{_MAX_SAVE_IMPORT_BYTES // 1024 // 1024}MB)")
+                raise HTTPException(status_code=400, detail=f"File too large (>{_MAX_SAVE_IMPORT_BYTES // 1024 // 1024}MB)")
             try:
                 body = _json.loads(raw_body.decode("utf-8"))
             except (UnicodeDecodeError, _json.JSONDecodeError) as exc:
-                raise HTTPException(status_code=400, detail=f"JSON 解析失败: {exc}") from exc
+                raise HTTPException(status_code=400, detail=f"JSON parse error: {exc}") from exc
             payload = body.get("payload") if isinstance(body, dict) and isinstance(body.get("payload"), dict) else body
         if not isinstance(payload, dict):
             return json_response({"ok": False, "error": "payload must be an object"}, status_code=400)
@@ -168,11 +168,11 @@ async def api_create_save(request: Request, user=Depends(require_user)):
     body = await request.json()
     raw_script_id = body.get("script_id")
     if raw_script_id is None:
-        return json_response({"ok": False, "error": "script_id 必填"}, status_code=400)
+        return json_response({"ok": False, "error": "script_id is required"}, status_code=400)
     try:
         script_id = int(raw_script_id)
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "script_id 必须为整数"}, status_code=400)
+        return json_response({"ok": False, "error": "script_id must be an integer"}, status_code=400)
     # 校验 script 归属(task 74: 接受 owner OR subscriber)— 读级:owner ∪ subscription
     with connect() as db:
         if not script_readable(db, script_id, user["id"]):
@@ -279,24 +279,24 @@ async def api_continue_branch(request: Request, user=Depends(require_user)):
         try:
             node_id = int(node_id_raw)
         except (TypeError, ValueError):
-            return json_response({"ok": False, "error": "node_id 不是整数"}, status_code=400)
+            return json_response({"ok": False, "error": "node_id is not an integer"}, status_code=400)
 
     if node_id is None and save_id_raw is not None and msg_idx_raw is not None:
         try:
             save_id = int(save_id_raw)
             message_index = int(msg_idx_raw)
         except (TypeError, ValueError):
-            return json_response({"ok": False, "error": "save_id/message_index 不是整数"}, status_code=400)
+            return json_response({"ok": False, "error": "save_id/message_index is not an integer"}, status_code=400)
         node_id = branches.resolve_commit_id_by_message(user["id"], save_id, message_index)
         if node_id is None:
             return json_response(
-                {"ok": False, "error": f"无法在 save={save_id} 找到 message_index={message_index} 对应的提交"},
+                {"ok": False, "error": f"No commit found for message_index={message_index} in save={save_id}"},
                 status_code=400,
             )
 
     if node_id is None:
         return json_response(
-            {"ok": False, "error": "缺字段：需要 node_id 或 (save_id + message_index)"},
+            {"ok": False, "error": "Missing fields: node_id or (save_id + message_index) is required"},
             status_code=400,
         )
     try:
@@ -359,7 +359,7 @@ async def api_rollback_to_message(request: Request, user=Depends(require_user)):
         message_index = int(body.get("message_index"))
     except (TypeError, ValueError):
         return json_response(
-            {"ok": False, "error": "save_id 和 message_index 都必须是整数"},
+            {"ok": False, "error": "save_id and message_index must both be integers"},
             status_code=400,
         )
     try:
@@ -506,7 +506,7 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
     user_id = int(user["id"])
     anchor_key = (anchor_key or "").strip()
     if not anchor_key:
-        return json_response({"ok": False, "error": "anchor_key 必填"}, status_code=400)
+        return json_response({"ok": False, "error": "anchor_key is required"}, status_code=400)
 
     from gm_serving.settings import advance_progress
     from tools_dsl.command_dispatcher import _get_sync_scope_lock
@@ -526,18 +526,18 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
             ).fetchone()
             if not row:
                 return json_response(
-                    {"ok": False, "error": "找不到该锚点"}, status_code=404)
+                    {"ok": False, "error": "Anchor not found"}, status_code=404)
             if row.get("status") in ("occurred", "variant"):
                 return json_response(
-                    {"ok": False, "error": "该锚点已经发生过了,无需重复标记。"},
+                    {"ok": False, "error": "This anchor has already happened; no need to mark it again."},
                     status_code=409)
             if row.get("status") == "superseded":
                 return json_response(
-                    {"ok": False, "error": "该锚点已被剧情绕过,不能再标记为已到达。"},
+                    {"ok": False, "error": "The story has bypassed this anchor; it can no longer be marked as reached."},
                     status_code=409)
             if row.get("is_fatal"):
                 return json_response(
-                    {"ok": False, "error": "这是关键命运锚点,须在剧情中触发,不能手动标记。"},
+                    {"ok": False, "error": "This is a key fate anchor; it must be triggered in the story and cannot be marked manually."},
                     status_code=409)
 
             # 防剧透:锚点必须落在当前进度窗口 [chapter_min, chapter_max] 内。
@@ -551,13 +551,13 @@ async def api_save_anchor_satisfy(save_id: int, anchor_key: str, user=Depends(re
             if isinstance(src_ch, int) and isinstance(win_max, int) and src_ch > win_max:
                 return json_response(
                     {"ok": False,
-                     "error": f"该锚点在第 {src_ch} 章,超出当前进度窗口,暂不能提前标记(防剧透)。"},
+                     "error": f"This anchor is in chapter {src_ch}, beyond the current progress window; it cannot be marked early (to avoid spoilers)."},
                     status_code=409)
             # 对称下界:早于当前进度窗口起点的锚点不应手动标记(原读了 win_min 却从未使用 → 漏判)。
             if isinstance(src_ch, int) and isinstance(win_min, int) and src_ch < win_min:
                 return json_response(
                     {"ok": False,
-                     "error": f"该锚点在第 {src_ch} 章,早于当前进度窗口起点,无法手动标记。"},
+                     "error": f"This anchor is in chapter {src_ch}, before the start of the current progress window; it cannot be marked manually."},
                     status_code=409)
 
             # 当前最大 turn(与 _t_mark_anchor_satisfied 一致默认)
@@ -628,7 +628,7 @@ async def api_save_progress_rewind(save_id: int, request: Request, user=Depends(
     try:
         target = int(body.get("target_chapter"))
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "target_chapter 必须为整数"}, status_code=400)
+        return json_response({"ok": False, "error": "target_chapter must be an integer"}, status_code=400)
     if target < 1:
         target = 1
     from psycopg.types.json import Jsonb

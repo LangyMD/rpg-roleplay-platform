@@ -97,7 +97,7 @@ def estimate_account(user_id: int) -> dict[str, Any]:
         "cards": int(cards_row["n"] if isinstance(cards_row, dict) else cards_row[0]),
         "has_preferences": bool(prefs),
         "model_entries": n_models,
-        "note": "导出不含 API 密钥;迁移到本地后请重新填写各模型的 API key。",
+        "note": "The export does not include API keys; re-enter each model's API key after migrating to your local instance.",
     }
 
 
@@ -147,7 +147,7 @@ def export_account(user_id: int, include_chunks: bool = False) -> tuple[bytes, s
             try:
                 pack_bytes, _fname = script_pack.export_script_pack(sid, user_id, include_chunks)
             except Exception as exc:  # 单个剧本导出失败不阻断整盘
-                warnings.append(f"剧本 {sid} 导出失败,已跳过:{exc}")
+                warnings.append(f"Script {sid} failed to export and was skipped: {exc}")
                 continue
             member = f"scripts/{sid}.pack.zip"
             zf.writestr(member, pack_bytes)
@@ -159,7 +159,7 @@ def export_account(user_id: int, include_chunks: bool = False) -> tuple[bytes, s
             try:
                 payload = save_io.export_save(user_id, sid_save)
             except Exception as exc:
-                warnings.append(f"存档 {sid_save} 导出失败,已跳过:{exc}")
+                warnings.append(f"Save {sid_save} failed to export and was skipped: {exc}")
                 continue
             member = f"saves/{sid_save}.json"
             # default=str:存档 payload 里可能有 datetime(expose 未全转)→ 转字符串,
@@ -221,22 +221,22 @@ def export_account(user_id: int, include_chunks: bool = False) -> tuple[bytes, s
     data = buf.getvalue()
     if len(data) > MAX_ACCOUNT_ZIP_BYTES:
         raise ValueError(
-            f"账号数据包过大(>{MAX_ACCOUNT_ZIP_BYTES // 1024 // 1024}MB),"
-            "请改用「按剧本/按存档」单独导出。"
+            f"Account data package is too large (>{MAX_ACCOUNT_ZIP_BYTES // 1024 // 1024}MB); "
+            "export per script / per save instead."
         )
     fname = f"account-{(user_row.get('public_id') if user_row else user_id)}-{int(time.time())}.zip"
     return data, fname
 
 
 _README = (
-    "RPG 角色扮演平台 — 账号数据包\n"
-    "================================\n\n"
-    "本包用于把你的个人数据从在线服务迁移到本地自部署实例。\n"
-    "在本地实例登录后,打开「设置 → 数据迁移」选择本文件导入即可。\n\n"
-    "包含:自有剧本(全部世界设定/章节/角色卡/世界书)、存档(剧情历史/锚点状态)、\n"
-    "      用户角色卡、个性化偏好、模型清单。\n\n"
-    "不含:API 密钥。密钥在服务端经服务器密钥加密存储,跨实例无法解密;\n"
-    "      迁移后请在本地「设置 → 模型」里重新填写各 provider 的 API key。\n"
+    "RPG Roleplay Platform - Account data package\n"
+    "============================================\n\n"
+    "This package moves your personal data from the online service to a self-hosted local instance.\n"
+    "Log in to your local instance, open Settings -> Data migration and choose this file to import it.\n\n"
+    "Includes: your own scripts (all world settings / chapters / character cards / worldbooks), saves (story history / anchor state),\n"
+    "          user character cards, personal preferences and model lists.\n\n"
+    "Excludes: API keys. Keys are stored encrypted with the server's key and cannot be decrypted on another instance;\n"
+    "          after migrating, re-enter each provider's API key under Settings -> Models on your local instance.\n"
 )
 
 
@@ -257,12 +257,12 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
                 pass
     init_db()
     if len(zip_bytes) > MAX_ACCOUNT_ZIP_BYTES:
-        raise ValueError(f"账号包过大(max {MAX_ACCOUNT_ZIP_BYTES // 1024 // 1024}MB)")
+        raise ValueError(f"Account package is too large (max {MAX_ACCOUNT_ZIP_BYTES // 1024 // 1024}MB)")
 
     try:
         zf_handle = zipfile.ZipFile(io.BytesIO(zip_bytes), "r")
     except zipfile.BadZipFile as exc:
-        raise ValueError(f"不是合法的 zip 文件:{exc}") from exc
+        raise ValueError(f"Not a valid zip file: {exc}") from exc
 
     warnings: list[str] = []
     n_scripts = n_saves = n_cards = 0
@@ -271,25 +271,25 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
     with zf_handle as zf:
         names = zf.namelist()
         if len(names) > MAX_MEMBERS:
-            raise ValueError(f"成员过多(max {MAX_MEMBERS})")
+            raise ValueError(f"Too many members (max {MAX_MEMBERS})")
         # zip-slip + 解压炸弹预检
         declared_total = 0
         for info in zf.infolist():
             parts = info.filename.replace("\\", "/").split("/")
             if info.filename.startswith("/") or ".." in parts:
-                raise ValueError(f"检测到 zip-slip:{info.filename!r}")
+                raise ValueError(f"zip-slip detected: {info.filename!r}")
             declared_total += info.file_size
         if declared_total > MAX_ACCOUNT_EXPANDED_BYTES:
-            raise ValueError(f"解压后过大(max {MAX_ACCOUNT_EXPANDED_BYTES // 1024 // 1024}MB)")
+            raise ValueError(f"Too large after decompression (max {MAX_ACCOUNT_EXPANDED_BYTES // 1024 // 1024}MB)")
 
         try:
             # SEC(H-8): 有界解压,防单成员谎报/炸弹 OOM。
             manifest = json.loads(script_pack._safe_member_read(zf, "account-manifest.json").decode("utf-8"))
         except KeyError as exc:
-            raise ValueError("缺少 account-manifest.json — 不是账号数据包") from exc
+            raise ValueError("Missing account-manifest.json - not an account data package") from exc
         av = int(manifest.get("account_export_version") or 0)
         if av != ACCOUNT_EXPORT_VERSION:
-            raise ValueError(f"account_export_version 不支持({av}),需 {ACCOUNT_EXPORT_VERSION}")
+            raise ValueError(f"Unsupported account_export_version ({av}); {ACCOUNT_EXPORT_VERSION} is required")
 
         # 1. 剧本包 → 建立 id 映射
         scripts_list = manifest.get("scripts") or []
@@ -300,7 +300,7 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
             origin = entry.get("origin_script_id")
             _p("scripts", si, total_scripts)
             if not member or member not in names:
-                warnings.append(f"剧本成员缺失:{member}")
+                warnings.append(f"Missing script member: {member}")
                 continue
             try:
                 # #64:把单个剧本内部的章节/事实进度作为 scripts 阶段细粒度进度回报,
@@ -314,9 +314,9 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
                     script_id_map[int(origin)] = new_sid
                 n_scripts += 1
                 for w in (res.get("warnings") or []):
-                    warnings.append(f"剧本 {origin}: {w}")
+                    warnings.append(f"Script {origin}: {w}")
             except Exception as exc:
-                warnings.append(f"剧本 {origin} 导入失败:{exc}")
+                warnings.append(f"Script {origin} failed to import: {exc}")
 
         # 2. 存档 → 改写 script_id 后导入
         _p("scripts", total_scripts, total_scripts)
@@ -328,7 +328,7 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
             origin_script = entry.get("origin_script_id")
             _p("saves", vi, total_saves)
             if not member or member not in names:
-                warnings.append(f"存档成员缺失:{member}")
+                warnings.append(f"Missing save member: {member}")
                 continue
             try:
                 payload = json.loads(script_pack._safe_member_read(zf, member).decode("utf-8"))  # SEC(H-8): 有界解压
@@ -341,9 +341,9 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
                 res = save_io.import_save(user_id, payload)
                 n_saves += 1
                 for w in (res.get("warnings") or []):
-                    warnings.append(f"存档 {entry.get('origin_save_id')}: {w}")
+                    warnings.append(f"Save {entry.get('origin_save_id')}: {w}")
             except Exception as exc:
-                warnings.append(f"存档 {entry.get('origin_save_id')} 导入失败:{exc}")
+                warnings.append(f"Save {entry.get('origin_save_id')} failed to import: {exc}")
 
         # 3. 角色卡
         _p("saves", total_saves, total_saves)
@@ -362,7 +362,7 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
                         user_cards.upsert_user_card(user_id, dto)
                     n_cards += 1
                 except Exception as exc:
-                    warnings.append(f"角色卡导入失败:{exc}")
+                    warnings.append(f"Character card import failed: {exc}")
 
         # 4. profile(偏好 + 模型 overlay)
         if "profile.json" in names:
@@ -374,7 +374,7 @@ def import_account(user_id: int, zip_bytes: bytes, progress=None) -> dict[str, A
                     if isinstance(models, list) and models:
                         user_models.replace_synced_models(user_id, api_id, models)
             except Exception as exc:
-                warnings.append(f"偏好/模型导入失败:{exc}")
+                warnings.append(f"Preferences/models import failed: {exc}")
 
     return {
         "ok": True,
@@ -415,7 +415,7 @@ def import_account_job(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
 
     init_db()
     if len(zip_bytes) > MAX_ACCOUNT_ZIP_BYTES:
-        raise ValueError(f"账号包过大(max {MAX_ACCOUNT_ZIP_BYTES // 1024 // 1024}MB)")
+        raise ValueError(f"Account package is too large (max {MAX_ACCOUNT_ZIP_BYTES // 1024 // 1024}MB)")
     job_id = f"acc_imp_{secrets.token_hex(6)}"
     with connect() as db:
         db.execute(

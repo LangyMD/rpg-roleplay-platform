@@ -69,7 +69,7 @@ def _check_json_size(obj: Any, field: str) -> Any:
     """序列化后检查字节数，超限抛 ValueError。"""
     import json as _j
     if len(_j.dumps(obj, ensure_ascii=False).encode()) > MAX_SNAPSHOT_JSON_BYTES:
-        raise ValueError(f"{field} 超过 {MAX_SNAPSHOT_JSON_BYTES} 字节上限")
+        raise ValueError(f"{field} exceeds the {MAX_SNAPSHOT_JSON_BYTES}-byte limit")
     return obj
 
 
@@ -211,8 +211,8 @@ def export_transcript_txt(user_id: int, save_id: int) -> tuple[str, str]:
                 ).fetchall()
                 history = [{"role": r["role"], "content": r["content"]} for r in rows]
 
-    title = str(save.get("title") or save.get("name") or f"存档 {save_id}")
-    player_name = str(((snap.get("player") or {}).get("name")) or "").strip() or "你"
+    title = str(save.get("title") or save.get("name") or f"Save {save_id}")
+    player_name = str(((snap.get("player") or {}).get("name")) or "").strip() or "You"
 
     blocks: list[str] = []
     for entry in history:
@@ -222,13 +222,13 @@ def export_transcript_txt(user_id: int, save_id: int) -> tuple[str, str]:
         if role == "user":
             txt = _clean_player_text(entry.get("content") or "")
             if txt:
-                blocks.append(f"{player_name}：{txt}")
+                blocks.append(f"{player_name}: {txt}")
         elif role == "assistant":
             txt = _clean_gm_text(entry.get("content") or "")
             if txt:
                 blocks.append(txt)
 
-    header = [f"《{title}》", time.strftime("导出于 %Y-%m-%d %H:%M", time.localtime()), "", "─" * 24, ""]
+    header = [f"{title}", time.strftime("Exported %Y-%m-%d %H:%M", time.localtime()), "", "─" * 24, ""]
     text = "\n".join(header) + "\n\n".join(blocks).rstrip() + "\n"
 
     safe_title = re.sub(r"[^\w一-鿿 -]", "_", title).strip()[:48] or f"save-{save_id}"
@@ -343,10 +343,10 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("payload must be an object")
     pv = int(payload.get("export_version") or 0)
     if pv not in (1, 2):
-        raise ValueError(f"export_version 不支持({pv}),需 1 或 2")
+        raise ValueError(f"Unsupported export_version ({pv}); 1 or 2 is required")
     save_data = payload.get("save") or {}
     if not save_data:
-        raise ValueError("payload.save 缺失")
+        raise ValueError("payload.save is missing")
 
     new_title = (save_data.get("title") or "Imported save")[:200]  # 限标题长度,防超长 title
     script_id_raw = save_data.get("script_id")
@@ -363,7 +363,7 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
     state_snapshot = _check_json_size(save_data.get("state_snapshot") or {}, "save.state_snapshot")
     warnings: list[str] = []
     if pv == 1:
-        warnings.append("v1 存档包未含 anchor/kb/identity 状态表,建议在游戏内 /reseed 重建锚点")
+        warnings.append("v1 save packages do not include anchor/kb/identity state tables; consider running /reseed in-game to rebuild anchors")
 
     with connect() as db:
         # 校验 script_id 归属（用户必须拥有这个剧本，否则用 user 第一个 script 兜底）。
@@ -393,9 +393,9 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                     (user_id,),
                 ).fetchone()
                 if not row:
-                    raise ValueError("当前用户没有剧本，无法导入存档")
+                    raise ValueError("The current user has no scripts, so the save cannot be imported")
                 script_id = int(row["id"])
-                warnings.append(f"原 script_id={script_id_raw} 不在当前账户,改挂到 script_id={script_id}")
+                warnings.append(f"Original script_id={script_id_raw} is not in this account; attached to script_id={script_id} instead")
 
         # 1. 新建 save —— 列清单按 save_kind 条件构造:
         #    game(默认)保持原始三列形态(byte-for-byte 不变);
@@ -471,7 +471,7 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                             )
                     except Exception as exc:
                         warnings.append(
-                            f"game_session_worldline 回填失败: {type(exc).__name__}: {str(exc)[:120]}"
+                            f"game_session_worldline backfill failed: {type(exc).__name__}: {str(exc)[:120]}"
                         )
 
         if messages_raw:
@@ -500,10 +500,10 @@ def import_save(user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
                     except Exception as exc:
                         _msg_err_count += 1
                         if _msg_err_count == 1:
-                            warnings.append(f"messages 单行导入失败(首次): {type(exc).__name__}: {str(exc)[:120]}")
+                            warnings.append(f"messages row import failed (first occurrence): {type(exc).__name__}: {str(exc)[:120]}")
                         continue  # 行级独立:单条消息失败不影响其余消息
                 if _msg_err_count > 1:
-                    warnings.append(f"messages 共 {_msg_err_count} 行导入失败(已跳过,成功导入 {messages_imported} 条)")
+                    warnings.append(f"{_msg_err_count} messages rows failed to import (skipped; {messages_imported} imported successfully)")
 
     return {
         "ok": True,
@@ -522,7 +522,7 @@ def _import_branch_commits(db, payload, new_save_id) -> dict[int, int]:
     # 2. 重建 branch_commits（保留 parent 关系，但 ID 重映射）
     commits_raw = payload.get("commits") or []
     if len(commits_raw) > MAX_COMMITS:
-        raise ValueError(f"commits 数量超上限 {MAX_COMMITS}")
+        raise ValueError(f"Number of commits exceeds the limit of {MAX_COMMITS}")
     old_to_new: dict[int, int] = {}
     for c in commits_raw:
         old_id = int(c.get("id") or 0)
@@ -697,12 +697,12 @@ def _import_state_tables(db, payload, new_save_id, old_to_new, pv, save_data, wa
                     # else: 静默吞,allow_missing 表整张表都可能不存在
                     if err_count == 1 and not allow_missing:
                         # 只记首次出错详情,避免 warnings 列表爆炸
-                        warnings.append(f"{table} 行导入失败(首次): {type(exc).__name__}: {str(exc)[:120]}")
+                        warnings.append(f"{table} row import failed (first occurrence): {type(exc).__name__}: {str(exc)[:120]}")
                     continue
             state_imported[table] = count
             state_errors[table] = err_count
             if err_count > 1 and not allow_missing:
-                warnings.append(f"{table} 共 {err_count} 行导入失败(已跳过,成功导入 {count} 行)")
+                warnings.append(f"{err_count} {table} rows failed to import (skipped; {count} rows imported successfully)")
         # 原存档是 kb_native(新 KB 流,带完整 kb_* 状态)且确实导入了 KB 行 → 新存档也标 kb_native,
         # 否则加载时被当旧档走 migrate-on-load 从 blob 重建,刚导入的 KB 状态白导。
         if save_data.get("kb_native") and state_imported.get("kb_entities", 0) > 0:
