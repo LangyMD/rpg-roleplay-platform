@@ -35,7 +35,7 @@ _SYSTEM_BASE = """\
 
 # 写作准则
 - 用小说笔法描写场景、人物动作和对话，不要游戏系统提示风格。
-- 用中文写作，贴近原著：克制、精确、有信息量。
+- 贴近原著：克制、精确、有信息量。
 - 信息不对称：玩家只能获得角色在场景中能感知到的信息；不主动剧透未来。
 - NPC 的台词和行动严格遵循人物性格和当前处境，不随意改立场。
 - 描写时间节奏感：安静不催、紧张不拖。（每轮篇幅与留白见下方〖叙事风格〗段）
@@ -257,8 +257,7 @@ pending_questions 选项把剧情引到完全脱离原著的世界线,玩家觉�
 - 工具结果回灌后基于结果继续叙事/写状态标签；不要重复已经叙述的内容。
 
 # 叙事语言一致性（最高优先级）
-**叙事语言跟随本剧本正文 / 玩家所用的主体语言,保持全程一致**（本作品原著正文是中文,则叙事用中文;
-若玩家与剧本用的是其它语言,就沿用那种语言）。即使上下文注入的原著片段 / 锚点正文 / 角色卡里夹带了
+**叙事语言以末尾〖Output language〗段指定的语言为准,保持全程一致**。即使上下文注入的原著片段 / 锚点正文 / 角色卡里夹带了
 英文、德文或其它语言的文本或台词，也不要让叙事正文（旁白、动作、神态、心理、场景描写）切换成那种
 语言。原著外语台词可在角色说话时原样保留,但叙事框架语言不变。
 """
@@ -348,7 +347,7 @@ _SYSTEM_TAVERN = """\
 - 其他状态变化（时间、关系、记忆等）同样使用 set/append op，格式与此一致。
 
 # 叙事语言一致性（硬性约束）
-**叙事语言保持与玩家、与本对话既已确立的主体语言一致**——玩家用中文就用中文、用英文就用英文,全程不变。
+**叙事语言以末尾〖Output language〗段指定的语言为准,全程不变**。
 不要因为角色卡 / 人设 / 上下文里夹带了其它语言的文本,就把叙事框架层（动作、神态、心理、场景描写）
 切换成那种语言;玩家偶尔夹一两个外语词也不代表要整体切换。需要角色说一句外语台词时可夹带,但随即
 让叙事回到既定语言。
@@ -360,7 +359,7 @@ _SYSTEM_TAVERN = """\
 # 空起手(本对话还没设定角色):不演角色,就是个带工具的普通助手(Claude 逻辑)。
 # 「该用哪个工具、怎么用」完全由工具自身的 description 告诉 LLM,这里不枚举、不硬塞行为。
 _SYSTEM_TAVERN_BOOTSTRAP = """\
-你是一个有用的助手,用中文自然、简洁地回应玩家;需要时使用提供的工具。
+你是一个有用的助手,自然、简洁地回应玩家;需要时使用提供的工具。
 {style_block}
 """
 
@@ -493,6 +492,12 @@ class GameMaster:
             except Exception:
                 style_profile = None  # 兜底:任何异常都退回默认渲染
         style_block = render_style_block(style_profile)
+        # Output language block goes last so it outranks every earlier wording (core/language.py).
+        try:
+            from core.language import language_directive
+            _lang_block = language_directive(getattr(self, "user_id", None))
+        except Exception:
+            _lang_block = ""
         # 酒馆模式:content_pack.gm_policy.mode == "tavern_gm" → 角色扮演引擎(非 GM)。
         # 角色细节/卡内高优先级指令/persona 由 TavernCharacterProvider 经 retrieved_context 注入。
         _state = getattr(self, "_active_state", None)
@@ -507,7 +512,7 @@ class GameMaster:
                     # 酒馆 v2(决策1):还没设定角色 → 走自举模板,让 agent 先问玩家想扮演谁、
                     # 再用 set_tavern_character 搭好环境。已有角色名 → 沉浸扮演该角色(原行为)。
                     if not _char:
-                        return _SYSTEM_TAVERN_BOOTSTRAP.replace("{style_block}", style_block)
+                        return _SYSTEM_TAVERN_BOOTSTRAP.replace("{style_block}", style_block) + _lang_block
                     _sys_tav = (
                         _SYSTEM_TAVERN
                         .replace("{char_name}", _char)
@@ -524,7 +529,7 @@ class GameMaster:
                     # 表现为「关闭按钮不生效、回复还在过度角色扮演」。只认列派生的 _immersive_mode。
                     if getattr(self, "_immersive_mode", False):
                         _sys_tav += _IMMERSIVE_OVERRIDE.replace("{char_name}", _char)
-                    return _sys_tav
+                    return _sys_tav + _lang_block
             except Exception:
                 pass  # 任何异常都退回通用 GM system,绝不让酒馆分支拖垮主流程
         # _SYSTEM_BASE intentionally contains literal JSON examples such as
@@ -535,7 +540,8 @@ class GameMaster:
             .replace("{world_section}", world_section)
             .replace("{style_block}", style_block)
         ) + _consequence_guide_block(getattr(self, "user_id", None)) \
-          + _agenda_guide_block(getattr(self, "user_id", None))
+          + _agenda_guide_block(getattr(self, "user_id", None)) \
+          + _lang_block
 
     def _active_script_id(self) -> int | None:
         """解出当前 active script_id,用于剧本级 gm_style 解析。无 → None。

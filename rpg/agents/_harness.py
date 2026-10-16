@@ -111,6 +111,12 @@ def call_agent_json(
         timeout_sec = max(int(timeout_sec or 0), int(_llm_to(user_id)))
     except Exception:
         pass
+    # Output language: deterministic, appended to every structured micro-task (core/language.py).
+    try:
+        from core.language import agent_language_directive
+        system_prompt = (system_prompt or "") + agent_language_directive(user_id)
+    except Exception:
+        pass
     if api_id == "anthropic":
         if tool_schema:
             text, usage = _anthropic_tool_use(
