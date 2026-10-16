@@ -514,7 +514,7 @@ class TestApproveImagePending(unittest.TestCase):
                          f"approve 后 ai_images 应新增1行，before={before_images} after={after_images}")
         self.assertEqual(after_tasks, before_tasks + 1,
                          f"approve 后 chat_postproc_tasks 应新增1行，before={before_tasks} after={after_tasks}")
-        self.assertIn("审批通过", result,
+        self.assertIn("Image generation approved", result,
                       f"返回值应含审批通过，实际={result!r}")
         self.assertIn("image_id", result,
                       f"返回值应含 image_id，实际={result!r}")
