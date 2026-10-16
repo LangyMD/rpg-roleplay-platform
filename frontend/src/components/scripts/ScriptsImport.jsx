@@ -387,7 +387,7 @@ function ScriptsImportView({ embedded = false, onClose } = {}) {
       // 网络级失败(fetch 直接抛,没拿到响应)对自建/反代用户最常见的原因是反向代理
       // (nginx/caddy)的请求体积上限太小,或后端没起。给一句可操作的提示,别让用户只看到
       // 一个无解的「Failed to fetch」。
-      const isNetErr = (e && (e.code === 'network' || e.status === 0)) || /Failed to fetch|NetworkError|网络异常/i.test(String(detail));
+      const isNetErr = (e && (e.code === 'network' || e.status === 0)) || /Failed to fetch|NetworkError|网络异常|Network error/i.test(String(detail));
       if (isNetErr) {
         detail = `${detail} —— ${t('scripts.page.upload_net_error_hint')}`;
       }
@@ -424,7 +424,7 @@ function ScriptsImportView({ embedded = false, onClose } = {}) {
       file: { name: selectedFile.name, size: selectedFile.size, chapters, words },
       chapters, words,
       stages, totalTokens, totalSec, cost,
-      model: result.model || "GPT-4o · RPG 调优",
+      model: result.model || "GPT-4o · RPG tuned",
       preview: result.preview,
       report: result.report,
       warnings,

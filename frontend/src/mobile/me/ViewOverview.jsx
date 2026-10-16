@@ -66,7 +66,9 @@ function ViewOverview({ nav, user }) {
   const unlockedCount = (achv || []).filter(a => a.unlocked).length;
   const topAchv = (achv || []).filter(a => a.unlocked).sort((a, b) => (TIER_RANK[b.tier] || 0) - (TIER_RANK[a.tier] || 0)).slice(0, 6);
 
-  const filteredAct = actFilter === 'all' ? (activity || []) : (activity || []).filter(a => a.tag === actFilter);
+  // 以后端 type(turn/branch/script)过滤;旧后端只给中文 tag 时兜底映射(与桌面 MeOverview 孪生)。
+  const _actType = (a) => (a && (a.type || ({ '回合': 'turn', '分支': 'branch', '剧本': 'script' })[a.tag])) || '';
+  const filteredAct = actFilter === 'all' ? (activity || []) : (activity || []).filter(a => _actType(a) === actFilter);
 
   return (
     <>
@@ -195,9 +197,9 @@ function ViewOverview({ nav, user }) {
             <div style={{ display: 'flex', gap: 7, marginBottom: 10, overflowX: 'auto', paddingBottom: 2 }} className="scroll">
               {[
                 { v: 'all', l: t('common.all') },
-                { v: '回合', l: t('mobile.me.overview.filter_rounds') },
-                { v: '分支', l: t('mobile.me.overview.filter_branches') },
-                { v: '剧本', l: t('mobile.me.overview.filter_scripts') },
+                { v: 'turn', l: t('mobile.me.overview.filter_rounds') },
+                { v: 'branch', l: t('mobile.me.overview.filter_branches') },
+                { v: 'script', l: t('mobile.me.overview.filter_scripts') },
               ].map(f => (
                 <button key={f.v} onClick={() => setActFilter(f.v)} style={{
                   flexShrink: 0, height: 28, padding: '0 12px', borderRadius: 999,
@@ -224,7 +226,7 @@ function ViewOverview({ nav, user }) {
                     <span className="pl-row-tx">
                       <strong style={{ fontSize: 13 }}>{a.text}</strong>
                       <span className="mono" style={{ fontSize: 11 }}>
-                        {a.tag && <span style={{ marginRight: 6, padding: '1px 6px', borderRadius: 999, background: 'var(--panel-2)', border: '1px solid var(--line-soft)' }}>{a.tag}</span>}
+                        {a.tag && <span style={{ marginRight: 6, padding: '1px 6px', borderRadius: 999, background: 'var(--panel-2)', border: '1px solid var(--line-soft)' }}>{({ turn: t('mobile.me.overview.filter_rounds'), branch: t('mobile.me.overview.filter_branches'), script: t('mobile.me.overview.filter_scripts') })[_actType(a)] || a.tag}</span>}
                         {a.ts ? fmtAgo(a.ts) : ''}
                       </span>
                     </span>

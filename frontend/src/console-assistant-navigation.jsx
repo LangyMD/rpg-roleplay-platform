@@ -281,7 +281,7 @@ function navigateTo(pageId) {
 // ---------- 主入口 ----------
 async function handleAssistantNavigation(target, reason, dirtyCheck) {
   target = (target || "").trim();
-  if (!target) return { ok: false, error: "target 为空" };
+  if (!target) return { ok: false, error: "target is empty" };
 
   // 当前页 dirty 检查
   if (dirtyCheck && window.__cap_dirty_pages instanceof Map) {
@@ -290,7 +290,7 @@ async function handleAssistantNavigation(target, reason, dirtyCheck) {
     if (anyDirty) {
       const proceed = await confirmDirtyNav(reason);
       if (!proceed) {
-        return { ok: false, cancelled: true, error: "用户取消跳转" };
+        return { ok: false, cancelled: true, error: "user cancelled navigation" };
       }
       // 用户确认丢弃 → 清表
       window.__cap_dirty_pages.clear();
@@ -299,7 +299,7 @@ async function handleAssistantNavigation(target, reason, dirtyCheck) {
 
   const pageId = targetToPageId(target);
   if (!pageId) {
-    return { ok: false, error: "无法解析 target=" + target };
+    return { ok: false, error: "cannot resolve target=" + target };
   }
   navigateTo(pageId);
   // settings 类 target 提示子 section 切换

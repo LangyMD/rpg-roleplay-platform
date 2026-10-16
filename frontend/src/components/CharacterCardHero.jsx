@@ -72,6 +72,7 @@ export default function CharacterCardHero({ card, editable = true, onChanged, sc
     <>
       <div
         className={`mh-hero${url ? '' : ' mh-hero--empty'}${drag ? ' is-drag' : ''}`}
+        data-drop-label={t('media.drop_overlay')}
         onDragOver={editable ? (e) => { e.preventDefault(); setDrag(true); } : undefined}
         onDragLeave={editable ? (e) => { e.preventDefault(); setDrag(false); } : undefined}
         onDrop={editable ? onDrop : undefined}
@@ -110,7 +111,7 @@ export default function CharacterCardHero({ card, editable = true, onChanged, sc
 
       {studio && (
         <MediaStudio open onClose={() => setStudio(false)} target={{ type: 'card_avatar', id: raw.id, scriptId }}
-          name={name} defaultPrompt={[name, raw.appearance, raw.identity].filter(Boolean).join('，')}
+          name={name} defaultPrompt={[name, raw.appearance, raw.identity].filter(Boolean).join(', ')}
           onApplied={(u) => { setStudio(false); onChanged && onChanged(u); }} />
       )}
 

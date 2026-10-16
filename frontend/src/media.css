@@ -77,7 +77,7 @@
 /* 拖拽进入时的高亮覆盖 */
 .mh-hero.is-drag::after,
 .mh-drop.is-drag::after {
-  content: "拖到这里上传";
+  content: attr(data-drop-label);
   position: absolute; inset: 0; z-index: 5;
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 600; color: var(--accent);

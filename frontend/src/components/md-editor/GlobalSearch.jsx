@@ -20,8 +20,8 @@ function GlobalSearch({ scriptId, openNode, onClose }) {
     setLoading(true);
     try {
       const r = await api().scripts.search(scriptId, query, { regex: regex ? 'true' : 'false', limit: 100 });
-      setRes(r && r.ok ? r : { results: [], total: 0, error: (r && r.error) || '搜索失败' });
-    } catch (e) { setRes({ results: [], total: 0, error: e?.message || '搜索失败' }); }
+      setRes(r && r.ok ? r : { results: [], total: 0, error: (r && r.error) || i18n.t('md_editor.search.failed') });
+    } catch (e) { setRes({ results: [], total: 0, error: e?.message || i18n.t('md_editor.search.failed') }); }
     finally { setLoading(false); }
   }, [q, regex, scriptId]);
   const onKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } else if (e.key === 'Escape') { e.preventDefault(); onClose(); } };

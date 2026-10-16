@@ -60,7 +60,7 @@ function CardEditModal({ card, isNew, kind, onClose, onSave, onPromote, targetSc
       {/* 顶部栏(位于平台顶栏下方,保留平台导航) */}
       <div style={{ position: 'sticky', top: 0, zIndex: 3, background: '#131211', borderBottom: '1px solid #36322d' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '13px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 18, fontWeight: 600, color: '#ebe7df' }}>
+          <div style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 18, fontWeight: 600, color: '#ebe7df' }}>
             {isNew ? t('cards.editor.modal_title_new') : t('cards.editor.modal_title_edit')}{kind === 'user' ? t('cards.editor.kind_user') : t('cards.editor.kind_npc')}
           </div>
           <CSButton iconName="close" variant="link" onClick={onClose}>{t('cards.editor.btn_cancel')}</CSButton>

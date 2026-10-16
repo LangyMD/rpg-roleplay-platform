@@ -10,11 +10,11 @@ import { lsGet, lsSet } from '../lib/storage.js';
    后端再把 WxH 透传给 provider(dashscope 会转成 W*H,doubao 直接吃,vertex 暂不支持忽略)。 */
 
 export const SIZE_PRESETS = [
-  { id: 'portrait',  label: '竖版 2:3',  value: '832x1216' },
-  { id: 'square',    label: '方形 1:1',  value: '1024x1024' },
-  { id: 'landscape', label: '横版 3:2',  value: '1216x832' },
-  { id: 'tall',      label: '长竖 9:16', value: '768x1344' },
-  { id: 'wide',      label: '宽屏 16:9', value: '1344x768' },
+  { id: 'portrait',  label: 'Portrait 2:3',  value: '832x1216' },
+  { id: 'square',    label: 'Square 1:1',  value: '1024x1024' },
+  { id: 'landscape', label: 'Landscape 3:2',  value: '1216x832' },
+  { id: 'tall',      label: 'Tall 9:16', value: '768x1344' },
+  { id: 'wide',      label: 'Wide 16:9', value: '1344x768' },
 ];
 
 // 各生图用途的推荐默认(对齐网站原始设计的展示比例):

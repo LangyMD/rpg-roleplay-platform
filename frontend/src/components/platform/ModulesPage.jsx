@@ -9,6 +9,7 @@ import CSHeader from '@cloudscape-design/components/header';
 import CSSpaceBetween from '@cloudscape-design/components/space-between';
 import CSStatusIndicator from '@cloudscape-design/components/status-indicator';
 import CSTable from '@cloudscape-design/components/table';
+import i18n from '../../i18n/index.js';
 
 /* ---------------------------- MODULES (5E compatible) -------- */
 // 内部 ruleset id "dnd5e"，对外文案统一 "5E compatible / 五版规则兼容"。
@@ -21,14 +22,14 @@ function ModulesPage() {
 
   useEffectPL(() => {
     if (!window.api?.rules) {
-      setErrorMsg("window.api.rules 未注册，请刷新页面或重启 dev server");
+      setErrorMsg(i18n.t('modules_page.api_missing'));
       setLoaded(true);
       return;
     }
     window.api.rules.modules()
       .then(d => {
         if (d && d.ok) setModules(d.modules || []);
-        else setErrorMsg(d?.detail || d?.error || "加载模组失败");
+        else setErrorMsg(d?.detail || d?.error || i18n.t('modules_page.load_failed'));
       })
       .catch(e => setErrorMsg(String(e?.message || e)))
       .finally(() => setLoaded(true));
@@ -45,13 +46,13 @@ function ModulesPage() {
       // launch 端点是后端原子流程，保证模组 save_id 是新的。
       const moduleName = m.name_cn || m.name || m.id;
       const data = await window.api.rules.launchModule(m.id, { title: moduleName });
-      if (!data || !data.ok) throw new Error(data?.detail || data?.error || "launch_module 失败");
-      window.__apiToast?.(`已开始：${moduleName}（独立存档 #${data.save_id}）`, { kind: "ok" });
+      if (!data || !data.ok) throw new Error(data?.detail || data?.error || i18n.t('modules_page.launch_failed'));
+      window.__apiToast?.(i18n.t('modules_page.started', { name: moduleName, id: data.save_id }), { kind: "ok" });
       try { window.dispatchEvent(new CustomEvent("rpg-saves-updated")); } catch (_) {}
       window.location.href = "Game Console.html#rules";
     } catch (e) {
       setErrorMsg(String(e?.message || e));
-      window.__apiToast?.("启动模组失败", { kind: "danger", detail: String(e?.message || e) });
+      window.__apiToast?.(i18n.t('modules_page.start_failed'), { kind: "danger", detail: String(e?.message || e) });
     } finally {
       setBusyId(null);
     }
@@ -66,19 +67,19 @@ function ModulesPage() {
         <CSHeader
           variant="h2"
           counter={loaded ? `(${modules.length})` : undefined}
-          description="5E compatible / 五版规则兼容"
+          description={i18n.t('modules_page.desc')}
         >
-          5E 兼容冒险模组
+          {i18n.t('modules_page.title')}
         </CSHeader>
       }>
         {!loaded ? (
-          <CSBox color="text-body-secondary" textAlign="center" padding="l">加载中…</CSBox>
+          <CSBox color="text-body-secondary" textAlign="center" padding="l">{i18n.t('modules_page.loading')}</CSBox>
         ) : (
           <CSTable
             columnDefinitions={[
               {
                 id: "module",
-                header: "模组",
+                header: i18n.t('modules_page.col_module'),
                 cell: m => (
                   <div className="pl-title-cell">
                     <strong>{m.name_cn || m.name}</strong>
@@ -89,7 +90,7 @@ function ModulesPage() {
               },
               {
                 id: "ruleset",
-                header: "规则集",
+                header: i18n.t('modules_page.col_ruleset'),
                 cell: m => {
                   const ruleset = m.ruleset || {};
                   return <CSStatusIndicator type="success">{ruleset.public_label || "5E compatible"}</CSStatusIndicator>;
@@ -97,13 +98,13 @@ function ModulesPage() {
               },
               {
                 id: "level",
-                header: "等级",
+                header: i18n.t('modules_page.col_level'),
                 cell: m => <span className="mono">{(m.level_range || []).join("-") || "—"}</span>,
               },
               {
                 id: "duration",
-                header: "预计时长",
-                cell: m => <span className="muted">{m.estimated_minutes ? `${m.estimated_minutes} 分钟` : "—"}</span>,
+                header: i18n.t('modules_page.col_duration'),
+                cell: m => <span className="muted">{m.estimated_minutes ? i18n.t('modules_page.minutes', { n: m.estimated_minutes }) : "—"}</span>,
               },
               {
                 id: "action",
@@ -114,7 +115,7 @@ function ModulesPage() {
                     loading={busyId === m.id}
                     onClick={() => startModule(m)}
                   >
-                    {busyId === m.id ? "启动中…" : "开始模组"}
+                    {busyId === m.id ? i18n.t('modules_page.starting') : i18n.t('modules_page.start')}
                   </CSButton>
                 ),
               },
@@ -123,7 +124,7 @@ function ModulesPage() {
             trackBy="id"
             empty={
               <CSBox textAlign="center" color="text-body-secondary" padding="l">
-                当前没有内置冒险模组。模组数据位于 <code>rpg/modules/</code> 目录。
+                {i18n.t('modules_page.empty_pre')}<code>rpg/modules/</code>{i18n.t('modules_page.empty_post')}
               </CSBox>
             }
           />
@@ -131,10 +132,7 @@ function ModulesPage() {
       </CSContainer>
       <CSContainer>
         <CSBox color="text-body-secondary" fontSize="body-s">
-          本页所有模组使用原创地名、角色、怪物。规则层为 5E-compatible（五版规则兼容），
-          不引入任何官方 Dungeons &amp; Dragons 商标或非 SRD IP。LLM 仅负责叙事，所有掷骰、
-          检定、战斗、HP/AC 计算由确定性 RulesEngine 完成；GM 直写 HP/AC/initiative
-          会被 State Gate 拒绝。
+          {i18n.t('modules_page.disclaimer')}
         </CSBox>
       </CSContainer>
     </CSSpaceBetween>

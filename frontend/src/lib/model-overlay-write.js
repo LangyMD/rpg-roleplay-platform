@@ -1,3 +1,4 @@
+import i18n from '../i18n/index.js';
 // model-overlay-write.js — 设置 → 模型页「单个模型」写操作该打哪个端点(web / 手机共用)。
 //
 // 用户自己的模型(从供应商同步来的 / 手填的)住在按用户隔离的 overlay 里,后端标 synced=true,
@@ -12,7 +13,7 @@
 const ADMIN_ONLY = 'admin_only_model_edit';
 
 function adminOnlyError() {
-  const e = new Error('平台内置的模型只有管理员能改');
+  const e = new Error(i18n.t('model_overlay.admin_only'));
   e.code = ADMIN_ONLY;
   return e;
 }

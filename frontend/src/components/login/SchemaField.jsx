@@ -1,6 +1,7 @@
 // SchemaField.jsx — mechanically split from login-app.jsx (JSX byte-for-byte).
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { isZhUi } from '../../i18n/index.js';
 
 /// 渲染单个表单字段。`field` 形如:
 ///   { key, label, type, required, autocomplete, placeholder, min_length, max_length }
@@ -12,7 +13,7 @@ function SchemaField({ field, value, onChange }) {
     // 法律文档正本托管在 landing 站(play.stellatrix.icu/legal/),软件内不复制以避免双权威。
     // landing 的 legal/ 已发布 v1.2 双语 6 篇:privacy/terms/acceptable-use/cookie/dmca/adult-content-disclaimer
     const _legalBase = 'https://play.stellatrix.icu/legal';
-    const _legalLang = (typeof navigator !== 'undefined' && /^en/i.test(navigator.language || '')) ? 'en' : 'zh-CN';
+    const _legalLang = isZhUi() ? 'zh-CN' : 'en';
     const labelNode = field.key === 'terms_accepted' ? (
       <span>
         {t('auth.terms_agree')}{' '}

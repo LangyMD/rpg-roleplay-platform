@@ -5,6 +5,7 @@
  * 以及「处理决策 → 中文标签」映射。抽到此处单一来源,各端 UI 仍各自保留。
  */
 import { sha256hex } from './crypto-safe.js';
+import i18n from '../i18n/index.js';
 
 // ── 法务 / 渠道常量(各端逐字一致 → 共享) ──────────────────────────────
 export const AUP_LINK = 'https://play.stellatrix.icu/legal/aup#2J';
@@ -26,10 +27,10 @@ export const CONSENT_TEXT = '我已阅读 AUP §2.J,理解不得包含成人主�
  * @returns {string}
  */
 export function feedbackDecisionLabel(decision) {
-  if (!decision) return '待处理';
-  if (decision === 'ok') return '已采纳';
-  if (decision === 'spam') return '未采纳';
-  if (decision === 'nsfw_terminate') return '违规处理';
+  if (!decision) return i18n.t('feedback.decision.pending');
+  if (decision === 'ok') return i18n.t('feedback.decision.ok');
+  if (decision === 'spam') return i18n.t('feedback.decision.spam');
+  if (decision === 'nsfw_terminate') return i18n.t('feedback.decision.nsfw_terminate');
   return decision;
 }
 

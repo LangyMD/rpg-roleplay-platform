@@ -15,19 +15,24 @@ import CSColumnLayout from '@cloudscape-design/components/column-layout';
 import CSContainer from '@cloudscape-design/components/container';
 import CSHeader from '@cloudscape-design/components/header';
 import CSSpaceBetween from '@cloudscape-design/components/space-between';
+import { isZhUi, uiLocale } from '../../i18n/index.js';
 
 /* ---------------------------- ME (personal home) ----------- */
+// 匿名 designer preview 用的示例活动(登录态拉真实 /api/me/activity)。
 const ME_ACTIVITY = [
-  { ts: "刚刚",       icon: "play",     text: "在 雾港·主线·顾承砚 进行了第 312 回合", tag: "回合" },
-  { ts: "12 分钟前",  icon: "branch",   text: "从节点 #07 新建分支 旅店线·阿衡视角", tag: "分支" },
-  { ts: "今天 14:08", icon: "memory",   text: "把 黑铁怀表停在三时四十二分 加入固定记忆", tag: "记忆" },
-  { ts: "今天 12:30", icon: "save",     text: "导入剧本 雾港异闻录·外卷", tag: "剧本" },
-  { ts: "昨天",       icon: "edit",     text: "编辑了 角色卡·沈知微 的语气", tag: "NPC 角色卡" },
-  { ts: "昨天",       icon: "world",    text: "调整世界线变量 顾承砚.身份暴露度 = 37%", tag: "世界线" },
-  { ts: "上周",       icon: "upload",   text: "上传 光绪十三年残页扫描.zip 到库", tag: "库" },
-  { ts: "上周",       icon: "spark",    text: "部署了 Skill·时间线推演 v1.4", tag: "Skill" },
-  { ts: "上月",       icon: "user",     text: "完成注册 · 成为首个管理员", tag: "账号" },
+  { ts: "Just now",       icon: "play",   type: "turn",   text: "Played turn 312 in Fog Harbor · main · Gu Chengyan", tag: "Turn" },
+  { ts: "12 minutes ago", icon: "branch", type: "branch", text: "Created branch Inn line · Aheng POV from node #07", tag: "Branch" },
+  { ts: "Today 14:08",    icon: "memory", text: "Pinned \"The pocket watch stopped at 3:42\" to memory", tag: "Memory" },
+  { ts: "Today 12:30",    icon: "save",   type: "script", text: "Imported script Fog Harbor Tales · side volume", tag: "Script" },
+  { ts: "Yesterday",      icon: "edit",   text: "Edited the tone of card · Shen Zhiwei", tag: "NPC card" },
+  { ts: "Yesterday",      icon: "world",  text: "Set worldline variable Gu Chengyan.identity_exposure = 37%", tag: "Worldline" },
+  { ts: "Last week",      icon: "upload", text: "Uploaded torn_page_scans.zip to the library", tag: "Library" },
+  { ts: "Last week",      icon: "spark",  text: "Deployed Skill · Timeline projection v1.4", tag: "Skill" },
+  { ts: "Last month",     icon: "user",   text: "Signed up · became the first administrator", tag: "Account" },
 ];
+// 旧后端只给中文 tag 不给 type:兜底映射。
+const _ACT_TAG_TYPE = { "回合": "turn", "分支": "branch", "剧本": "script" };
+const activityType = (a) => (a && (a.type || _ACT_TAG_TYPE[a.tag])) || "";
 
 function MeOverview() {
   const { t } = useTranslation();
@@ -67,11 +72,11 @@ function MeOverview() {
     })();
     return () => { cancelled = true; };
   }, [IS_ANON, saves.length]);
-  const filteredActivity = filter === "all" ? ACTIVITY : ACTIVITY.filter(a => a.tag === filter);
+  const filteredActivity = filter === "all" ? ACTIVITY : ACTIVITY.filter(a => activityType(a) === filter);
   const fmtCN = (n) => {
     if (n == null) return "—";
-    if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, "") + " 万";
-    return n.toLocaleString();
+    if (n >= 10000 && isZhUi()) return (n / 10000).toFixed(1).replace(/\.0$/, "") + " 万";
+    return n.toLocaleString(uiLocale());
   };
   // fmtDate / fmtAgo 统一到 window.__fmt(data-loader.js)。fmtAgo 原本就在
   // window.__fmt.ago 存在时直接委派(运行时总成立),此处去掉死的本地兜底。
@@ -134,8 +139,8 @@ function MeOverview() {
                 open={overviewAvatarStudioOpen}
                 onClose={() => setOverviewAvatarStudioOpen(false)}
                 target={{ type: 'user_avatar' }}
-                name={user.display_name || '用户'}
-                defaultPrompt={user.display_name ? `${user.display_name} 的用户头像` : '用户头像'}
+                name={user.display_name || t('platform.me.user_fallback')}
+                defaultPrompt={user.display_name ? t('platform.me.avatar_prompt_named', { name: user.display_name }) : t('platform.me.avatar_prompt')}
                 onApplied={(url) => {
                   setOverviewAvatarUrl(url + '?t=' + Date.now());
                   setOverviewAvatarStudioOpen(false);
@@ -243,9 +248,9 @@ function MeOverview() {
         <CSHeader variant="h2" actions={
           <CSSpaceBetween direction="horizontal" size="xs">
             <CSButton variant={filter === "all" ? "primary" : "normal"} onClick={() => setFilter("all")}>{t('common.all', '全部')}</CSButton>
-            <CSButton variant={filter === "回合" ? "primary" : "normal"} onClick={() => setFilter("回合")}>{t('platform.me.activity_tag_round', '回合')}</CSButton>
-            <CSButton variant={filter === "分支" ? "primary" : "normal"} onClick={() => setFilter("分支")}>{t('platform.me.activity_tag_branch', '分支')}</CSButton>
-            <CSButton variant={filter === "剧本" ? "primary" : "normal"} onClick={() => setFilter("剧本")}>{t('platform.me.activity_tag_script', '剧本')}</CSButton>
+            <CSButton variant={filter === "turn" ? "primary" : "normal"} onClick={() => setFilter("turn")}>{t('platform.me.activity_tag_round', '回合')}</CSButton>
+            <CSButton variant={filter === "branch" ? "primary" : "normal"} onClick={() => setFilter("branch")}>{t('platform.me.activity_tag_branch', '分支')}</CSButton>
+            <CSButton variant={filter === "script" ? "primary" : "normal"} onClick={() => setFilter("script")}>{t('platform.me.activity_tag_script', '剧本')}</CSButton>
           </CSSpaceBetween>
         }>{t('platform.me.recent_activity', '最近活动')}</CSHeader>
       }>
@@ -260,7 +265,7 @@ function MeOverview() {
                 <div className="pl-activity-text">{a.text}</div>
                 {a.sub ? <div className="pl-activity-sub muted-2" style={{fontSize: 12, marginTop: 2}}>{a.sub}</div> : null}
                 <div className="pl-activity-meta">
-                  <span className="pill" style={{fontSize: 10.5}}>{a.tag}</span>
+                  <span className="pill" style={{fontSize: 10.5}}>{({ turn: t('platform.me.activity_tag_round'), branch: t('platform.me.activity_tag_branch'), script: t('platform.me.activity_tag_script') })[activityType(a)] || a.tag}</span>
                   <span className="muted-2 mono" style={{fontSize: 11}}>{/^\d{4}-\d{2}-\d{2}T/.test(a.ts || "") ? fmtAgo(a.ts) : a.ts}</span>
                 </div>
               </div>

@@ -8,6 +8,7 @@ import { MODELS_DATA } from '../../pages/settings.jsx';
 import {
   usePlatformData, useReactiveUser,
 } from './shared.jsx';
+import { isZhUi, uiLocale } from '../../i18n/index.js';
 
 function UnifiedSearch({ open, onClose, setPage }) {
   const { t: tSearch } = useTranslation();
@@ -113,14 +114,14 @@ function UnifiedSearch({ open, onClose, setPage }) {
 
   const scripts = (platform.scripts || []).map(s => ({
     id: "scr-" + s.id, label: s.title, kind: "script",
-    sub: `${Number(s.chapter_count || 0).toLocaleString()} ${tSearch('platform.search.unit_chapters', '章')} · ${((s.word_count || 0) / 10000).toFixed(1)}${tSearch('platform.search.unit_wan_chars', '万字')}`,
+    sub: `${Number(s.chapter_count || 0).toLocaleString(uiLocale())} ${tSearch('platform.search.unit_chapters')} · ${isZhUi() ? ((s.word_count || 0) / 10000).toFixed(1) + tSearch('platform.search.unit_wan_chars') : tSearch('platform.search.unit_k_chars', { n: Math.round((s.word_count || 0) / 1000) })}`,
     icon: "book", keywords: s.uid + " " + s.description,
     hash: "scripts",
   }));
 
   const saves = (platform.saves || []).map(s => ({
     id: "sv-" + s.id, label: s.title, kind: "save",
-    sub: `${s.branch_count} ${tSearch('platform.search.unit_nodes', '节点')} · ${s.updated_at}`,
+    sub: `${s.branch_count} ${tSearch('platform.search.unit_nodes')} · ${s.updated_at}`,
     icon: "play", keywords: s.uid,
     hash: "saves",
   }));
@@ -177,7 +178,7 @@ function UnifiedSearch({ open, onClose, setPage }) {
 
   const apis = _modelSrc.map(a => ({
     id: "api-" + a.id, label: a.name, kind: "api",
-    sub: `${(a.models || []).length} ${tSearch('platform.search.unit_models', '模型')}${a.base_url ? ' · ' + a.base_url : ''}`,
+    sub: `${(a.models || []).length} ${tSearch('platform.search.unit_models')}${a.base_url ? ' · ' + a.base_url : ''}`,
     icon: "braces", keywords: a.id,
     hash: "settings",
   }));
@@ -278,7 +279,7 @@ function UnifiedSearch({ open, onClose, setPage }) {
           )}
           {q && flatList.length === 0 && (
             <div className="pl-model-empty" style={{margin: 16}}>
-              {tSearch('platform.search.no_results', { q, defaultValue: `未匹配「${q}」 · 试试 GPT、雾港、记忆、claude、API` })}
+              {tSearch('platform.search.no_results', { q })}
             </div>
           )}
           {q && order.map(kind => {
@@ -313,12 +314,12 @@ function UnifiedSearch({ open, onClose, setPage }) {
         </div>
         <footer className="pl-search-foot">
           <div className="pl-search-kbds">
-            <span><span className="kbd">↑↓</span> {tSearch('platform.search.kbd_select', '选择')}</span>
-            <span><span className="kbd">⏎</span> {tSearch('platform.search.kbd_open', '打开')}</span>
-            <span><span className="kbd">Esc</span> {tSearch('platform.search.kbd_close', '关闭')}</span>
+            <span><span className="kbd">↑↓</span> {tSearch('platform.search.kbd_select')}</span>
+            <span><span className="kbd">⏎</span> {tSearch('platform.search.kbd_open')}</span>
+            <span><span className="kbd">Esc</span> {tSearch('platform.search.kbd_close')}</span>
           </div>
           <span className="muted-2" style={{fontSize: 11}}>
-            GET /api/v1/search?q={encodeURIComponent(q) || "..."} · 全文 · 模糊
+            GET /api/v1/search?q={encodeURIComponent(q) || "..."} · {tSearch('platform.search.footer_mode')}
           </span>
         </footer>
       </div>

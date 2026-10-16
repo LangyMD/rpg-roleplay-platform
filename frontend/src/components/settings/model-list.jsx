@@ -17,6 +17,7 @@ import CSButton from '@cloudscape-design/components/button';
 import CSTable from '@cloudscape-design/components/table';
 import CSTabs from '@cloudscape-design/components/tabs';
 import CSKeyValuePairs from '@cloudscape-design/components/key-value-pairs';
+import { uiLocale } from '../../i18n/index.js';
 
 
 /* API 详情面板 —— 选中某个已配置 Key 后在列表下方展开。
@@ -75,7 +76,7 @@ function ApiDetailPanel({ api, onEdit, onVisibility, onValidate, onDeleteKey, on
                   { label: t('settings.models.usage_output_tokens'), value: usage.output_tokens != null ? Number(usage.output_tokens).toLocaleString() : '—' },
                   { label: t('settings.models.usage_cost'), value: usage.cost_usd != null ? `$${Number(usage.cost_usd).toFixed(2)}` : '—' },
                 ]} />
-                <CSBox fontSize="body-s" color="text-body-secondary">{t('settings.models.usage_detail')} <a href="/usage" onClick={(e) => { e.preventDefault(); plNavigate('usage'); }}>{t('settings.models.usage_page')}</a>。</CSBox>
+                <CSBox fontSize="body-s" color="text-body-secondary">{t('settings.models.usage_detail')} <a href="/usage" onClick={(e) => { e.preventDefault(); plNavigate('usage'); }}>{t('settings.models.usage_page')}</a>{t('common.period')}</CSBox>
               </CSSpaceBetween>
         ) },
       ]} />
@@ -116,9 +117,9 @@ function ApiModelsList({ api, onToggleModel, onRenameModel }) {
   const sorted = [...filtered].sort((a, b) => {
     if (sortKey === "smart") {
       if (a.enabled !== b.enabled) return b.enabled - a.enabled;
-      return a.display.localeCompare(b.display, "zh-CN");
+      return a.display.localeCompare(b.display, uiLocale());
     }
-    if (sortKey === "name") return a.display.localeCompare(b.display, "zh-CN");
+    if (sortKey === "name") return a.display.localeCompare(b.display, uiLocale());
     if (sortKey === "context") {
       // Wave 11-C: 优先用 context_window 数值,兼容旧 context 字符串
       const getCtx = (m) => m.context_window ?? parseInt(m.context) ?? 0;

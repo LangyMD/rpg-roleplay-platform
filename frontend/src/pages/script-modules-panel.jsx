@@ -36,23 +36,23 @@ const EXTRA_MODULE_CARDS = [
   {
     id: 'facts_refine',
     titleKey: 'modules.facts_refine.title',
-    titleDefault: '章节摘要 LLM 精炼',
+    titleDefault: 'LLM chapter summary refinement',
     descKey: 'modules.facts_refine.desc',
-    descDefault: '把确定性残句摘要升级为 LLM 真摘要 + 故事内时间',
+    descDefault: 'Upgrade rule-based fragment summaries to real LLM summaries plus in-story time',
   },
   {
     id: 'worldbook_enrich',
     titleKey: 'modules.worldbook_enrich.title',
-    titleDefault: '世界书核心条目充实',
+    titleDefault: 'Worldbook core entry enrichment',
     descKey: 'modules.worldbook_enrich.desc',
-    descDefault: '对力量体系/核心设定类条目做机制级充实',
+    descDefault: 'Flesh out power systems and core setting entries at the mechanics level',
   },
   {
     id: 'world_key',
     titleKey: 'modules.world_key.title',
-    titleDefault: '世界观切分回填',
+    titleDefault: 'World split backfill',
     descKey: 'modules.world_key.desc',
-    descDefault: '多世界书(无限流/穿越)按世界切段,LLM 确认边界',
+    descDefault: 'Split multi-world books (infinite-flow / transmigration) by world, with the LLM confirming boundaries',
   },
 ];
 

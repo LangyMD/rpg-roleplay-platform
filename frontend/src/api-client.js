@@ -11,6 +11,21 @@
 (function () {
   "use strict";
 
+  // i18n:本文件是 IIFE(测试以 new Function 求值,不能 import)→ 经 i18n/index.js 挂的
+  // window.__i18n 取文案;未就绪时退回英文缺省。
+  const i18n = {
+    t(key, opts) {
+      try {
+        const inst = window.__i18n;
+        if (inst && typeof inst.t === "function") {
+          const v = inst.t(key, opts);
+          if (v && v !== key) return v;
+        }
+      } catch (_) {}
+      return key;
+    },
+  };
+
   // API prefix constant: overridable via <meta name="api-prefix" content="/api/v1" />
   const API_PREFIX = document.querySelector('meta[name="api-prefix"]')?.content || '/api/v1';
 
@@ -93,7 +108,7 @@
     try {
       res = await fetch(url, init);
     } catch (e) {
-      throw new ApiError("network", 0, "网络异常：" + (e && e.message), { url });
+      throw new ApiError("network", 0, i18n.t("api_client.network_error", { message: (e && e.message) || "" }), { url });
     } finally {
       // 回退路径的 setTimeout 在请求结束后要撤掉(原生 AbortSignal.timeout 无此负担)
       try { defaultSignal && defaultSignal.__clearTimeout && defaultSignal.__clearTimeout(); } catch (_) {}
@@ -117,7 +132,7 @@
     // null(错误响应 !res.ok 的畸形 JSON 走下方降级处理,那里有 statusText/HTTP 码兜底)。
     if (res.ok && jsonParseFailed) {
       throw new ApiError("bad_json", res.status,
-        "服务器返回了无法解析的响应(可能含非法字符),请重试;若反复出现请联系管理员。", { url });
+        i18n.t("api_client.bad_json"), { url });
     }
     if (!res.ok) {
       // payload.detail 可能是 FastAPI 422 的对象数组 [{loc,msg,type},…] 或任意对象;直接塞进
@@ -125,9 +140,9 @@
       // 归一成可读串:数组取每项 msg 拼接,对象 JSON 化,其余原样。
       const rawDetail = payload && payload.detail;
       const detailStr = Array.isArray(rawDetail)
-        ? (rawDetail.map((d) => (d && (d.msg || d.message)) || (typeof d === "string" ? d : "")).filter(Boolean).join("；") || JSON.stringify(rawDetail))
+        ? (rawDetail.map((d) => (d && (d.msg || d.message)) || (typeof d === "string" ? d : "")).filter(Boolean).join(i18n.t("api_client.detail_sep")) || JSON.stringify(rawDetail))
         : (rawDetail && typeof rawDetail === "object" ? JSON.stringify(rawDetail) : rawDetail);
-      const msg = detailStr || (payload && payload.error) || res.statusText || `请求失败 (HTTP ${res.status})`;
+      const msg = detailStr || (payload && payload.error) || res.statusText || i18n.t("api_client.http_failed", { status: res.status });
 
       // 401 — session expired; redirect once, then still throw so caller knows.
       if (res.status === 401) {
@@ -144,14 +159,14 @@
       // 429 — rate limited; read Retry-After and surface to user.
       if (res.status === 429) {
         const retryAfter = res.headers.get("Retry-After");
-        const detail = retryAfter ? ("请求过于频繁，请 " + retryAfter + " 秒后重试") : "请求过于频繁，请稍后重试";
+        const detail = retryAfter ? i18n.t("api_client.rate_limited_after", { seconds: retryAfter }) : i18n.t("api_client.rate_limited");
         try { toast(detail, { kind: "warn", duration: 4000 }); } catch (_) {}
         throw new ApiError(payload && payload.code, res.status, detail, payload);
       }
 
       // 503 — service unavailable.
       if (res.status === 503) {
-        try { toast("服务暂不可用", { kind: "danger", duration: 3600 }); } catch (_) {}
+        try { toast(i18n.t("api_client.unavailable"), { kind: "danger", duration: 3600 }); } catch (_) {}
       }
 
       throw new ApiError(payload && payload.code, res.status, msg || ("HTTP " + res.status), payload);
@@ -250,7 +265,7 @@
     const isAbort = (e) => ctl.signal.aborted || (e && e.name === "AbortError");
     const abortPayload = (e) => ({
       reason: ctl.signal.reason || null,
-      message: (e && e.message) || "请求已取消",
+      message: (e && e.message) || i18n.t("api_client.cancelled"),
       url,
     });
     const promise = (async () => {
@@ -289,7 +304,7 @@
             if (handlers.onAbort) handlers.onAbort(abortPayload(e));
             return;
           }
-          if (handlers.onError) handlers.onError(new ApiError("stream_read", 0, (e && e.message) || "流式读取失败", { url }));
+          if (handlers.onError) handlers.onError(new ApiError("stream_read", 0, (e && e.message) || i18n.t("api_client.stream_read_failed"), { url }));
           return;
         }
         if (chunk.done) break;
@@ -978,7 +993,7 @@
             const i = s.indexOf(",");
             resolve(i >= 0 ? s.slice(i + 1) : s);
           };
-          r.onerror = () => reject(r.error || new Error("分片读取失败"));
+          r.onerror = () => reject(r.error || new Error(i18n.t("api_client.chunk_read_failed")));
           r.readAsDataURL(chunk);
         });
         return POST(`${API_PREFIX}/uploads/` + id + "/chunk", { chunk_index: Number(index) || 0, base64 }, { signal: timeoutSignal(60000) });
@@ -1180,8 +1195,8 @@
       if (okMsg) toast(okMsg, { kind: "ok", duration: 1800 });
       return r;
     } catch (e) {
-      const detail = (e && (e.message || (e.payload && e.payload.detail))) || "未知错误";
-      toast(failMsg || "请求失败", { kind: "danger", detail, duration: 3600 });
+      const detail = (e && (e.message || (e.payload && e.payload.detail))) || i18n.t("api_client.unknown_error");
+      toast(failMsg || i18n.t("api_client.request_failed"), { kind: "danger", detail, duration: 3600 });
       throw e;
     }
   }

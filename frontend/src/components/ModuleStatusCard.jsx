@@ -90,7 +90,7 @@ function fmtCountdown(iso, t) {
 function ZhuyinBadge({ t }) {
   return (
     <div className={s.zhuyinBadge} title={t('module_status.protagonist_badge_title')}>
-      <span className={s.zhuyinChar}>主</span>
+      <span className={s.zhuyinChar}>{t('module_status.protagonist_badge_char')}</span>
     </div>
   );
 }

@@ -16,17 +16,17 @@ import { NewGameModal } from './NewGame.jsx';
 /* ---------------------------- BRANCHES ------------------------- */
 const BRANCH_DATA = {
   nodes: [
-    { id: 1, x: 80, y: 280, summary: "开场 · 渡海前夜", role: "root", current: false, branch: 0 },
-    { id: 2, x: 240, y: 280, summary: "登船后向船工打听", role: "round", branch: 0 },
-    { id: 3, x: 400, y: 240, summary: "申时落岸 · 雾未散", role: "round", branch: 0 },
-    { id: 4, x: 400, y: 360, summary: "选择借宿渔家旅店", role: "round", branch: 1 },
-    { id: 5, x: 560, y: 240, summary: "码头听闻浮尸三具", role: "round", branch: 0 },
-    { id: 6, x: 560, y: 360, summary: "旅店遇沈知微", role: "round", branch: 1 },
-    { id: 7, x: 720, y: 200, summary: "向税吏隐藏身份", role: "round", branch: 0, current: true, lastExit: true },
-    { id: 8, x: 720, y: 320, summary: "暴露残页 · 被巡检盘问", role: "round", branch: 2, deleted: true },
-    { id: 9, x: 720, y: 420, summary: "天黑前赶往灯塔", role: "round", branch: 1 },
-    { id: 10, x: 880, y: 200, summary: "灯塔下等沈知微", role: "round", branch: 0 },
-    { id: 11, x: 880, y: 420, summary: "找到守人女儿阿衡", role: "round", branch: 1 },
+    { id: 1, x: 80, y: 280, summary: "Opening · the night before the crossing", role: "root", current: false, branch: 0 },
+    { id: 2, x: 240, y: 280, summary: "Ask the boatman after boarding", role: "round", branch: 0 },
+    { id: 3, x: 400, y: 240, summary: "Land in the late afternoon · fog lingers", role: "round", branch: 0 },
+    { id: 4, x: 400, y: 360, summary: "Stay at the fishermen's inn", role: "round", branch: 1 },
+    { id: 5, x: 560, y: 240, summary: "Hear of three bodies at the docks", role: "round", branch: 0 },
+    { id: 6, x: 560, y: 360, summary: "Meet Shen Zhiwei at the inn", role: "round", branch: 1 },
+    { id: 7, x: 720, y: 200, summary: "Hide your identity from the tax collector", role: "round", branch: 0, current: true, lastExit: true },
+    { id: 8, x: 720, y: 320, summary: "Torn page exposed · questioned by the inspector", role: "round", branch: 2, deleted: true },
+    { id: 9, x: 720, y: 420, summary: "Hurry to the lighthouse before dark", role: "round", branch: 1 },
+    { id: 10, x: 880, y: 200, summary: "Wait for Shen Zhiwei below the lighthouse", role: "round", branch: 0 },
+    { id: 11, x: 880, y: 420, summary: "Find the keeper's daughter Aheng", role: "round", branch: 1 },
   ],
   edges: [
     { from: 1, to: 2, branch: 0 }, { from: 2, to: 3, branch: 0 }, { from: 2, to: 4, branch: 1 },
@@ -38,9 +38,9 @@ const BRANCH_DATA = {
 };
 
 const BRANCH_LABELS = {
-  0: { name: "主线", desc: "向税吏隐藏身份，灯塔会面" },
-  1: { name: "旅店线", desc: "借宿渔家，最早遇到阿衡" },
-  2: { name: "暴露线", desc: "残页被巡检发现（已删除）", deleted: true },
+  0: { name: "Main line", desc: "Hide your identity from the tax collector; meeting at the lighthouse" },
+  1: { name: "Inn line", desc: "Stay with the fishermen; meet Aheng earliest" },
+  2: { name: "Exposure line", desc: "The inspector finds the torn page (deleted)", deleted: true },
 };
 
 function BranchesPage() {

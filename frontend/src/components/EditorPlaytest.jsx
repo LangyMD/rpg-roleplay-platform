@@ -45,7 +45,7 @@ async function markScriptReviewed(scriptId) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok === false) {
-    throw new Error((data && (data.error || data.detail)) || `mark-reviewed 失败 (HTTP ${res.status})`);
+    throw new Error((data && (data.error || data.detail)) || `mark-reviewed failed (HTTP ${res.status})`);
   }
   return data;
 }

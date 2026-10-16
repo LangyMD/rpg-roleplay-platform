@@ -22,8 +22,8 @@ function ViewEdit({ nav, user }) {
     website: user._raw?.website || '',
     bio: user.bio || '',
     pronouns: user._raw?.pronouns || '',
-    language: user._raw?.language || 'zh-CN',
-    timezone: user._raw?.timezone || 'Asia/Shanghai',
+    language: user._raw?.language || 'en',
+    timezone: user._raw?.timezone || 'UTC',
   });
   const [saving, setSaving] = useState(false);
   // 头像预览 URL：先用当前 user，上传成功后刷新
@@ -171,7 +171,7 @@ function ViewEdit({ nav, user }) {
           <div className="pl-sec">
             <div className="pl-sec-head"><h2>{t('mobile.me.edit.locale_section')}</h2></div>
             <Select label={t('mobile.me.edit.field_language')} value={form.language} onChange={v => u('language', v)}
-              options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'zh-TW', label: '繁體中文' }, { value: 'en', label: 'English (Beta)' }, { value: 'ja', label: '日本語' }]} />
+              options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'zh-TW', label: '繁體中文' }, { value: 'en', label: 'English' }, { value: 'ja', label: '日本語' }]} />
             <Select label={t('mobile.me.edit.field_timezone')} value={form.timezone} onChange={v => u('timezone', v)}
               options={[{ value: 'Asia/Shanghai', label: 'UTC+8 · Shanghai' }, { value: 'Asia/Tokyo', label: 'UTC+9 · Tokyo' }, { value: 'UTC', label: 'UTC' }, { value: 'America/Los_Angeles', label: 'UTC-8 · Los Angeles' }]} />
           </div>

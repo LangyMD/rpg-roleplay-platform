@@ -466,7 +466,7 @@ function ScriptsListView() {
         <div style={{ position: 'fixed', top: 53, left: 0, right: 0, bottom: 0, zIndex: 1000, background: 'var(--bg, #1a1817)', overflow: 'auto' }}>
           <div style={{ position: 'sticky', top: 0, zIndex: 3, background: '#131211', borderBottom: '1px solid #36322d' }}>
             <div style={{ maxWidth: 1240, margin: '0 auto', padding: '13px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div style={{ fontFamily: "'Noto Serif SC', serif", fontSize: 18, fontWeight: 600, color: '#ebe7df' }}>{t('scripts.my.import_script')}</div>
+              <div style={{ fontFamily: "'Noto Serif', 'Noto Serif SC', serif", fontSize: 18, fontWeight: 600, color: '#ebe7df' }}>{t('scripts.my.import_script')}</div>
               <CSButton iconName="close" variant="link" onClick={() => { setImportOpen(false); reload(); }}>{t('common.close')}</CSButton>
             </div>
           </div>

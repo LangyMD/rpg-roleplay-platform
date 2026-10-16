@@ -4,6 +4,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '../icons.jsx';
 import { fmtTimeFallback } from '../../data-loader.js';
+import { uiLocale } from '../../i18n/index.js';
 
 /* ── 工具 ─────────────────────────────────────────────── */
 // 统一到 window.__fmt.time(data-loader.js;zh-CN 24h 制),保留本地别名免改调用点。
@@ -13,7 +14,7 @@ function fmtTime(iso) {
 }
 function fmtDate(iso) {
   if (!iso) return '—';
-  try { return new Date(iso).toLocaleDateString('zh-CN'); } catch (_) { return iso; }
+  try { return new Date(iso).toLocaleDateString(uiLocale()); } catch (_) { return iso; }
 }
 
 function LoadingRow() {

@@ -18,6 +18,7 @@ import CSExpandableSection from '@cloudscape-design/components/expandable-sectio
 import CSToggle from '@cloudscape-design/components/toggle';
 import { cardFormInit, cardFormPayload, _oneLine, clampLines } from './helpers.js';
 import { CardSheet, CardEditFields } from './CardFields.jsx';
+import { uiLocale } from '../../i18n/index.js';
 
 /* 人设图历史画廊 — 仅 persona/pc 卡显示 */
 function PersonaImageGallery({ cardId, onAvatarRefresh }) {
@@ -65,7 +66,7 @@ function PersonaImageGallery({ cardId, onAvatarRefresh }) {
     if (!s) return '—';
     try {
       const d = new Date(s);
-      return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleDateString(uiLocale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     } catch (_) { return s; }
   };
   const sourceLabel = {

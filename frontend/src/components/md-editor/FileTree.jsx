@@ -257,7 +257,7 @@ function FileTree({ scriptId, openNode, activeKey, reloadKey, onMutate }) {
                   <span className="mde-tree-glabel">{groupLabel(g.kind)}</span>
                   {st.items && <span className="mde-tree-count">{q ? items.length : st.items.length}</span>}
                 </button>
-                {CAN_CREATE_KIND(g.kind) && <button className="mde-tree-additem" title={t('md_editor.tree.new_item', { label: groupLabel(g.kind) })} onClick={(e) => { e.stopPropagation(); startNew(g.kind); }}>＋</button>}
+                {CAN_CREATE_KIND(g.kind) && <button className="mde-tree-additem" title={t('md_editor.tree.new_item', { label: groupLabel(g.kind) })} onClick={(e) => { e.stopPropagation(); startNew(g.kind); }}>+</button>}
               </div>
               {open && (
                 <div className="mde-tree-children">
@@ -335,7 +335,7 @@ function NewMenu({ onPick }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="mde-newmenu">
-      <button className="mde-tree-tbbtn" title={t('md_editor.tree.new')} onClick={() => setOpen((o) => !o)}>＋</button>
+      <button className="mde-tree-tbbtn" title={t('md_editor.tree.new')} onClick={() => setOpen((o) => !o)}>+</button>
       {open && (
         <div className="mde-newmenu-pop" onMouseLeave={() => setOpen(false)}>
           {NODE_GROUPS.map((g) => (

@@ -54,7 +54,7 @@ function _truncateForTip(text, maxLen = 60) {
 
 /** 从 world_clock_label(如"第14日 19:40")解析出"第N日"前缀;解析不出时返回空串。 */
 function _parseWorldDayLabel(label) {
-  const m = /^(第\d+日)/.exec(String(label == null ? '' : label));
+  const m = /^(第\d+日|Day \d+)/.exec(String(label == null ? '' : label));
   return m ? m[1] : '';
 }
 
@@ -98,9 +98,9 @@ function _tensionSparkline(hist, opts = {}) {
  * 未知取值时兜底成灰色徽标而非崩溃。 */
 
 const PREFLIGHT_TIER_META = {
-  full: { color: 'green', key: 'rath_page.preflight.tier_full', fallback: '材料齐全' },
-  degraded: { color: 'blue', key: 'rath_page.preflight.tier_degraded', fallback: '部分退化' },
-  free: { color: 'grey', key: 'rath_page.preflight.tier_free', fallback: '自由演化' },
+  full: { color: 'green', key: 'rath_page.preflight.tier_full', fallback: 'Fully stocked' },
+  degraded: { color: 'blue', key: 'rath_page.preflight.tier_degraded', fallback: 'Partially degraded' },
+  free: { color: 'grey', key: 'rath_page.preflight.tier_free', fallback: 'Free-form evolution' },
 };
 /** GET /api/rath/preflight 的 tier 字段 → 徽标颜色 + i18n key/兜底文案。未知 tier 兜底灰色徽标,显示原始值。 */
 function _preflightTierMeta(tier) {
@@ -108,10 +108,10 @@ function _preflightTierMeta(tier) {
 }
 
 const PAUSE_REASON_META = {
-  user: { key: 'rath_page.pause_reason.user', fallback: '已暂停' },
-  player_active: { key: 'rath_page.pause_reason.player_active', fallback: '你在游玩，世界让路' },
-  unviewed: { key: 'rath_page.pause_reason.unviewed', fallback: '久未查看已休眠' },
-  no_model: { key: 'rath_page.pause_reason.no_model', fallback: '无可用模型' },
+  user: { key: 'rath_page.pause_reason.user', fallback: 'Paused' },
+  player_active: { key: 'rath_page.pause_reason.player_active', fallback: "You're playing — the world stepped aside" },
+  unviewed: { key: 'rath_page.pause_reason.unviewed', fallback: 'Dormant after a long time unseen' },
+  no_model: { key: 'rath_page.pause_reason.no_model', fallback: 'No model available' },
 };
 /** rath_experiments.pause_reason 枚举 → 徽标文案;未知/空值返回 null(不渲染徽标)。 */
 function _pauseReasonMeta(reason) {
@@ -318,7 +318,7 @@ function EventRow({ ev }) {
           {summaryTruncated && <CSBox fontSize="body-s">{summary}</CSBox>}
           {transcript.map((line, i) => (
             <div key={i} style={{ fontSize: 13 }}>
-              <strong>{line.speaker || '?'}</strong>{'：'}{line.line}
+              <strong>{line.speaker || '?'}</strong>{': '}{line.line}
             </div>
           ))}
         </CSSpaceBetween>
@@ -745,7 +745,7 @@ function ExperimentPanel({ expId }) {
             <CSSpaceBetween size="xs">
               {relations.map((r, i) => (
                 <div key={`${r.a}-${r.b}-${i}`} className="rath-relation-row">
-                  <CSBox fontSize="body-s">{r.a} — {r.b}{r.kind ? `：${r.kind}` : ''}</CSBox>
+                  <CSBox fontSize="body-s">{r.a} — {r.b}{r.kind ? `: ${r.kind}` : ''}</CSBox>
                   {r.note && <CSBox fontSize="body-s" color="text-body-secondary">{r.note}</CSBox>}
                 </div>
               ))}
