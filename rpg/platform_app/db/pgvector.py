@@ -19,7 +19,7 @@ def try_enable_pgvector() -> dict[str, Any]:
                 "select * from pg_available_extensions where name = 'vector'"
             ).fetchone()
             if not row:
-                return {"ok": False, "reason": "pgvector 未在 server 端安装"}
+                return {"ok": False, "reason": "pgvector is not installed on the server"}
             db.execute("create extension if not exists vector")
             # 检查是否已启用
             installed = db.execute(

@@ -365,7 +365,7 @@ async def handle_image_gen(payload: dict[str, Any]) -> None:
         # 把 prompt 注入 attach，供 persona_image 分支写入 prompt_snapshot
         attach_with_prompt = {**attach, "prompt_snapshot": attach.get("prompt_snapshot") or prompt}
         if not _attach_image_to_target(user_id=user_id, url=url, attach=attach_with_prompt):
-            _fail(image_id, "attach_failed: 生成成功但目标写回失败(无权限或目标不存在);图片已存入图库")
+            _fail(image_id, "attach_failed: generated successfully but writing back to the target failed (no permission or target missing); the image was saved to the gallery")
 
 
 def _attach_image_to_target(
@@ -606,7 +606,7 @@ def set_current_persona_image(user_id: int, card_id: int, image_id: int) -> dict
             (int(image_id), int(card_id)),
         ).fetchone()
         if not img_row:
-            raise ValueError("人设图不存在或不属于该卡")
+            raise ValueError("Persona image not found or does not belong to this card")
         target_url: str = str(img_row["image_url"])
 
         # 翻转 is_current

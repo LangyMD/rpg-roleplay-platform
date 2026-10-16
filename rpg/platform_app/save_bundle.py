@@ -116,14 +116,14 @@ def import_save_bundle(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
     # 取 save.json(import_script_pack 只读具名条目、忽略它)
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
         if "save.json" not in set(zf.namelist()):
-            raise ValueError("不是自包含存档包(缺 save.json)")
+            raise ValueError("Not a self-contained save package (missing save.json)")
         raw = zf.read("save.json")
     try:
         save_payload = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ValueError(f"save.json 解析失败: {exc}") from exc
+        raise ValueError(f"Failed to parse save.json: {exc}") from exc
     if not isinstance(save_payload, dict):
-        raise ValueError("save.json 不是对象")
+        raise ValueError("save.json is not an object")
 
     # 1. 重建剧本(自带硬化 + owner 强制覆写为导入者)
     pack_res = script_pack.import_script_pack(zip_bytes, user_id)
@@ -190,5 +190,5 @@ def estimate_bundle_sizes(user_id: int, save_id: int) -> dict[str, Any]:
             "chapters": chapters, "knowledge": knowledge,
             "chunks_text": chunks_text, "embeddings": embeddings, "per_save": per_save,
         },
-        "note": "未压缩数据上界;实际 zip 包更小(文本压缩比高,向量压缩比低)",
+        "note": "Upper bound of uncompressed data; the actual zip is smaller (text compresses well, vectors poorly)",
     }

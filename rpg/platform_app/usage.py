@@ -313,7 +313,7 @@ def timeline_usage(user_id: int, days: int = 30, group_by: str = "day") -> dict[
     """
     init_db()
     if group_by not in ("day", "model"):
-        raise ValueError("group_by 只支持 day / model")
+        raise ValueError("group_by only supports day / model")
     days = max(1, min(int(days), 365))
     with connect() as db:
         if group_by == "day":

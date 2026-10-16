@@ -20,7 +20,7 @@ from platform_app.tavern_persona import persona_card_to_player_fields  # noqa: E
 def test_projection_four_fields_same_caliber_as_creation():
     f = persona_card_to_player_fields({"name": "杭雁菱", "identity": "工程师", "background": "b", "appearance": "a"})
     assert f == {"name": "杭雁菱", "role": "工程师", "background": "b", "appearance": "a"}
-    assert persona_card_to_player_fields({})["name"] == "你"
+    assert persona_card_to_player_fields({})["name"] == "You"
 
 
 def test_write_through_covers_all_three_layers():

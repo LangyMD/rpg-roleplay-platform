@@ -93,11 +93,11 @@ def cmd_check(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m platform_app.migrate")
     sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("status", help="列出 migration 状态").set_defaults(func=cmd_status)
-    sub.add_parser("up", help="应用所有待应用 migration").set_defaults(func=cmd_up)
-    sub.add_parser("baseline", help="仅跑基线 CREATE TABLE").set_defaults(func=cmd_baseline)
+    sub.add_parser("status", help="List migration status").set_defaults(func=cmd_status)
+    sub.add_parser("up", help="Apply all pending migrations").set_defaults(func=cmd_up)
+    sub.add_parser("baseline", help="Run only the baseline CREATE TABLE").set_defaults(func=cmd_baseline)
     sub.add_parser("full", help="baseline + pgvector + up").set_defaults(func=cmd_full)
-    sub.add_parser("check", help="检查 schema 是否落后，落后 exit(1)").set_defaults(func=cmd_check)
+    sub.add_parser("check", help="Check whether the schema is behind; exit(1) if it is").set_defaults(func=cmd_check)
     args = p.parse_args(argv)
     return args.func(args)
 

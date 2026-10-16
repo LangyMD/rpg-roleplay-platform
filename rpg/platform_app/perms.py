@@ -99,5 +99,5 @@ def require_script_owner(db, script_id: int, user_id: int) -> dict[str, Any]:
     """非 owner 时抛统一 PermissionError;是 owner 则返回 scripts 整行。"""
     row = script_owned(db, script_id, user_id)
     if not row:
-        raise PermissionError("仅原作者可编辑该剧本。订阅剧本只读;如需改动请先「另存为可编辑副本」(fork)。")
+        raise PermissionError("Only the original author can edit this script. Subscribed scripts are read-only; to make changes, first save an editable copy (fork).")
     return row
