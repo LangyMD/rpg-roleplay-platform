@@ -347,6 +347,14 @@ async def lifespan(app: FastAPI):
     except Exception:
         log.exception("[startup] rath ticker 启动失败(不影响主服务)")
 
+    # 7. Local installs have no separate postproc worker service: consume
+    #    chat_postproc_tasks (image generation, acceptance verifier, black swan) in-process.
+    try:
+        from platform_app.postproc_embedded import start_embedded_postproc
+        start_embedded_postproc()
+    except Exception:
+        log.exception("[startup] embedded postproc worker failed to start (non-fatal)")
+
     yield
 
     # ── shutdown ──────────────────────────────────────────────────────────
