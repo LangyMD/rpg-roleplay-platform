@@ -15,7 +15,7 @@ def set_worldline_variable(user_id: int, save_id: int, key: str, value: str, sou
     key = _clean_text(key)
     value = _clean_text(value)
     if not key or not value:
-        raise ValueError("变量名和变量值不能为空")
+        raise ValueError("Variable name and value must not be empty")
     session = ensure_game_session(user_id, save_id, _state_from_save(user_id, save_id))
     with connect() as db:
         row = db.execute(
@@ -50,7 +50,7 @@ def set_worldline_variable(user_id: int, save_id: int, key: str, value: str, sou
 def remove_worldline_variable(user_id: int, save_id: int, key: str) -> dict[str, Any]:
     key = _clean_text(key)
     if not key:
-        raise ValueError("变量名不能为空")
+        raise ValueError("Variable name must not be empty")
     session = ensure_game_session(user_id, save_id, _state_from_save(user_id, save_id))
     with connect() as db:
         db.execute("delete from worldline_variables where session_id = %s and key = %s", (session["id"], key))
@@ -75,6 +75,6 @@ def list_worldline_variables(user_id: int, save_id: int) -> dict[str, Any]:
     with connect() as db:
         save = db.execute("select * from game_saves where id = %s and user_id = %s", (save_id, user_id)).fetchone()
         if not save:
-            raise ValueError("无权访问该存档")
+            raise ValueError("You do not have access to this save")
         rows = _db_select_worldline_variables(db, save_id)
     return {"items": [expose(r) for r in rows], "total": len(rows)}

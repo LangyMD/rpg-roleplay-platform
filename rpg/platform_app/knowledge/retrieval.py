@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from core.token_estimate import cjk_chars_to_budget
 from platform_app import runtime
 from platform_app.db import connect, init_db
 from platform_app.knowledge._pin import effective_kb_script_id
 from platform_app.knowledge._search import _search_chunks, _search_entities
 from platform_app.knowledge._utils import _query_tokens
 from platform_app.perms import owns_save
+
+
+def _cap(text: str, cjk_chars: int) -> str:
+    """按中文字数定的截断上限,换算到 text 的语言(英文同样 token 预算可放更多字符)。"""
+    text = str(text or "")
+    return text[:cjk_chars_to_budget(text, cjk_chars)]
 
 
 def retrieve_runtime_context(
@@ -113,11 +120,11 @@ def retrieve_script_context(
             lines = []
             for row in fact_rows:
                 events = row.get("events") or []
-                event_text = "；".join(str(item.get("event", "")) for item in events[:2] if isinstance(item, dict))
+                event_text = "; ".join(str(item.get("event", "")) for item in events[:2] if isinstance(item, dict))
                 lines.append(
-                    f"第{row['chapter']}章《{row['title']}》｜{row.get('story_time_label') or ''}\n"
-                    f"摘要：{(row.get('summary') or '')[:180]}\n"
-                    f"事件：{event_text[:220]}"
+                    f"Ch.{row['chapter']} \"{row['title']}\" | {row.get('story_time_label') or ''}\n"
+                    f"Summary: {_cap(row.get('summary') or '', 180)}\n"
+                    f"Events: {_cap(event_text, 220)}"
                 )
             parts.append("=== Postgres ChapterFact ===\n" + "\n\n".join(lines))
 
@@ -133,9 +140,9 @@ def retrieve_script_context(
         )
         if chunk_rows:
             parts.append(
-                "=== Postgres 原文片段 ===\n"
+                "=== Postgres source excerpts ===\n"
                 + "\n\n".join(
-                    f"[第{row['chapter_index']}章片段]\n{row['content'][:360].strip()}"
+                    f"[Ch.{row['chapter_index']} excerpt]\n{_cap(row['content'], 360).strip()}"
                     for row in chunk_rows
                 )
             )
@@ -171,21 +178,21 @@ def retrieve_script_context(
                 for c in ents["cards"]:
                     # 拼成 GM 易读的"角色档案"格式
                     bio = (c.get("identity") or "").strip()
-                    persona = (c.get("personality") or "").strip()[:240]
-                    look = (c.get("appearance") or "").strip()[:160]
+                    persona = _cap((c.get("personality") or "").strip(), 240)
+                    look = _cap((c.get("appearance") or "").strip(), 160)
                     lines.append(
-                        f"《{c['name']}》(相关度 {c['score']:.2f})\n"
-                        f"  身份:{bio or '—'}\n"
-                        f"  性格:{persona or '—'}\n"
-                        f"  外貌:{look or '—'}"
+                        f"\"{c['name']}\" (relevance {c['score']:.2f})\n"
+                        f"  Identity: {bio or '—'}\n"
+                        f"  Personality: {persona or '—'}\n"
+                        f"  Appearance: {look or '—'}"
                     )
-                parts.append("=== 角色档案(向量召回) ===\n" + "\n".join(lines))
+                parts.append("=== Character profiles (vector recall) ===\n" + "\n".join(lines))
             if ents.get("worldbook"):
                 lines = [
-                    f"《{w['title']}》(相关度 {w['score']:.2f}): {(w.get('content') or '')[:240]}"
+                    f"\"{w['title']}\" (relevance {w['score']:.2f}): {_cap(w.get('content') or '', 240)}"
                     for w in ents["worldbook"]
                 ]
-                parts.append("=== 世界书条目(向量召回) ===\n" + "\n".join(lines))
+                parts.append("=== Worldbook entries (vector recall) ===\n" + "\n".join(lines))
         except Exception:
             pass  # 向量未就绪 / Vertex 失败 → 跳过 entity 层,保留 chunks
 

@@ -47,11 +47,11 @@ def _safe_member_read(zf: zipfile.ZipFile, name: str, max_bytes: int | None = No
     limit = MAX_MEMBER_BYTES if max_bytes is None else max_bytes
     info = zf.getinfo(name)
     if info.file_size > limit:
-        raise ValueError(f"成员解压后过大: {name}")
+        raise ValueError(f"Archive member too large when unpacked: {name}")
     with zf.open(name) as fh:
         data = fh.read(limit + 1)
     if len(data) > limit:
-        raise ValueError(f"成员解压超限: {name}")
+        raise ValueError(f"Archive member exceeds the unpack limit: {name}")
     return data
 
 
@@ -476,7 +476,7 @@ def _read_jsonl(zf: zipfile.ZipFile, name: str) -> list[dict]:
         if not line.strip():
             continue
         if len(rows) >= MAX_JSONL_ROWS:  # 防超长 JSONL materialize 打爆内存(CWE-409)
-            raise ValueError(f"{name}: JSONL 行数超限(max {MAX_JSONL_ROWS})")
+            raise ValueError(f"{name}: too many JSONL rows (max {MAX_JSONL_ROWS})")
         rows.append(json.loads(line))
     return rows
 
@@ -501,13 +501,13 @@ def clone_public_script(src_script_id: int, dst_user_id: int) -> dict[str, Any]:
             (src_script_id,),
         ).fetchone()
     if not row:
-        raise ValueError("剧本不存在")
+        raise ValueError("Script not found")
     src = dict(row)
     if not src.get("is_public"):
-        raise PermissionError("该剧本未公开,无法导入")
+        raise PermissionError("This script is not public and cannot be imported")
     owner_id = src["owner_id"]
     if owner_id == dst_user_id:
-        raise ValueError("这是你自己的剧本,无需从公开库导入")
+        raise ValueError("This is your own script; there is no need to import it from the public library")
 
     # 以原 owner 身份导出(满足 export 的 ownership 校验),再导入给当前用户。
     zip_bytes, _filename = export_script_pack(src_script_id, owner_id, include_chunks=False)
@@ -954,6 +954,6 @@ def _import_worldtree_tables(db, pack_format_version, canon_entities, timeline_a
     else:
         # v1 包 — 缺世界树/锚点/digest,给出补救路径提示
         warnings.append(
-            f"v1 pack imported into script {new_script_id} (缺 kb_canon_entities/timeline_anchors/phase_digests/worldlines)。"
-            f"运行 /api/scripts/{new_script_id}/knowledge/sync 重建,否则 GM retrieval 上下文会残缺。"
+            f"v1 pack imported into script {new_script_id} (missing kb_canon_entities/timeline_anchors/phase_digests/worldlines). "
+            f"Run /api/scripts/{new_script_id}/knowledge/sync to rebuild them, or the GM retrieval context will be incomplete."
         )

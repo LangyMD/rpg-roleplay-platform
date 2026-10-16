@@ -18,7 +18,7 @@ def _state_from_save(user_id: int, save_id: int) -> dict[str, Any]:
     init_db()
     with connect() as db:
         if not owns_save(db, save_id, user_id):
-            raise ValueError("无权访问该存档")
+            raise ValueError("You do not have access to this save")
         row = db.execute(
             "select state_snapshot from game_saves where id = %s",
             (save_id,),
@@ -135,7 +135,7 @@ def ensure_game_session(user_id: int, save_id: int, state: dict[str, Any] | None
     with connect() as db:
         # 归属判定收敛到 perms.owns_save;通过后再取联表数据(script_title/owner_id)。
         if not owns_save(db, save_id, user_id):
-            raise ValueError("无权访问该存档")
+            raise ValueError("You do not have access to this save")
         save = db.execute(
             """
             select game_saves.*, scripts.owner_id, scripts.title as script_title
@@ -146,7 +146,7 @@ def ensure_game_session(user_id: int, save_id: int, state: dict[str, Any] | None
             (save_id,),
         ).fetchone()
         if not save:
-            raise ValueError("无权访问该存档")
+            raise ValueError("You do not have access to this save")
         script = db.execute("select * from scripts where id = %s", (save["script_id"],)).fetchone()
         book = _ensure_book(db, script)
         payload = state or {}
