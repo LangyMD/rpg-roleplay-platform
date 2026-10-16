@@ -141,6 +141,17 @@ open http://localhost:5173/Login.html
 
 You'll land on the Login page, create a user, then bounce to `Platform.html` (library + cards + scripts) or `Game Console.html` (the actual gameplay screen).
 
+### Windows — one-click start / stop (local, single user)
+
+Once the manual setup above has been done once (Postgres, `rpg\.venv`, `rpg\.env`), double-click `start-local.cmd` in the repo root. It starts Postgres if it isn't already listening on 5432, installs Python / npm dependencies only when their manifests changed, runs migrations, starts the backend (7860) and Vite (5173) hidden in the background, and opens http://localhost:5173/. Auth is off in local mode, so there is no login. `stop-local.cmd` stops all three. Logs go to `.dev-logs\`.
+
+```powershell
+.\scripts\windows\local.ps1 shortcuts   # put "RPG Roleplay" / "Stop RPG Roleplay" on the desktop
+.\scripts\windows\local.ps1 status
+```
+
+For a portable Postgres, put it in a folder named `rpg-pg` next to the repo (with `start-pg.cmd` / `stop-pg.cmd`, or `pg\bin\pg_ctl.exe` + `data\`), or point `RPG_PG_DIR` at it. A Postgres Windows service just needs to be running.
+
 > **Production deployment**: see `deploy/` for Docker / bare-metal templates.
 
 ## Architecture
@@ -288,7 +299,7 @@ A full annotated example lives in [`rpg/.env.example`](./rpg/.env.example).
 ├── mobile/                    # Expo / React Native app (rpg-roleplay-mobile)
 ├── desktop/                   # Electron desktop shell (self-updating, channel B)
 ├── docs-site/                 # Starlight documentation site (Astro)
-├── scripts/                   # dev.sh / setup.sh / bump_version.sh
+├── scripts/                   # dev.sh / setup.sh / bump_version.sh / windows/local.ps1
 │
 ├── deploy/                    # Docker / bare-metal production templates
 ├── docs/                      # design docs · runbooks · docs/knowledge/ (AI-collaborator map)
