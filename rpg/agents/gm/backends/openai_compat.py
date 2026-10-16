@@ -124,6 +124,8 @@ class _OpenAICompatBackend:
     # 同一进程内之后直接不发 temperature。见 _create / _is_temperature_rejected。
     # 已知限制：进程内缓存，多 worker 模式下各自独立学习（不跨进程共享），可接受。
     _fixed_temp_combos: set[tuple[str, str]] = set()
+    # 拒绝 response_format=json_object 的 combo(LM Studio 只认 json_schema/text 等)。
+    _no_json_object_combos: set[tuple] = set()
 
     def _create(self, **kwargs):
         """self.client.chat.completions.create 的包装,带 temperature 自愈。
@@ -369,13 +371,27 @@ class _OpenAICompatBackend:
 
     def call_structured(self, system: str, messages: list[dict], max_tokens: int) -> str:
         sys_text = (system or "") + "\n\nYou must return only valid JSON, with no Markdown code fences or explanatory text."
-        resp = self._create(
+        kwargs = dict(
             model=self.model_name,
             messages=self._to_messages(sys_text, messages),
             max_tokens=max_tokens,
             temperature=0.1,
-            response_format={"type": "json_object"},
         )
+        # json_object 只是加固,不是必需:提示词已要求纯 JSON,调用方走 parse_llm_json 容错解析。
+        # 端点以 400 拒它(LM Studio:「response_format.type must be 'json_schema' or 'text'」)
+        # → 去掉重发并记忆,与 _harness._openai_compat_json_mode 的 400 降级同一思路。
+        combo = (self.api_id, self.model_name, self.user_id)
+        if combo in self._no_json_object_combos:
+            resp = self._create(**kwargs)
+        else:
+            try:
+                resp = self._create(**kwargs, response_format={"type": "json_object"})
+            except Exception as exc:
+                if not _is_bad_request(exc):
+                    raise
+                log.info(f"[GM] {self.api_id}/{self.model_name} 拒绝 response_format=json_object(400)→ 不带它重试")
+                resp = self._create(**kwargs)
+                self._no_json_object_combos.add(combo)
         choice = resp.choices[0]
         self._capture_usage(
             resp,
