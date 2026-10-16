@@ -192,7 +192,7 @@ class TestGenerateImageConfigGate(unittest.TestCase):
         self.assertEqual(cards[0]["model"], "ghost-model")
         self.assertEqual(cards[0]["api_id"], "doubao")
         self.assertIs(cards[0]["hard"], True)
-        self.assertIn("已暂停", result)
+        self.assertIn("paused", result)
         # 不应改计数(没入队)
         self.assertEqual(state.data["_turn_images_generated"], 0)
 
@@ -210,7 +210,7 @@ class TestGenerateImageConfigGate(unittest.TestCase):
         self.assertEqual(cards[0]["model"], "doubao-seedream-4-x")
         self.assertEqual(cards[0]["api_id"], "doubao")
         self.assertIs(cards[0]["hard"], False)
-        self.assertIn("待确认", result)
+        self.assertIn("awaiting confirmation", result)
         self.assertEqual(state.data["_turn_images_generated"], 0)
 
     def test_c_no_model_no_default_no_credential_missing_key(self):

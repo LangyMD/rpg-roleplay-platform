@@ -219,7 +219,7 @@ def test_search_canon_skips_embedding_when_script_has_no_canon_vectors(monkeypat
     monkeypatch.setattr(kbt, "_save_ctx", lambda db, sid, uid: {"script_id": 7, "progress_chapter": 3})
     monkeypatch.setattr(emb, "embed_query", lambda *a, **k: pytest.fail("没有 canon 向量不该嵌入查询"))
     out = kbt._t_search_canon(1, {"save_id": 5, "query": "康拉德"})
-    assert out.startswith("检索不可用")
+    assert out.startswith("Search unavailable")
 
 
 # ── 审查补充 ──────────────────────────────────────────────────────────────────

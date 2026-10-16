@@ -60,7 +60,7 @@ class PlayerProfileRegistryExecutor(unittest.TestCase):
         # llm_chat_json_op(史官 ops 路由,非用户意图)改写 → 被锁闸拒
         r2 = self._dispatch("llm_chat_json_op", "史官想改的外貌", "ppm-a-2")
         self.assertFalse(r2.ok)
-        self.assertIn("锁定", str(r2.result))
+        self.assertIn("locked", str(r2.result))
         self.assertEqual(self.state.data["player"]["appearance"], "银发赤瞳")
 
         # 玩家再从 UI 改 → 仍成功(用户意图不受锁)

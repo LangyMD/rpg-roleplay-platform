@@ -74,7 +74,7 @@ class SaveLevelMiscTools(unittest.TestCase):
     def test_set_permission_mode_invalid_mode(self):
         r = self._call("set_permission_mode", {"mode": "godmode"})
         self.assertFalse(r.ok)
-        self.assertIn("非法", r.result or "")
+        self.assertIn("invalid mode", r.result or "")
 
     def test_set_permission_mode_blocked_from_llm(self):
         """敏感工具,llm_set / llm_chat 都不允许 (只 ui_button + api_direct)。"""
@@ -122,17 +122,17 @@ class UserLevelMiscTools(unittest.TestCase):
             conn.side_effect = Exception("DB 不可用")
             r = self._call("set_preference", {"key": "theme", "value": "dark"})
             self.assertFalse(r.ok)
-            self.assertIn("失败", r.result or "")
+            self.assertIn("Failed", r.result or "")
 
     def test_create_persona_validates_name(self):
         r = self._call("create_persona", {"name": ""})
         self.assertFalse(r.ok)
-        self.assertIn("name 为空", r.result or "")
+        self.assertIn("name is empty", r.result or "")
 
     def test_delete_persona_validates_id(self):
         r = self._call("delete_persona", {"persona_id": "abc"})
         self.assertFalse(r.ok)
-        self.assertIn("整数", r.result or "")
+        self.assertIn("integer", r.result or "")
 
     def test_delete_persona_blocked_from_llm(self):
         for origin in ("llm_chat", "llm_set"):
@@ -144,17 +144,17 @@ class UserLevelMiscTools(unittest.TestCase):
     def test_create_character_card_validates_name(self):
         r = self._call("create_character_card", {"name": ""})
         self.assertFalse(r.ok)
-        self.assertIn("name 为空", r.result or "")
+        self.assertIn("name is empty", r.result or "")
 
     def test_select_model_validates_args(self):
         r = self._call("select_model", {"api_id": "", "model": ""})
         self.assertFalse(r.ok)
-        self.assertIn("不能为空", r.result or "")
+        self.assertIn("may be empty", r.result or "")
 
     def test_mcp_server_start_validates(self):
         r = self._call("mcp_server_start", {"server_id": ""})
         self.assertFalse(r.ok)
-        self.assertIn("server_id 为空", r.result or "")
+        self.assertIn("server_id is empty", r.result or "")
 
     def test_mcp_server_start_only_admin_origin(self):
         # SEC(M-1): console_assistant 也被拒(MCP 管理只 ui_button/api_direct,后者 HTTP 层强制 admin)。
@@ -191,7 +191,7 @@ class AsyncJobToolsValidation(unittest.TestCase):
     def test_start_script_import_validates_args(self):
         r = self._call("start_script_import", {"upload_id": "abc"})
         self.assertFalse(r.ok)
-        self.assertIn("必填", r.result or "")
+        self.assertIn("required", r.result or "")
 
     def test_start_script_import_calls_module(self):
         with patch("platform_app.script_import.import_script") as imp:
@@ -206,7 +206,7 @@ class AsyncJobToolsValidation(unittest.TestCase):
     def test_cancel_import_job_validates(self):
         r = self._call("cancel_import_job", {"job_id": ""})
         self.assertFalse(r.ok)
-        self.assertIn("job_id 为空", r.result or "")
+        self.assertIn("job_id is empty", r.result or "")
 
     def test_resplit_script_destructive_blocked_from_llm(self):
         for origin in ("llm_chat", "llm_set"):
@@ -231,7 +231,7 @@ class AsyncJobToolsValidation(unittest.TestCase):
     def test_get_import_status_validates_script_id(self):
         r = self._call("get_import_status", {"script_id": "xyz"})
         self.assertFalse(r.ok)
-        self.assertIn("整数", r.result or "")
+        self.assertIn("integer", r.result or "")
 
 
 # ────────────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ class QueryToolsCompletion(unittest.TestCase):
         self.assertFalse(r.ok)
         # scope_missing_script 或 失败提示
         self.assertTrue(
-            "scope_missing_script" in (r.error or "") or "失败" in (r.result or ""),
+            "scope_missing_script" in (r.error or "") or "Failed" in (r.result or ""),
             f"应拒;实际 {r}",
         )
 

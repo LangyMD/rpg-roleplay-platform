@@ -110,7 +110,7 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
 
     prompt: str = str(args.get("prompt") or "").strip()
     if not prompt:
-        return "失败：prompt 不能为空"
+        return "Failed: prompt must not be empty"
 
     kind: str = str(args.get("kind") or "chat").strip()
     size: str | None = args.get("size") or None
@@ -137,7 +137,7 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
         except Exception as _uid_exc:
             log.warning("[image_gate] user_id lookup failed save_id=%s: %s", save_id_raw, _uid_exc)
     if not user_id:
-        return "失败：无法确定 user_id（save_id=%s），生图中止" % save_id_raw
+        return "Failed: cannot determine user_id (save_id=%s); image generation aborted" % save_id_raw
 
     extra: dict[str, Any] = {}
     if size:
@@ -165,11 +165,11 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
                 api_id=api_id or "",
                 hard=True,
                 question=(
-                    f"你想用的生图模型「{model}」还没在你的账户配置,"
-                    f"选一个已有模型或为它添加 API Key。"
+                    f"The image model '{model}' you want to use is not configured in your account yet. "
+                    f"Pick an existing model or add an API key for it."
                 ),
             )
-            return f"【生图已暂停】模型「{model}」未配置,已弹出模型配置。"
+            return f"[Image generation paused] Model '{model}' is not configured; the model configuration prompt has been shown."
         # (b) 未指定模型,且用户从未设默认生图模型 → 询问 / 缺 Key 引导,不入队。
         if not model and resolve_preferred_model(user_id, "image_gen.model_real_name") is None:
             default = first_user_model(user_id)
@@ -182,12 +182,12 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
                     model=_model,
                     api_id=_api,
                     hard=False,
-                    question=f"你还没设默认生图模型,用识别到的「{_model}」生成吗?",
-                    options=[f"用 {_model} 生成", "去模型设置"],
+                    question=f"You haven't set a default image model yet. Generate with the detected '{_model}'?",
+                    options=[f"Generate with {_model}", "Open model settings"],
                 )
                 return (
-                    f"【生图待确认】尚未设默认生图模型,"
-                    f"已询问是否用识别到的「{_model}」。"
+                    f"[Image generation awaiting confirmation] No default image model is set yet; "
+                    f"asked the user whether to use the detected '{_model}'."
                 )
             # 完全没有可用凭证 → 缺 Key 引导卡(非阻塞),不入队。
             append_config_card(
@@ -195,9 +195,9 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
                 capability="image",
                 mode="missing_key",
                 hard=False,
-                question="你还没配置生图模型的 API Key,去配置一下就能生图了。",
+                question="You haven't configured an API key for an image model yet. Set one up and you can generate images.",
             )
-            return "【生图未配置】你还没配置生图模型的 API Key,已弹出配置引导,配置后即可生图。"
+            return "[Image generation not configured] The user has no API key for an image model yet; the setup guide has been shown, and images can be generated once it is configured."
 
     # ── 确定性门控 ─────────────────────────────────────────────────────────
     if origin in _AUTONOMOUS_ORIGINS:
@@ -221,7 +221,7 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
                     "__approved_origin__": "api_direct",
                 },
                 "source": "gm:image",
-                "reason": f"本轮第 {count + 1} 张图需玩家确认后生成",
+                "reason": f"Image #{count + 1} this turn needs the player's confirmation before it is generated",
             })
             permissions["pending_writes"] = pending[-32:]  # 上限防膨胀
             log.info(
@@ -229,8 +229,8 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
                 count + 1, user_id, pw_id,
             )
             return (
-                f"【生图门控】本轮已生成 {count} 张图；第 {count + 1} 张已加入待审队列"
-                f"（id={pw_id}），玩家确认后执行。prompt={prompt!r}"
+                f"[Image generation gate] {count} image(s) already generated this turn; image #{count + 1} was added to the review queue "
+                f"(id={pw_id}) and will run once the player confirms. prompt={prompt!r}"
             )
         # count == 0：自主调用第 1 张，计数后入队
         state.data["_turn_images_generated"] = count + 1
@@ -269,7 +269,7 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
                 "[image_gate] quota_exceeded user=%s save_id=%s",
                 user_id, enqueue_save_id,
             )
-            return "生图失败(配额): 今日生图次数已达上限,请明天再试。"
+            return "Image generation failed (quota): today's image generation limit has been reached; try again tomorrow."
 
         image_id = result.get("image_id")
         log.info(
@@ -284,16 +284,16 @@ def _execute_generate_image(state: Any, args: dict[str, Any]) -> str | dict[str,
             _r = wait_for_image(int(image_id))
             _st = _r.get("status")
             if _st == "done":
-                return f"生图成功(image_id={image_id}):图片已插入本轮对话,可据此继续叙述。"
+                return f"Image generated (image_id={image_id}): the image was inserted into this turn's conversation; you can continue the narration with it in mind."
             if _st == "failed":
-                return f"生图失败(image_id={image_id}):{_r.get('error') or '未知错误'}。可调整提示词重试,或如实告知用户。"
+                return f"Image generation failed (image_id={image_id}): {_r.get('error') or 'unknown error'}. Adjust the prompt and retry, or tell the user honestly."
             if _st == "cancelled":
-                return f"生图已被取消(image_id={image_id})。"
-            return f"生图仍在后台生成中(image_id={image_id}),稍后会自动出现在对话里;本轮可先继续,无需空等。"
-        return f"生图已入队：image_id={image_id}，status=pending。生成完成后通过 SSE 推送 URL。"
+                return f"Image generation was cancelled (image_id={image_id})."
+            return f"The image is still generating in the background (image_id={image_id}) and will appear in the conversation automatically later; carry on with this turn, no need to wait."
+        return f"Image generation queued: image_id={image_id}, status=pending. The URL is pushed over SSE once it is done."
     except Exception as exc:
         log.exception("[image_jobs] enqueue_image_generation failed")
-        return f"失败：生图入队出错 — {exc}"
+        return f"Failed: error while queueing image generation - {exc}"
 
 
 # ── ToolSpec 工厂 ─────────────────────────────────────────────────────────
@@ -305,41 +305,41 @@ def _make_generate_image_spec():
     return ToolSpec(
         name="generate_image",
         description=(
-            "异步生成一张图片。提交后立即返回 image_id，图片生成完成后通过 SSE 推送 URL。"
-            "\n每回合自主调用限 1 张；第 2 张起需玩家审批后执行。"
-            "\nui_button / api_direct 来源不受每回合限制（用户主动触发即视为已审批）。"
+            "Generate an image asynchronously. Returns an image_id immediately after submission; the URL is pushed over SSE once the image is done."
+            "\nAutonomous calls are limited to 1 image per turn; from the 2nd image on, the player must approve before it runs."
+            "\nui_button / api_direct origins are not subject to the per-turn limit (a user-initiated trigger counts as approved)."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "生图文本提示词（必填）",
+                    "description": "Text prompt for the image (required)",
                 },
                 "kind": {
                     "type": "string",
                     "enum": ["cover", "avatar", "card", "chat", "game", "persona"],
                     "description": (
-                        "图片用途：cover=剧本封面, avatar=用户/角色头像, "
-                        "card=角色卡立绘, chat=聊天插图, game=游戏场景, persona=人设图"
+                        "Image purpose: cover = script cover, avatar = user/character avatar, "
+                        "card = character card portrait, chat = chat illustration, game = game scene, persona = persona image"
                     ),
                     "default": "chat",
                 },
                 "size": {
                     "type": "string",
-                    "description": "图片尺寸（provider 相关，如 '1024x1024'）。不填由 provider 决定。",
+                    "description": "Image size (provider-specific, e.g. '1024x1024'). If omitted, the provider decides.",
                 },
                 "api_id": {
                     "type": "string",
-                    "description": "生图 provider（doubao / dashscope / openai / vertex_ai）。不填用用户偏好回退。",
+                    "description": "Image provider (doubao / dashscope / openai / vertex_ai). If omitted, falls back to the user's preference.",
                 },
                 "model": {
                     "type": "string",
-                    "description": "具体模型名（如 'doubao-seedream-4-x'）。不填由 provider 决定。",
+                    "description": "Specific model name (e.g. 'doubao-seedream-4-x'). If omitted, the provider decides.",
                 },
                 "ref": {
                     "type": "string",
-                    "description": "可选关联 ID（如 card_id / save_id），仅用于记录，不影响生图。",
+                    "description": "Optional related ID (e.g. card_id / save_id), only for record-keeping; does not affect generation.",
                 },
             },
             "required": ["prompt"],
@@ -353,11 +353,12 @@ def _make_generate_image_spec():
             "api_direct",
         }),
         destructive=False,
-        intent_keywords=("生图", "画图", "插画", "封面", "头像", "立绘"),
+        intent_keywords=("生图", "画图", "插画", "封面", "头像", "立绘",
+                         "image", "draw", "illustration", "cover", "avatar", "portrait"),
         side_effect_topics=(),  # 生图完成由 worker SSE 推送，不走 tool side_effect
         input_examples=(
-            {"prompt": "一位红发魔法师站在古老图书馆", "kind": "chat"},
-            {"prompt": "夕阳下的废弃城堡，史诗奇幻风格", "kind": "cover"},
+            {"prompt": "A red-haired mage standing in an ancient library", "kind": "chat"},
+            {"prompt": "An abandoned castle at sunset, epic fantasy style", "kind": "cover"},
         ),
     )
 

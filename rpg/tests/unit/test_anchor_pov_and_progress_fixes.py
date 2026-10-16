@@ -26,11 +26,12 @@ class RevokePovMirrorsClaim(unittest.TestCase):
 
     def test_claim_writes_signature(self):
         # claim 给标记锚点统一写 variant_description 含 "代入 {name} 的 POV 位置"
-        self.assertIn("代入 {name} 的 POV 位置", self.claim)
+        self.assertIn("takes over {name}'s POV position", self.claim)
 
     def test_revoke_matches_claim_signature(self):
         # revoke 应按 claim 签名反查
-        self.assertIn("代入 {name} 的 POV 位置", self.revoke)
+        self.assertIn("代入 {name} 的 POV 位置", self.revoke)  # 老中文签名仍须能反查
+        self.assertIn("takes over {name}'s POV position", self.revoke)
 
     def test_revoke_no_longer_requires_first_appearance_summary(self):
         # 旧 bug:revoke 的 WHERE 要求 summary like '%X(character)首次登场%'(AND),

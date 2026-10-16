@@ -78,22 +78,22 @@ def _t_set_permission_mode(state: Any, args: dict) -> str:
             "strict",  # 映射到 full_access (向后兼容旧 API)
         }
         if mode.lower() not in _VALID_INPUTS:
-            return f"失败: mode 非法 {mode!r} (允许: default/auto_review/full_access/read_only)"
+            return f"Failed: invalid mode {mode!r} (allowed: default/auto_review/full_access/read_only)"
     except Exception:
         if mode not in {"default", "auto_review", "full_access", "read_only"}:
-            return f"失败: mode 非法 {mode!r} (允许: default/auto_review/full_access/read_only)"
+            return f"Failed: invalid mode {mode!r} (allowed: default/auto_review/full_access/read_only)"
     try:
         state.set_permission_mode(mode)
         return f"permissions.mode → {mode}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_inject_pending_question(state: Any, args: dict) -> str:
     """debug 用: 注入一个 pending_question (前端可见可点)"""
     question = (args.get("question") or "").strip()
     if not question:
-        return "失败: question 为空"
+        return "Failed: question is empty"
     options = args.get("options") or []
     if not isinstance(options, list):
         options = []
@@ -108,7 +108,7 @@ def _t_inject_pending_question(state: Any, args: dict) -> str:
         "source": source,
         "turn": state.data.get("turn", 0),
     })
-    return f"pending_question 注入: {qid}"
+    return f"pending_question injected: {qid}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -120,10 +120,10 @@ def _t_set_preference(user_id: int, args: dict) -> str:
     key = (args.get("key") or "").strip()
     value = args.get("value")
     if not key:
-        return "失败: key 为空"
+        return "Failed: key is empty"
     # SEC(M-12): value 限长,防 console_assistant LLM 放大存储。
     if value is not None and len(json.dumps(value, ensure_ascii=False)) > 4096:
-        return "失败: value 过大(上限 4096 字符)"
+        return "Failed: value too large (limit 4096 characters)"
     try:
         from platform_app.db import connect, init_db
         init_db()
@@ -139,7 +139,7 @@ def _t_set_preference(user_id: int, args: dict) -> str:
             prefs[key] = value
             # SEC(M-12): 总 blob 上限,防累积放大。
             if len(json.dumps(prefs, ensure_ascii=False).encode("utf-8")) > 32 * 1024:
-                return "失败: 偏好总量超限(32KB)"
+                return "Failed: total preferences size exceeds the limit (32KB)"
             db.execute(
                 "insert into user_preferences (user_id, preferences) values (%s, %s) "
                 "on conflict (user_id) do update set preferences = excluded.preferences, "
@@ -148,7 +148,7 @@ def _t_set_preference(user_id: int, args: dict) -> str:
             )
         return f"preference[{key}] = {json.dumps(value, ensure_ascii=False)[:80]}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ def _t_mcp_server_enable(user_id: int, args: dict) -> str:
     sid = (args.get("server_id") or "").strip()
     enabled = bool(args.get("enabled"))
     if not sid:
-        return "失败: server_id 为空"
+        return "Failed: server_id is empty"
     try:
         import tools_dsl.tool_registry as _tr
         catalog = _tr.load_mcp_catalog()
@@ -174,46 +174,46 @@ def _t_mcp_server_enable(user_id: int, args: dict) -> str:
                 s["enabled"] = enabled
                 break
         else:
-            return f"失败: 未找到 server_id={sid}"
+            return f"Failed: server_id={sid} not found"
         _tr.save_mcp_catalog(catalog) if hasattr(_tr, "save_mcp_catalog") else None
         return f"MCP server {sid} enabled → {enabled}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_mcp_server_start(user_id: int, args: dict) -> str:
     sid = (args.get("server_id") or "").strip()
     if not sid:
-        return "失败: server_id 为空"
+        return "Failed: server_id is empty"
     try:
         import mcp_broker
-        result = mcp_broker.start_server(sid) if hasattr(mcp_broker, "start_server") else {"ok": False, "error": "start_server 未实现"}
+        result = mcp_broker.start_server(sid) if hasattr(mcp_broker, "start_server") else {"ok": False, "error": "start_server is not implemented"}
         if not result.get("ok"):
-            return f"失败: {result.get('error')}"
-        return f"MCP server {sid} 已启动 (pid={result.get('pid','?')})"
+            return f"Failed: {result.get('error')}"
+        return f"MCP server {sid} started (pid={result.get('pid','?')})"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_mcp_server_stop(user_id: int, args: dict) -> str:
     sid = (args.get("server_id") or "").strip()
     if not sid:
-        return "失败: server_id 为空"
+        return "Failed: server_id is empty"
     try:
         import mcp_broker
-        result = mcp_broker.stop_server(sid) if hasattr(mcp_broker, "stop_server") else {"ok": False, "error": "stop_server 未实现"}
+        result = mcp_broker.stop_server(sid) if hasattr(mcp_broker, "stop_server") else {"ok": False, "error": "stop_server is not implemented"}
         if not result.get("ok"):
-            return f"失败: {result.get('error')}"
-        return f"MCP server {sid} 已停止"
+            return f"Failed: {result.get('error')}"
+        return f"MCP server {sid} stopped"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_select_model(user_id: int, args: dict) -> str:
     api_id = (args.get("api_id") or "").strip()
     model_real_name = (args.get("model") or "").strip()
     if not api_id or not model_real_name:
-        return "失败: api_id 与 model 都不能为空"
+        return "Failed: neither api_id nor model may be empty"
     try:
         from psycopg.types.json import Jsonb
 
@@ -235,9 +235,9 @@ def _t_select_model(user_id: int, args: dict) -> str:
                 "updated_at = now()",
                 (user_id, Jsonb(prefs)),
             )
-        return f"GM 模型切换: {api_id} / {model_real_name}"
+        return f"GM model switched: {api_id} / {model_real_name}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -260,10 +260,10 @@ def _t_get_save_detail(user_id: int, args: dict) -> str:
                 (int(save_id), user_id),
             ).fetchone()
             if not row:
-                return f"失败 (权限): save {save_id} 不属于当前用户"
+                return f"Failed (permission): save {save_id} does not belong to the current user"
         return json.dumps(dict(row), ensure_ascii=False, default=str, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _user_can_read_script(db, sid: int, user_id: int) -> bool:
@@ -278,13 +278,13 @@ def _t_get_chapter_facts(user_id: int, script_id: int | None, args: dict, state:
     sid = script_id or args.get("script_id")
     chapter_index = args.get("chapter_index")
     if not sid:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, int(sid), user_id):
-                return f"失败 (权限): 剧本 #{int(sid)} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{int(sid)} does not belong to the current user or is not subscribed"
             if chapter_index is None:
                 rows = db.execute(
                     "select chapter, title, summary from chapter_facts "
@@ -299,20 +299,20 @@ def _t_get_chapter_facts(user_id: int, script_id: int | None, args: dict, state:
                 ).fetchall() or []
         return json.dumps([dict(r) for r in rows[:50]], ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_get_worldbook(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
     sid = script_id or args.get("script_id")
     query = (args.get("query") or "").strip()
     if not sid:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, int(sid), user_id):
-                return f"失败 (权限): 剧本 #{int(sid)} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{int(sid)} does not belong to the current user or is not subscribed"
             # 真实表名 worldbook_entries(不是 script_worldbook,旧 SQL 用了过期表名)
             # 字段:title / content(不是 key)
             if query:
@@ -332,7 +332,7 @@ def _t_get_worldbook(user_id: int, script_id: int | None, args: dict, state: Any
                 ).fetchall() or []
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_get_my_stats(user_id: int, args: dict) -> str:
@@ -350,7 +350,7 @@ def _t_get_my_stats(user_id: int, args: dict) -> str:
             ).fetchone()
         return json.dumps(dict(row or {}), ensure_ascii=False, default=str, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_list_my_credentials_meta(user_id: int, args: dict) -> str:
@@ -366,7 +366,7 @@ def _t_list_my_credentials_meta(user_id: int, args: dict) -> str:
             ).fetchall() or []
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, default=str, indent=2)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 # ────────────────────────────────────────────────────────────
@@ -377,14 +377,14 @@ def _t_list_my_credentials_meta(user_id: int, args: dict) -> str:
 def _misc_save_specs() -> list:
     return [
         ("set_permission_mode",
-         "切换写入权限模式: full_access(LLM 自由写)/auto_review(自动审批)/default(默认)/read_only(LLM 不写)",
+         "Switch the write-permission mode: full_access (LLM writes freely) / auto_review (automatic approval) / default / read_only (LLM does not write)",
          {"type": "object",
           "properties": {"mode": {"type": "string",
                                   "enum": ["default", "auto_review", "full_access", "read_only"]}},
           "required": ["mode"]},
          _t_set_permission_mode, "save", _SAVE_SENSITIVE, False),
         ("inject_pending_question",
-         "向当前 save 注入一个待回答问题 (debug 用,只允许 UI/API)",
+         "Inject a pending question into the current save (for debugging; UI/API only)",
          {"type": "object",
           "properties": {
               "question": {"type": "string"},
@@ -400,35 +400,35 @@ def _misc_save_specs() -> list:
 def _misc_user_specs() -> list:
     return [
         # task 87 Phase 7 安全审查 — user 级 mutate (跨 save 影响) 全部禁 LLM:
-        ("set_preference", "设置当前用户偏好键值对 (写 user_preferences.preferences 的某一项)",
+        ("set_preference", "Set a preference key/value for the current user (writes one entry of user_preferences.preferences)",
          {"type": "object",
           "properties": {"key": {"type": "string"}, "value": {}},
           "required": ["key", "value"]},
          _t_set_preference, _USER_MUTATE, False),  # 跨 save,LLM 禁
-        ("mcp_server_enable", "切换 MCP server 启用状态 (admin)",
+        ("mcp_server_enable", "Toggle whether an MCP server is enabled (admin)",
          {"type": "object",
           "properties": {"server_id": {"type": "string"}, "enabled": {"type": "boolean"}},
           "required": ["server_id", "enabled"]},
          _t_mcp_server_enable, _MCP_ADMIN, False),  # SEC(M-1): 不含 console_assistant
-        ("mcp_server_start", "启动指定 MCP server",
+        ("mcp_server_start", "Start the given MCP server",
          {"type": "object", "properties": {"server_id": {"type": "string"}}, "required": []},
          _t_mcp_server_start, _MCP_ADMIN, False),   # SEC(M-1): 不含 console_assistant
-        ("mcp_server_stop", "停止指定 MCP server",
+        ("mcp_server_stop", "Stop the given MCP server",
          {"type": "object", "properties": {"server_id": {"type": "string"}}, "required": ["server_id"]},
          _t_mcp_server_stop, _MCP_ADMIN, False),    # SEC(M-1): 不含 console_assistant
-        ("select_model", "切换当前 GM 使用的模型 (api_id + model_real_name)",
+        ("select_model", "Switch the model the GM currently uses (api_id + model_real_name)",
          {"type": "object",
           "properties": {"api_id": {"type": "string"}, "model": {"type": "string"}},
           "required": []},  # handler 自行校验并返回"不能为空"友好消息
          _t_select_model, _USER_MUTATE, False),  # LLM 改自己的模型?坚决禁
         # B 类补全 (全部 read)
-        ("get_save_detail", "返回指定 save 的元数据(标题/script_id/激活 commit 等)",
+        ("get_save_detail", "Return metadata for the given save (title / script_id / active commit, etc.)",
          {"type": "object", "properties": {"save_id": {"type": "integer"}}, "required": ["save_id"]},
          _t_get_save_detail, _USER_READ, False),
-        ("get_my_stats", "返回当前用户的存档/剧本/persona/卡片计数",
+        ("get_my_stats", "Return the current user's counts of saves / scripts / personas / cards",
          {"type": "object", "properties": {}}, _t_get_my_stats, _USER_READ, False),
         ("list_my_credentials_meta",
-         "只返凭证元数据(provider/last_updated),**永不返 key 本身**",
+         "Return credential metadata only (provider/last_updated); **never returns the key itself**",
          {"type": "object", "properties": {}}, _t_list_my_credentials_meta, _USER_READ, False),
     ]
 
@@ -436,13 +436,13 @@ def _misc_user_specs() -> list:
 def _misc_script_specs() -> list:
     return [
         ("get_chapter_facts",
-         "按 script_id + chapter_index 检索章节事实表",
+         "Look up the chapter fact table by script_id + chapter_index",
          {"type": "object",
           "properties": {"script_id": {"type": "integer"}, "chapter_index": {"type": "integer"}},
           "required": []},
          _t_get_chapter_facts),
         ("get_worldbook",
-         "按 script_id + 可选 query 检索世界书条目",
+         "Search worldbook entries by script_id + optional query",
          {"type": "object",
           "properties": {"script_id": {"type": "integer"}, "query": {"type": "string"}},
           "required": []},
@@ -522,7 +522,7 @@ def register_misc_tools() -> None:
         target = (args.get("target") or "").strip()
         reason = (args.get("reason") or "").strip()
         if not target:
-            return "失败: target 为空"
+            return "Failed: target is empty"
         # 不强校验枚举(允许未来扩展),只提示一下
         return f"NAVIGATE:{target}|{reason}"
 
@@ -530,21 +530,21 @@ def register_misc_tools() -> None:
     nav_spec = ToolSpec(
         name="navigate_to_setting",
         description=(
-            "当用户问 'XX 功能在哪里' / '怎么去 XX 页' / 想跳转到某设置项时,"
-            "调此工具引导用户到指定页面位置。会触发前端跳转 + 高亮目标元素。"
-            f"target 推荐取下列枚举: {nav_targets_enum}。"
-            "也支持未列出的 pageId.anchor 自由扩展。reason 简短说明为什么跳。"
+            "When the user asks 'where is the XX feature' / 'how do I get to the XX page' / wants to jump to a setting, "
+            "call this tool to guide the user to that place on the page. It triggers a front-end navigation + highlights the target element. "
+            f"Recommended target values: {nav_targets_enum}. "
+            "Unlisted pageId.anchor values are also supported. reason briefly says why you are navigating."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "target": {
                     "type": "string",
-                    "description": "页面锚点 id,推荐枚举或 pageId.anchor",
+                    "description": "Page anchor id: a recommended enum value or pageId.anchor",
                 },
                 "reason": {
                     "type": "string",
-                    "description": "简短说明跳转原因,前端可能展示给用户",
+                    "description": "Short reason for the navigation; the front end may show it to the user",
                 },
             },
             "required": ["target"],
@@ -571,16 +571,16 @@ def register_misc_tools() -> None:
     def _t_ask_user_choice(user_id: int, args: dict) -> str:
         question = (args.get("question") or "").strip()
         if not question:
-            return "失败: question 为空"
+            return "Failed: question is empty"
         options = args.get("options") or []
         if not isinstance(options, list):
-            return "失败: options 必须是数组"
+            return "Failed: options must be an array"
         # 清理为纯字符串列表
         clean_options = [str(o).strip() for o in options if str(o).strip()]
         if len(clean_options) < 2:
-            return "失败: options 至少 2 项"
+            return "Failed: options needs at least 2 items"
         if len(clean_options) > 6:
-            return "失败: options 最多 6 项"
+            return "Failed: options allows at most 6 items"
         allow_free_text = args.get("allow_free_text")
         if allow_free_text is None:
             allow_free_text = True
@@ -597,34 +597,34 @@ def register_misc_tools() -> None:
     choice_spec = ToolSpec(
         name="ask_user_choice",
         description=(
-            "向用户提一个有限选项的问题, 用户在 UI 上点按钮选答案。"
-            "比让用户打字快。当你需要确认偏好/路线/分支选择时调它, "
-            "而不是裸文本列 1/2/3。options 数组每项是一个候选答案字符串, "
-            "allow_free_text=true 时 UI 会额外显示一个自由输入按钮, "
-            "让用户也能描述自己的想法。context 可选, 解释为什么问这个。"
+            "Ask the user a question with a limited set of options; the user clicks a button in the UI to answer. "
+            "Faster than making the user type. Call it when you need to confirm a preference / route / branch choice, "
+            "instead of listing bare 1/2/3 in text. Each item of the options array is one candidate answer string; "
+            "with allow_free_text=true the UI also shows a free-input button "
+            "so the user can describe their own idea. context is optional and explains why you are asking."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "question": {
                     "type": "string",
-                    "description": "问题文本",
+                    "description": "Question text",
                 },
                 "options": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "可选答案列表 (2-6 项), 纯字符串",
+                    "description": "List of answer options (2-6 items), plain strings",
                     "minItems": 2,
                     "maxItems": 6,
                 },
                 "allow_free_text": {
                     "type": "boolean",
                     "default": True,
-                    "description": "是否允许用户自由输入(默认 true)",
+                    "description": "Whether the user may type a free-form answer (default true)",
                 },
                 "context": {
                     "type": "string",
-                    "description": "可选, 解释为什么问这个",
+                    "description": "Optional; explains why you are asking",
                 },
             },
             "required": ["question", "options"],
@@ -641,7 +641,7 @@ def register_misc_tools() -> None:
     def _t_ask_user_text(user_id: int, args: dict) -> str:
         question = (args.get("question") or "").strip()
         if not question:
-            return "失败: question 为空"
+            return "Failed: question is empty"
         placeholder = (args.get("placeholder") or "").strip()
         context = (args.get("context") or "").strip()
         payload = {
@@ -654,15 +654,15 @@ def register_misc_tools() -> None:
     text_spec = ToolSpec(
         name="ask_user_text",
         description=(
-            "向用户提一个自由文本输入问题。当字段是名字/描述/长文本而不适合做选项时调它。"
-            "UI 会弹一个输入框,placeholder 是占位提示,context 解释为什么问。"
+            "Ask the user a free-text question. Call it when the field is a name / description / long text that does not suit fixed options. "
+            "The UI pops up an input box; placeholder is the hint text and context explains why you are asking."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "question": {"type": "string", "description": "问题文本"},
-                "placeholder": {"type": "string", "description": "输入框 placeholder"},
-                "context": {"type": "string", "description": "可选, 解释为什么问这个"},
+                "question": {"type": "string", "description": "Question text"},
+                "placeholder": {"type": "string", "description": "Input box placeholder"},
+                "context": {"type": "string", "description": "Optional; explains why you are asking"},
             },
             "required": ["question"],
         },
@@ -683,20 +683,20 @@ def register_misc_tools() -> None:
     describe_spec = ToolSpec(
         name="ui_describe",
         description=(
-            "按意图关键词查找当前可用的 UI action (角色卡/存档/剧本/设置等)。"
-            "返回一组 action 卡片, 含 id / 描述 / 参数表 / 是否 destructive。"
-            "用户每说一个想做的事, 先调 ui_describe(intent='用户原话关键词') 看选项, "
-            "再决定是 ui_invoke 还是 ask_user_choice 继续问。"
-            "page 可选, 限定页面范围 (saves/scripts/cards/settings)。"
+            "Find the currently available UI actions (character cards / saves / scripts / settings, etc.) by intent keywords. "
+            "Returns a set of action cards with id / description / parameters / whether destructive. "
+            "Each time the user says something they want to do, first call ui_describe(intent='keywords from the user's words') to see the options, "
+            "then decide whether to ui_invoke or keep asking with ask_user_choice. "
+            "page is optional and limits the page scope (saves/scripts/cards/settings)."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "intent": {"type": "string",
-                           "description": "用户原话或关键词, 用于模糊匹配。空则返通用 top-N"},
+                           "description": "The user's words or keywords, for fuzzy matching. Empty returns the generic top-N"},
                 "page": {"type": "string",
                          "enum": ["saves", "scripts", "cards", "settings"],
-                         "description": "限定页面范围 (可选)"},
+                         "description": "Limit to a page scope (optional)"},
                 "limit": {"type": "integer", "default": 8, "minimum": 1, "maximum": 20},
             },
             "required": [],
@@ -716,22 +716,22 @@ def register_misc_tools() -> None:
         raw = args.get("steps")
         steps = [str(s).strip() for s in raw if str(s).strip()] if isinstance(raw, list) else []
         if not steps:
-            return "失败: steps 为空(给一个分步计划字符串数组)"
-        return f"已在右栏向作者展示写作计划({len(steps)} 步);按计划逐步执行即可。"
+            return "Failed: steps is empty (pass an array of step strings)"
+        return f"Showed the writing plan to the author in the right panel ({len(steps)} steps); now carry out the plan step by step."
 
     plan_spec = ToolSpec(
         name="set_writing_plan",
         description=(
-            "把你对当前写作/改稿任务的分步计划展示给作者(右栏渲染成清单)。遇到多步任务"
-            "(重写一章并同步设定 / 梳理一条线的伏笔等)开工前调一次,让作者看清你打算怎么做。"
-            "steps 是有序分步字符串数组,每步一句话。"
+            "Show the author your step-by-step plan for the current writing/revision task (rendered as a checklist in the right panel). For multi-step tasks "
+            "(rewrite a chapter and sync the lore / trace the foreshadowing of a storyline, etc.) call it once before starting so the author can see how you intend to proceed. "
+            "steps is an ordered array of step strings, one sentence each."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "title": {"type": "string", "description": "可选,计划标题"},
+                "title": {"type": "string", "description": "Optional plan title"},
                 "steps": {"type": "array", "items": {"type": "string"},
-                          "description": "有序分步,每步一句话", "minItems": 1},
+                          "description": "Ordered steps, one sentence each", "minItems": 1},
             },
             "required": ["steps"],
         },
@@ -748,7 +748,7 @@ def register_misc_tools() -> None:
         # 作者刷新仍在。scope=script,script_id 已被 dispatcher owner 校验+无条件覆盖(云端隔离)。
         raw = args.get("issues")
         if not isinstance(raw, list) or not raw:
-            return "失败: issues 为空(给一个问题对象数组)"
+            return "Failed: issues is empty (pass an array of issue objects)"
         rows = []
         for it in raw:
             if not isinstance(it, dict):
@@ -765,9 +765,9 @@ def register_misc_tools() -> None:
             ty = (str(it.get("type") or "").strip()[:40]) or None
             rows.append((ch, sev, ty, detail[:2000]))
         if not rows:
-            return "失败: issues 均无 detail(每条至少要有 detail)"
+            return "Failed: none of the issues has a detail (each one needs at least a detail)"
         if script_id is None:
-            return "失败: 缺少剧本绑定(script_id),无法持久化问题清单。"
+            return "Failed: no script binding (script_id), so the issue list cannot be persisted."
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
@@ -778,29 +778,29 @@ def register_misc_tools() -> None:
                     "values (%s,%s,%s,%s,%s)",
                     (script_id, ch, sev, ty, detail),
                 )
-        return f"已在右栏「问题」面板列出 {len(rows)} 条问题(已持久化,作者刷新仍在,可逐条处理或跳转章节)。"
+        return f"Listed {len(rows)} issues in the 'Problems' panel on the right (persisted: they survive a refresh, and the author can handle them one by one or jump to the chapter)."
 
     issues_spec = ToolSpec(
         name="report_writing_issues",
         description=(
-            "把你审稿/通读发现的问题结构化列给作者(右栏「问题」面板,带章号可跳转,持久化、刷新仍在)。"
-            "审稿、查矛盾/重复/连贯/伏笔回收后调它汇总,而不是只在回复里散文罗列。每次调用=本剧本最新"
-            "审稿快照(会替换上一批)。每条 issue:chapter(可空,章号)/ severity(可空 高/中/低)/ "
-            "type(类别)/ detail(具体描述与建议)。"
+            "List the problems you found while reviewing/reading through, in structured form, for the author (the 'Problems' panel on the right; chapter numbers are clickable; persisted across refreshes). "
+            "After reviewing or checking for contradictions / repetition / continuity / foreshadowing payoff, call it to summarize instead of only listing them as prose in your reply. Each call = the script's latest "
+            "review snapshot (it replaces the previous batch). Each issue: chapter (optional, chapter number) / severity (optional: high/medium/low) / "
+            "type (category) / detail (specific description and suggestion)."
         ),
         input_schema={
             "type": "object",
             "properties": {
-                "summary": {"type": "string", "description": "可选,一句话总评"},
+                "summary": {"type": "string", "description": "Optional one-sentence overall assessment"},
                 "issues": {
                     "type": "array", "minItems": 1,
                     "items": {
                         "type": "object",
                         "properties": {
-                            "chapter": {"type": "integer", "description": "相关章号(可空)"},
-                            "severity": {"type": "string", "description": "高/中/低(可空)"},
-                            "type": {"type": "string", "description": "问题类别:矛盾/重复/连贯/伏笔/节奏/POV 等"},
-                            "detail": {"type": "string", "description": "具体描述 + 修改建议"},
+                            "chapter": {"type": "integer", "description": "Related chapter number (optional)"},
+                            "severity": {"type": "string", "description": "high/medium/low (optional)"},
+                            "type": {"type": "string", "description": "Issue category: contradiction / repetition / continuity / foreshadowing / pacing / POV, etc."},
+                            "detail": {"type": "string", "description": "Specific description + suggested fix"},
                         },
                         "required": ["detail"],
                     },

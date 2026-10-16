@@ -87,11 +87,11 @@ def _fetch_phase_digest(script_id: int, phase: str) -> str:
                 continue
             head = ""
             if ch is not None:
-                head = f"第{ch}章"
+                head = f"Chapter {ch}"
                 if title:
-                    head += f"《{title}》"
+                    head += f" \"{title}\""
             elif title:
-                head = f"《{title}》"
+                head = f"\"{title}\""
             parts.append(f"[{head}] {summ[:160]}" if head else summ[:160])
         return "\n".join(parts)[:1600]
     except Exception:
@@ -116,13 +116,13 @@ def _fetch_anchor_info(script_id: int, phase: str, label: str) -> str:
         if row:
             parts = []
             if row.get("story_phase"):
-                parts.append(f"剧情阶段: {row['story_phase']}")
+                parts.append(f"Story phase: {row['story_phase']}")
             if row.get("story_time_label"):
-                parts.append(f"时间锚点: {row['story_time_label']}")
+                parts.append(f"Time anchor: {row['story_time_label']}")
             if row.get("chapter_min") is not None:
-                parts.append(f"章节范围: {row['chapter_min']}–{row['chapter_max']}")
+                parts.append(f"Chapter range: {row['chapter_min']}-{row['chapter_max']}")
             if row.get("sample_summary"):
-                parts.append(f"场景摘要: {row['sample_summary'][:200]}")
+                parts.append(f"Scene summary: {row['sample_summary'][:200]}")
             return " | ".join(parts)
     except Exception:
         pass
@@ -183,11 +183,11 @@ _IDENTITY_SCHEMA: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "description": "身份名称或角色名"},
-                    "role": {"type": "string", "description": "职位/定位一句话"},
+                    "name": {"type": "string", "description": "Identity name or character name"},
+                    "role": {"type": "string", "description": "Position/role in one sentence"},
                     "background": {
                         "type": "string",
-                        "description": "背景介绍 30-80 字, 描述与剧本世界的关联",
+                        "description": "Background in 20-55 words, describing the connection to the script's world",
                     },
                 },
                 "required": ["name", "role", "background"],
@@ -218,58 +218,60 @@ def _build_system_prompt(
     # 一体双魂(dual)/彻底扮演(native)=原住民身份→"原作世界里 X 身份"。旧值 isekai 等同 soul。
     isekai = player_origin in ("isekai", "soul", "body")
     lines = [
-        "你是 RPG 平台的身份推荐助手。",
+        "You are the RPG platform's identity recommendation assistant.",
         (
-            "根据玩家选定的剧本、出生点和角色卡, 为玩家推荐【现代灵魂穿越成 X】的差异化初始身份候选。"
-            "玩家本质上是从现代地球穿越来的灵魂, 现在占据着所选角色卡这具身体, 拥有现代记忆 + 异世界知识。"
+            "Based on the script, birthpoint and character card the player chose, recommend differentiated starting identities of the form "
+            "[a modern soul transmigrated into X]. "
+            "The player is essentially a soul from modern-day Earth now occupying the body of the chosen character card, with modern memories + knowledge of the other world."
             if isekai else
-            "根据玩家选定的剧本、出生点和角色卡, 为玩家推荐【原作世界里 X 身份】的差异化初始身份候选。"
-            "玩家本质上是这个剧本世界里土生土长的角色, 没有现代记忆/穿越者背景, 知识体系限定在剧本设定里。"
+            "Based on the script, birthpoint and character card the player chose, recommend differentiated starting identities of the form "
+            "[an X identity native to the original world]. "
+            "The player is essentially a character born and raised in this script's world, with no modern memories or transmigrator background; their knowledge is limited to the script's setting."
         ),
         "",
-        f"【剧本标题】{script_title}",
+        f"[Script title] {script_title}",
     ]
     if script_desc:
-        lines.append(f"【剧本概要】{script_desc[:400]}")
+        lines.append(f"[Script synopsis] {script_desc[:400]}")
     if phase:
-        lines.append(f"【出生点阶段】{phase}")
+        lines.append(f"[Birthpoint phase] {phase}")
     if label:
-        lines.append(f"【出生点时间锚点】{label}")
+        lines.append(f"[Birthpoint time anchor] {label}")
     if anchor_info:
-        lines.append(f"【锚点详情】{anchor_info}")
+        lines.append(f"[Anchor details] {anchor_info}")
     if phase_digest:
-        lines.append(f"【阶段剧情参考】{phase_digest}")
+        lines.append(f"[Phase story reference] {phase_digest}")
     if card:
         card_lines = []
         if card.get("name"):
-            card_lines.append(f"姓名: {card['name']}")
+            card_lines.append(f"Name: {card['name']}")
         role_or_id = card.get("role") or card.get("identity") or ""
         if role_or_id:
-            card_lines.append(f"身份/职位: {role_or_id}")
+            card_lines.append(f"Identity/position: {role_or_id}")
         if card.get("personality"):
-            card_lines.append(f"性格: {card['personality'][:80]}")
+            card_lines.append(f"Personality: {card['personality'][:80]}")
         if card.get("appearance"):
-            card_lines.append(f"外貌: {card['appearance'][:80]}")
+            card_lines.append(f"Appearance: {card['appearance'][:80]}")
         if card_lines:
-            lines.append(f"【已选角色卡】{' | '.join(card_lines)}")
+            lines.append(f"[Chosen character card] {' | '.join(card_lines)}")
     lines += [
         "",
-        f"请生成 {n} 个差异化的初始身份选项。",
-        "要求:",
-        "  · 各身份视角各异 (例: 主动卷入者/被动目击者/外来者/权力内部者/底层幸存者 等)",
-        "  · 每个身份与当前出生点阶段的剧情逻辑高度契合",
-        "  · name: 角色全名或代号",
-        "  · role: 在剧本世界中的定位/职业/关系, 一句话",
-        "  · background: 30-80 字, 说明角色来历与出生点阶段的关联;"
-        "**第三人称无主语的客观描述**(如「潜伏敌营的卧底, 背负灭族之仇…」), 禁用「你/你是」第二人称",
+        f"Generate {n} differentiated starting identity options.",
+        "Requirements:",
+        "  · Each identity has a different perspective (e.g. active participant / passive witness / outsider / insider of power / bottom-rung survivor)",
+        "  · Each identity fits the story logic of the current birthpoint phase closely",
+        "  · name: the character's full name or code name",
+        "  · role: their position / occupation / relationships in the script's world, in one sentence",
+        "  · background: 20-55 words explaining the character's origins and connection to the birthpoint phase; "
+        "**an objective third-person description without a subject** (e.g. \"An undercover agent embedded in the enemy camp, carrying the vengeance of a slaughtered clan...\"); never use the second person (\"you\" / \"you are\")",
         (
-            "  · 必须体现【穿越者属性】 — 现代灵魂 + 异世界身体 + 原世界记忆 + 对原作剧情的部分超前认知"
+            "  · Must show [transmigrator traits] - a modern soul + an other-world body + memories of the original world + partial foreknowledge of the canon plot"
             if isekai else
-            "  · 严禁出现【现代/穿越/转生/异世界来客/原作认知】等元素 — 玩家是这个世界土著, 知识限定剧本设定"
+            "  · Strictly no [modern / transmigration / reincarnation / visitor-from-another-world / canon foreknowledge] elements - the player is a native of this world, with knowledge limited to the script's setting"
         ),
-        "  · 不要把剧本全部 lore 塞进 background, 聚焦与出生点直接相关的动机",
+        "  · Do not stuff all of the script's lore into background; focus on motives directly related to the birthpoint",
         "",
-        "通过 emit_identities 工具一次性输出 JSON, 不要写额外解释。",
+        "Output the JSON in one go through the emit_identities tool; do not write any extra explanation.",
     ]
     return "\n".join(lines)
 
@@ -289,10 +291,16 @@ def _call_llm_emit_identities(
         return None
 
     backend_kind = type(backend).__name__
+    # 直连 backend(未经 _harness),输出语言指令在此确定性补上
+    try:
+        from core.language import agent_language_directive
+        system = system + agent_language_directive(user_id)
+    except Exception:
+        pass
 
     tool_def = {
         "name": "emit_identities",
-        "description": "输出身份推荐列表。",
+        "description": "Output the list of recommended identities.",
         "input_schema": _IDENTITY_SCHEMA,
     }
 
@@ -303,7 +311,7 @@ def _call_llm_emit_identities(
                 max_tokens=1200,
                 temperature=0.85,
                 system=system,
-                messages=[{"role": "user", "content": f"请生成 {n} 个身份推荐。"}],
+                messages=[{"role": "user", "content": f"Generate {n} identity recommendations."}],
                 tools=[tool_def],
                 tool_choice={"type": "tool", "name": "emit_identities"},
             )
@@ -321,12 +329,12 @@ def _call_llm_emit_identities(
             schema_hint = json.dumps(_IDENTITY_SCHEMA, ensure_ascii=False, indent=2)[:1500]
             full_sys = (
                 system
-                + "\n\n你必须只返回符合以下 JSON Schema 的 JSON 对象, 不要包含 Markdown 围栏:\n"
+                + "\n\nYou must return only a JSON object matching the following JSON Schema, without Markdown fences:\n"
                 + schema_hint
             )
             text = backend.call_structured(
                 full_sys,
-                [{"role": "user", "content": f"请生成 {n} 个身份推荐。"}],
+                [{"role": "user", "content": f"Generate {n} identity recommendations."}],
                 max_tokens=1200,
             )
             obj = _parse_json_safely(text)
@@ -415,11 +423,11 @@ def _t_recommend_player_identity(user_id: int, script_id: int | None, args: dict
     # 参数解析
     sid = script_id or args.get("script_id")
     if not sid:
-        return json.dumps({"ok": False, "error": "script_id 必填"}, ensure_ascii=False)
+        return json.dumps({"ok": False, "error": "script_id is required"}, ensure_ascii=False)
     try:
         sid = int(sid)
     except (TypeError, ValueError):
-        return json.dumps({"ok": False, "error": "script_id 必须是整数"}, ensure_ascii=False)
+        return json.dumps({"ok": False, "error": "script_id must be an integer"}, ensure_ascii=False)
 
     phase = (args.get("birthpoint_phase") or "").strip()
     label = (args.get("birthpoint_label") or "").strip()
@@ -442,7 +450,7 @@ def _t_recommend_player_identity(user_id: int, script_id: int | None, args: dict
     script_info = _fetch_script_info(sid, user_id)
     if not script_info:
         return json.dumps(
-            {"ok": False, "error": "无权访问该剧本"},
+            {"ok": False, "error": "No access to this script"},
             ensure_ascii=False,
         )
 
@@ -475,13 +483,13 @@ def _t_recommend_player_identity(user_id: int, script_id: int | None, args: dict
     # 5) 处理结果 — v27: 失败显式报错,不再兜模板
     if not (raw_recs and isinstance(raw_recs, list) and len(raw_recs) > 0):
         # 区分两类失败:1) backend 选择/调用失败(返 None) 2) 返了但空 list
-        detail = "LLM 未返回任何推荐"
+        detail = "the LLM returned no recommendations"
         if raw_recs is None:
-            detail = "LLM 调用失败 (后端未配置/网络错误/响应解析失败)"
+            detail = "the LLM call failed (backend not configured / network error / response could not be parsed)"
         elif isinstance(raw_recs, list) and len(raw_recs) == 0:
-            detail = "LLM 返回了空列表,可能是上下文不足或模型拒答"
+            detail = "the LLM returned an empty list, possibly due to insufficient context or a model refusal"
         return json.dumps(
-            {"ok": False, "error": f"身份推荐失败: {detail}。请使用手动创建身份卡或直接使用所选角色卡。"},
+            {"ok": False, "error": f"Identity recommendation failed: {detail}. Create an identity card manually or use the chosen character card directly."},
             ensure_ascii=False,
         )
 
@@ -504,39 +512,39 @@ def register_creative_tools() -> None:
     spec = ToolSpec(
         name="recommend_player_identity",
         description=(
-            "新建存档时, 根据剧本 + 出生点 + 角色卡, 用 LLM 推荐 3-5 个契合该出生点"
-            "剧情阶段的初始身份 (玩家在剧本世界中的定位/职业/动机)。"
-            "返回 JSON {ok, recommendations:[{name,role,background}]}。"
-            "出生点可选: birthpoint_phase (阶段名) + birthpoint_label (时间锚点标签)。"
-            "角色卡可选: character_card_id + character_card_kind (persona/user_card/script_card)。"
+            "When creating a new save, use the LLM to recommend 3-5 starting identities that fit the birthpoint's "
+            "story phase (the player's position / occupation / motive in the script's world), based on script + birthpoint + character card. "
+            "Returns JSON {ok, recommendations:[{name,role,background}]}. "
+            "Optional birthpoint: birthpoint_phase (phase name) + birthpoint_label (time-anchor label). "
+            "Optional character card: character_card_id + character_card_kind (persona/user_card/script_card)."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "script_id": {
                     "type": "integer",
-                    "description": "目标剧本 id",
+                    "description": "Target script id",
                 },
                 "birthpoint_phase": {
                     "type": "string",
-                    "description": "出生点对应的剧情阶段名 (可选)",
+                    "description": "Story phase name of the birthpoint (optional)",
                 },
                 "birthpoint_label": {
                     "type": "string",
-                    "description": "出生点时间锚点标签 (可选, 如 story_time_label)",
+                    "description": "Birthpoint time-anchor label (optional, e.g. story_time_label)",
                 },
                 "character_card_id": {
                     "type": "integer",
-                    "description": "已选角色卡 id (可选)",
+                    "description": "Chosen character card id (optional)",
                 },
                 "character_card_kind": {
                     "type": "string",
                     "enum": ["persona", "user_card", "script_card"],
-                    "description": "角色卡类型 (可选, 默认 user_card)",
+                    "description": "Character card type (optional, default user_card)",
                 },
                 "n": {
                     "type": "integer",
-                    "description": "推荐身份数量 (默认 4, 范围 1-6)",
+                    "description": "Number of identities to recommend (default 4, range 1-6)",
                     "default": 4,
                     "minimum": 1,
                     "maximum": 6,

@@ -19,13 +19,13 @@ class SetPreferenceValueCap(unittest.TestCase):
     def test_oversize_value_rejected_before_db(self):
         from tools_dsl.command_tools_misc import _t_set_preference
         r = _t_set_preference(1, {"key": "k", "value": "x" * 5000})
-        self.assertIn("过大", r)
+        self.assertIn("too large", r)
 
     def test_normal_value_passes_cap(self):
         # 不应被 cap 拦(可能因测试环境无 DB 而后续失败,但不应是 "value 过大")
         from tools_dsl.command_tools_misc import _t_set_preference
         r = _t_set_preference(1, {"key": "k", "value": "ok"})
-        self.assertNotIn("value 过大", r)
+        self.assertNotIn("value too large", r)
 
 
 class SyncScopeLock(unittest.TestCase):

@@ -41,14 +41,14 @@ class UiSetFieldPermissionGate(unittest.TestCase):
         self._set_mode("read_only")
         res = ui_action._t_ui_set_field(1, dict(_ARGS))
         self.assertIsInstance(res, str, "read_only 应返回失败串而非 UI action dict")
-        self.assertTrue(res.startswith("失败"), res)
+        self.assertTrue(res.startswith("Failed"), res)
         self.assertIn("read_only", res)
 
     def test_default_rejected(self):
         self._set_mode("default")
         res = ui_action._t_ui_set_field(1, dict(_ARGS))
         self.assertIsInstance(res, str)
-        self.assertTrue(res.startswith("失败"), res)
+        self.assertTrue(res.startswith("Failed"), res)
 
     def test_full_access_allowed(self):
         self._set_mode("full_access")
@@ -68,7 +68,7 @@ class UiSetFieldPermissionGate(unittest.TestCase):
         """缺字段的既有校验不被闸门破坏(即便 full_access)。"""
         self._set_mode("full_access")
         self.assertTrue(
-            ui_action._t_ui_set_field(1, {"field_key": "x", "value": "y"}).startswith("失败"),
+            ui_action._t_ui_set_field(1, {"field_key": "x", "value": "y"}).startswith("Failed"),
             "缺 form_id 应仍先报失败",
         )
 

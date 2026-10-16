@@ -343,7 +343,7 @@ class Phase2ToolExecution(unittest.TestCase):
     def test_add_world_event_dedup(self):
         self.state.data.setdefault("world", {})["known_events"] = ["X"]
         r = self._call("set_world_known_event", {"event": "X"}, trace_id="tdup-1")
-        self.assertIn("已存在", r.result)
+        self.assertIn("already exists", r.result)
 
     def test_stop_current_chat(self):
         r = self._call("stop_current_chat", {})

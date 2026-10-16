@@ -68,7 +68,7 @@ class SetWorldTimeWritesUserSetJumpTurn(unittest.TestCase):
     def test_empty_target_fails(self):
         s = _new_state()
         result = execute_tool(s, "set_world_time", {"target": ""})
-        self.assertIn("失败", result)
+        self.assertIn("failed", result)
         # state 不变
         self.assertEqual(s.data["world"]["time"], "")
 
@@ -79,7 +79,7 @@ class SetWorldTimeWritesUserSetJumpTurn(unittest.TestCase):
         for target in ("魔王城地下三层", "第七纪元", "XYZ 星系", "宇宙战时"):
             s2 = _new_state()
             r = execute_tool(s2, "set_world_time", {"target": target})
-            self.assertNotIn("失败", r)
+            self.assertNotIn("failed", r)
             self.assertEqual(s2.data["world"]["time"], target)
 
 
@@ -93,7 +93,7 @@ class SetPlayerLocationTool(unittest.TestCase):
         s = _new_state()
         s.data["player"]["current_location"] = "原位置"
         result = execute_tool(s, "set_player_location", {"location": ""})
-        self.assertIn("失败", result)
+        self.assertIn("failed", result)
         self.assertEqual(s.data["player"]["current_location"], "原位置")
 
 
@@ -112,7 +112,7 @@ class SetRelationshipTool(unittest.TestCase):
     def test_missing_args(self):
         s = _new_state()
         result = execute_tool(s, "set_relationship", {"character": "斯雷因"})
-        self.assertIn("失败", result)
+        self.assertIn("failed", result)
         self.assertEqual(s.data["relationships"], {})
 
 
@@ -124,7 +124,7 @@ class MemoryTools(unittest.TestCase):
         self.assertIn("扎兹巴鲁姆有内部敌人", s.data["memory"]["facts"])
         # 去重
         r2 = execute_tool(s, "add_memory_fact", {"text": "扎兹巴鲁姆有内部敌人"})
-        self.assertIn("去重", r2)
+        self.assertIn("deduplicated", r2)
         self.assertEqual(s.data["memory"]["facts"].count("扎兹巴鲁姆有内部敌人"), 1)
 
     def test_pin_memory(self):
@@ -166,7 +166,7 @@ class HypothesisAndUserVariableTools(unittest.TestCase):
         s = _new_state(turn=7)
         r = execute_tool(s, "add_hypothesis", {
             "text": "蛇信背后另有靠山", "characters": ["蛇信"]})
-        self.assertIn("推测登记", r)
+        self.assertIn("Hypothesis recorded", r)
         items = s.data["memory"]["items"]
         hyp = [i for i in items if i.get("kind") == "hypothesis"]
         self.assertEqual(len(hyp), 1)

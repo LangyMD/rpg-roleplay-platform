@@ -79,11 +79,11 @@ def _t_lookup_entity(user_id: int, args: dict) -> str:
     save_id = _int(args.get("save_id"))
     name = (args.get("name") or args.get("logical_key") or "").strip()
     if not save_id or not name:
-        return "失败: 需要 save_id 和 name"
+        return "Failed: save_id and name are required"
     with connect() as db:
         ctx = _save_ctx(db, save_id, user_id)
         if not ctx:
-            return "失败: 无权访问该存档"
+            return "Failed: no access to this save"
         # 先查活态(玩家版优先),再规范
         live = {}
         if ctx["commit_id"]:
@@ -102,7 +102,7 @@ def _t_lookup_entity(user_id: int, args: dict) -> str:
                 limit=200, save_id=ctx["save_id"])
             canon = next((c for c in cands if c["name"] == name or name in (c.get("aliases") or [])), None)
         if not live and not canon:
-            return f"未找到实体「{name}」(可能尚未在当前进度揭示)"
+            return f"Entity '{name}' not found (it may not have been revealed yet at the current progress)"
         # harness 兜底: 当 canon 的 summary/identity/background 都空(LLM 抽 item/concept
         # 类时常见 — 只填 name 没填释义),从 documents 表反查 name 命中段拼 source_excerpts。
         # 避免 GM 拿到 {name:"D20", summary:""} 时按训练数据脑补成 d&d 骰子。
@@ -126,7 +126,7 @@ def _t_lookup_entity(user_id: int, args: dict) -> str:
         result = {
             "name": name, "canon": canon, "live_override": live or None,
             "source_excerpts": source_excerpts,  # 空数组也明确返回 — GM 知道工具尽力了
-            "_note": "source_excerpts 是从原文搜 name 命中的 ±200 字片段,canon summary 为空时用作兜底事实依据" if source_excerpts else None,
+            "_note": "source_excerpts are +/-200-character snippets around matches of name in the source text, used as fallback factual grounding when the canon summary is empty" if source_excerpts else None,
         }
         return json.dumps(result, ensure_ascii=False, default=str)
 
@@ -160,7 +160,7 @@ def _excerpt_from_documents(
                 start = max(0, idx - window_chars)
                 end = min(len(content), idx + len(term) + window_chars)
                 snippet = content[start:end].strip()
-                marker = f"[第{r['chapter_index']}章片段]"
+                marker = f"[Chapter {r['chapter_index']} excerpt]"
                 out.append(f"{marker} {snippet}")
                 if len(out) >= max_excerpts:
                     return out
@@ -178,17 +178,17 @@ def _t_search_canon(user_id: int, args: dict) -> str:
     query = (args.get("query") or "").strip()
     k = min(int(args.get("k") or 6), 15)
     if not save_id or not query:
-        return "失败: 需要 save_id 和 query"
+        return "Failed: save_id and query are required"
     with connect() as db:
         ctx = _save_ctx(db, save_id, user_id)
         if not ctx:
-            return "失败: 无权访问该存档"
+            return "Failed: no access to this save"
         # P0-fix: 传 script_id 的 embed meta，确保 query 向量与建库时相同
         from platform_app.knowledge._search import _get_script_embed_meta, _script_has_vectors
         # 先看这个剧本的规范实体有没有向量(没建过向量 / 桌面无 pgvector):没有就不嵌入查询,
         # 免得白打一次嵌入供应商再搜出空列表。与 _search / kb.recall 的存在性门同一口径。
         if not ctx.get("script_id") or not _script_has_vectors(db, int(ctx["script_id"]), "kb_canon_entities"):
-            return "检索不可用(这个剧本还没有规范实体的向量索引)"
+            return "Search unavailable (this script has no vector index for canon entities yet)"
         _locked_api_id, _locked_model = _get_script_embed_meta(db, ctx["script_id"])
         qv = embed_query(
             query,
@@ -197,7 +197,7 @@ def _t_search_canon(user_id: int, args: dict) -> str:
             force_model=_locked_model or None,
         )
         if not qv:
-            return "检索不可用(嵌入服务未就绪)"
+            return "Search unavailable (the embedding service is not ready)"
         hits = search_canon_by_vector(db, ctx["script_id"], qv, top_k=k,
                                       progress_chapter=ctx["progress_chapter"])
         return json.dumps([dict(h) for h in hits], ensure_ascii=False, default=str)
@@ -207,12 +207,12 @@ def _t_lookup_timeline(user_id: int, args: dict) -> str:
     from platform_app.db import connect
     save_id = _int(args.get("save_id"))
     if not save_id:
-        return "失败: 需要 save_id"
+        return "Failed: save_id is required"
     label = (args.get("label") or "").strip()
     with connect() as db:
         ctx = _save_ctx(db, save_id, user_id)
         if not ctx:
-            return "失败: 无权访问该存档"
+            return "Failed: no access to this save"
         sql = ("select story_time_label, chapter_min, chapter_max, sample_summary "
                "from script_timeline_anchors where script_id=%s")
         a = [ctx["script_id"]]
@@ -233,11 +233,11 @@ def _t_graph_neighbors(user_id: int, args: dict) -> str:
     save_id = _int(args.get("save_id"))
     entity = (args.get("entity") or "").strip()
     if not save_id or not entity:
-        return "失败: 需要 save_id 和 entity"
+        return "Failed: save_id and entity are required"
     with connect() as db:
         ctx = _save_ctx(db, save_id, user_id)
         if not ctx or not ctx["commit_id"]:
-            return "失败: 无权访问或存档无提交"
+            return "Failed: no access, or the save has no commits"
         rels = live_repo.read_relationships(db, save_id, ctx["commit_id"])
         nb = [r for r in rels if r["from_key"] == entity or r["to_key"] == entity]
         return json.dumps(nb, ensure_ascii=False, default=str)
@@ -247,9 +247,9 @@ def _t_graph_neighbors(user_id: int, args: dict) -> str:
 def _require_commit(db, save_id: int, user_id: int):
     ctx = _save_ctx(db, save_id, user_id)
     if not ctx:
-        return None, "失败: 无权访问该存档"
+        return None, "Failed: no access to this save"
     if not ctx["commit_id"]:
-        return None, "失败: 存档尚无提交(无法定位 born_commit)"
+        return None, "Failed: the save has no commits yet (cannot determine born_commit)"
     return ctx, None
 
 
@@ -259,7 +259,7 @@ def _t_kb_upsert_entity(user_id: int, args: dict) -> str:
     save_id = _int(args.get("save_id"))
     lk = (args.get("logical_key") or args.get("name") or "").strip()
     if not save_id or not lk:
-        return "失败: 需要 save_id 和 logical_key/name"
+        return "Failed: save_id and logical_key/name are required"
     with connect() as db:
         ctx, err = _require_commit(db, save_id, user_id)
         if err:
@@ -296,7 +296,7 @@ def _t_kb_upsert_entity(user_id: int, args: dict) -> str:
             attrs=args.get("attrs") if isinstance(args.get("attrs"), dict) else None,
             origin=(args.get("origin") or "player"),
         )
-        return f"已更新实体「{lk}」(写入世界树 commit {ctx['commit_id']})"
+        return f"Updated entity '{lk}' (written to world-tree commit {ctx['commit_id']})"
 
 
 def _t_kb_record_event(user_id: int, args: dict) -> str:
@@ -306,7 +306,7 @@ def _t_kb_record_event(user_id: int, args: dict) -> str:
     summary = _sanitize_kb_text((args.get("summary") or "").strip())
     lk = (args.get("logical_key") or summary[:24]).strip()
     if not save_id or not summary:
-        return "失败: 需要 save_id 和 summary"
+        return "Failed: save_id and summary are required"
     with connect() as db:
         ctx, err = _require_commit(db, save_id, user_id)
         if err:
@@ -317,7 +317,7 @@ def _t_kb_record_event(user_id: int, args: dict) -> str:
             participants=args.get("participants") if isinstance(args.get("participants"), list) else None,
             location=(args.get("location") or ""),
         )
-        return f"已记录事件「{summary[:20]}」"
+        return f"Recorded event '{summary[:40]}'"
 
 
 def _t_kb_set_relationship(user_id: int, args: dict) -> str:
@@ -328,7 +328,7 @@ def _t_kb_set_relationship(user_id: int, args: dict) -> str:
     to = (args.get("to") or args.get("to_key") or "").strip()
     kind = (args.get("kind") or "").strip()
     if not save_id or not frm or not to:
-        return "失败: 需要 save_id / from / to"
+        return "Failed: save_id / from / to are required"
     with connect() as db:
         ctx, err = _require_commit(db, save_id, user_id)
         if err:
@@ -336,7 +336,7 @@ def _t_kb_set_relationship(user_id: int, args: dict) -> str:
         live_repo.set_relationship(db, save_id, ctx["commit_id"], f"{frm}->{to}",
                                    from_key=frm, to_key=to, kind=kind,
                                    note=_sanitize_kb_text(args.get("note"), 300))
-        return f"已设关系 {frm}→{to}: {kind}"
+        return f"Set relationship {frm}->{to}: {kind}"
 
 
 def _t_kb_set_worldline_var(user_id: int, args: dict) -> str:
@@ -345,13 +345,13 @@ def _t_kb_set_worldline_var(user_id: int, args: dict) -> str:
     save_id = _int(args.get("save_id"))
     key = (args.get("key") or args.get("logical_key") or "").strip()
     if not save_id or not key or "value" not in args:
-        return "失败: 需要 save_id / key / value"
+        return "Failed: save_id / key / value are required"
     with connect() as db:
         ctx, err = _require_commit(db, save_id, user_id)
         if err:
             return err
         live_repo.set_worldline_var(db, save_id, ctx["commit_id"], key, value=args.get("value"))
-        return f"已设世界线变量 {key}={args.get('value')}"
+        return f"Set worldline variable {key}={args.get('value')}"
 
 
 # ── 注册 ─────────────────────────────────────────────────────────────────────
@@ -362,28 +362,28 @@ def _obj(props, required):
 def register_kb_tools() -> None:
     reg = get_registry()
     specs = [
-        ToolSpec(name="lookup_entity", description="【KB查询】按名查实体详情(规范层∪活态层,活态优先,按玩家进度过滤防剧透)。",
+        ToolSpec(name="lookup_entity", description="[KB query] Look up an entity's details by name (canon layer ∪ live layer, live takes precedence; filtered by player progress to avoid spoilers).",
                  input_schema=_obj({"save_id": {"type": "integer"}, "name": {"type": "string"}}, ["save_id", "name"]),
                  executor=_t_lookup_entity, scope="user", origins=_KB_READ_ORIGINS),
-        ToolSpec(name="search_canon", description="【KB查询】语义检索规范世界观/实体(pgvector,按进度过滤)。返回 top-k 相关实体。",
+        ToolSpec(name="search_canon", description="[KB query] Semantic search over the canon lore/entities (pgvector, filtered by progress). Returns the top-k relevant entities.",
                  input_schema=_obj({"save_id": {"type": "integer"}, "query": {"type": "string"}, "k": {"type": "integer", "default": 6}}, ["save_id", "query"]),
                  executor=_t_search_canon, scope="user", origins=_KB_READ_ORIGINS),
-        ToolSpec(name="lookup_timeline", description="【KB查询】查规范时间线锚点(纪元/阶段→章节范围,按进度过滤)。",
+        ToolSpec(name="lookup_timeline", description="[KB query] Look up canon timeline anchors (era/phase -> chapter range, filtered by progress).",
                  input_schema=_obj({"save_id": {"type": "integer"}, "label": {"type": "string"}}, ["save_id"]),
                  executor=_t_lookup_timeline, scope="user", origins=_KB_READ_ORIGINS),
-        ToolSpec(name="graph_neighbors", description="【KB查询】查某实体在当前存档的关系邻居。",
+        ToolSpec(name="graph_neighbors", description="[KB query] Look up an entity's relationship neighbors in the current save.",
                  input_schema=_obj({"save_id": {"type": "integer"}, "entity": {"type": "string"}}, ["save_id", "entity"]),
                  executor=_t_graph_neighbors, scope="user", origins=_KB_READ_ORIGINS),
-        ToolSpec(name="kb_upsert_entity", description="【KB写】新建/更新实体(写世界树 delta,打 born_commit)。玩家改变 NPC 状态或创造新实体时用。",
+        ToolSpec(name="kb_upsert_entity", description="[KB write] Create/update an entity (writes a world-tree delta stamped with born_commit). Use it when the player changes an NPC's state or creates a new entity.",
                  input_schema=_obj({"save_id": {"type": "integer"}, "logical_key": {"type": "string"}, "name": {"type": "string"}, "type": {"type": "string"}, "summary": {"type": "string"}}, ["save_id", "logical_key"]),
                  executor=_t_kb_upsert_entity, scope="user", origins=_KB_WRITE_ORIGINS),
-        ToolSpec(name="kb_record_event", description="【KB写】记录本周目发生的事件(写世界树 delta)。",
+        ToolSpec(name="kb_record_event", description="[KB write] Record an event that happened in this playthrough (writes a world-tree delta).",
                  input_schema=_obj({"save_id": {"type": "integer"}, "summary": {"type": "string"}, "participants": {"type": "array", "items": {"type": "string"}}, "location": {"type": "string"}}, ["save_id", "summary"]),
                  executor=_t_kb_record_event, scope="user", origins=_KB_WRITE_ORIGINS),
-        ToolSpec(name="kb_set_relationship", description="【KB写】设/改两实体关系(写世界树 delta)。",
+        ToolSpec(name="kb_set_relationship", description="[KB write] Set/change the relationship between two entities (writes a world-tree delta).",
                  input_schema=_obj({"save_id": {"type": "integer"}, "from": {"type": "string"}, "to": {"type": "string"}, "kind": {"type": "string"}}, ["save_id", "from", "to"]),
                  executor=_t_kb_set_relationship, scope="user", origins=_KB_WRITE_ORIGINS),
-        ToolSpec(name="kb_set_worldline_var", description="【KB写】设世界线变量(写世界树 delta)。",
+        ToolSpec(name="kb_set_worldline_var", description="[KB write] Set a worldline variable (writes a world-tree delta).",
                  input_schema=_obj({"save_id": {"type": "integer"}, "key": {"type": "string"}, "value": {}}, ["save_id", "key", "value"]),
                  executor=_t_kb_set_worldline_var, scope="user", origins=_KB_WRITE_ORIGINS),
     ]

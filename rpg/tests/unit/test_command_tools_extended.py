@@ -218,7 +218,7 @@ class RulesToolsExecution(unittest.TestCase):
     def test_module_load_validates_module_id(self):
         r = self._call("module_load", {})
         self.assertFalse(r.ok)
-        self.assertIn("module_id 为空", r.result or "")
+        self.assertIn("module_id is empty", r.result or "")
 
     def test_module_load_destructive_blocked_from_llm_chat(self):
         r = self._call("module_load", {"module_id": "ash_mine"},
@@ -231,7 +231,7 @@ class RulesToolsExecution(unittest.TestCase):
     def test_combat_player_attack_validates_target(self):
         r = self._call("combat_player_attack", {})
         self.assertFalse(r.ok)
-        self.assertIn("target_id 为空", r.result or "")
+        self.assertIn("target_id is empty", r.result or "")
 
     def test_combat_next_turn_calls_rules_bridge(self):
         """patch rules_bridge.advance_turn 让它返 ok,验证工具调通。"""
@@ -244,12 +244,12 @@ class RulesToolsExecution(unittest.TestCase):
     def test_skill_check_requires_dc(self):
         r = self._call("skill_check", {"skill": "stealth"})
         self.assertFalse(r.ok)
-        self.assertIn("dc 缺失", r.result or "")
+        self.assertIn("dc missing", r.result or "")
 
     def test_consume_item_validates_item(self):
         r = self._call("consume_item", {})
         self.assertFalse(r.ok)
-        self.assertIn("item_id 为空", r.result or "")
+        self.assertIn("item_id is empty", r.result or "")
 
 
 # ────────────────────────────────────────────────────────────
