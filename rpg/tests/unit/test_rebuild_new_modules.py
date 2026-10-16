@@ -303,7 +303,7 @@ class RunnerCallsExtractFunctions(unittest.TestCase):
         with patch("extract.worldbook_enrich.enrich_script_worldbook", return_value=fake_result) as mock_enrich:
             self._run_module("worldbook_enrich", {})
         _, kwargs = mock_enrich.call_args
-        self.assertEqual(kwargs["pattern"], "力量|概念|势力|体系")
+        self.assertEqual(kwargs["pattern"], "力量|概念|势力|体系|Power|Concept|Faction")
 
     def test_world_key_calls_backfill_worldlines_with_real_signature(self):
         # 真实签名(extract/world_key_backfill.py):

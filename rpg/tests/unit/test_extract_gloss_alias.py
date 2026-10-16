@@ -39,7 +39,7 @@ def test_merge_gloss_appends_when_new_mechanism_but_not_outright_longer():
     new = "战姬的护盾按血统分三档,二档以上需额外消耗晶石"
     merged = merge_gloss(old, new)
     assert old in merged
-    assert "新增:" in merged
+    assert "additionally:" in merged
     assert "三档" in merged or "血统" in merged
     assert len(merged) <= 160
 

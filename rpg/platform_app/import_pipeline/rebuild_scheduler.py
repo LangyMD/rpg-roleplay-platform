@@ -416,7 +416,7 @@ def _estimate_tokens_facts_refine(body, chapter_count) -> tuple[int, int]:
 def _estimate_tokens_worldbook_enrich(script_id, body) -> tuple[int, int]:
     # 命中 pattern 的世界书条目数(与 enrich_script_worldbook 同一 `title ~ pattern`
     # 查询口径,不调 LLM,只查一次 DB)× ~2k tokens/条目。
-    _pattern = str(body.get("pattern") or "力量|概念|势力|体系")
+    _pattern = str(body.get("pattern") or "力量|概念|势力|体系|Power|Concept|Faction")
     try:
         with connect() as db:
             _wb_hit_row = db.execute(
