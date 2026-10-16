@@ -43,6 +43,19 @@ class TestClassifyEventFatal(unittest.TestCase):
         """不含关键词的普通文本不应误报。"""
         self.assertFalse(self._fn("国王宣布和平协议,民众欢庆"))
 
+    def test_english_fatal_keywords(self):
+        self.assertTrue(self._fn("The general was killed at the river crossing"))
+        self.assertTrue(self._fn("The garrison surrendered at dawn"))
+        self.assertTrue(self._fn("The spy was unmasked in front of the court"))
+        # whole words only: "diesel" / "skilled" must not count as deaths
+        self.assertFalse(self._fn("The skilled mechanic refilled the diesel tank"))
+
+    def test_english_critical_keyword_bonus(self):
+        from agents.anchor_seed_agent import _compute_importance
+        base = _compute_importance({"importance": "medium"}, "The duke rode north")
+        crit = _compute_importance({"importance": "medium"}, "The duke declared war on the north")
+        self.assertEqual(crit - base, 15)
+
 
 class TestComputeImportance(unittest.TestCase):
     """_compute_importance: 0-100 综合重要性得分。"""

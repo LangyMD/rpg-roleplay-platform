@@ -33,6 +33,7 @@ GM 看到的锚点信息是: summary + participants + locations + importance + i
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -74,6 +75,31 @@ _CRITICAL_KEYWORDS = [
     "驾崩", "薨", "崩",
 ]
 
+# English equivalents (整词、忽略大小写;提取层按配置输出英文摘要时用)
+_FATAL_KEYWORDS_EN = (
+    "died", "dies", "killed", "slain", "perished", "sacrificed", "executed", "massacred",
+    "wiped out", "annihilated", "destroyed", "fell to", "overrun", "blown up",
+    "vanished", "went missing", "disappeared", "exposed", "unmasked",
+    "surrendered", "capitulated", "sentenced", "hanged", "beheaded",
+)
+_CRITICAL_KEYWORDS_EN = (
+    "declared war", "ceasefire", "armistice", "peace treaty", "crowned", "ascended the throne",
+    "succeeded to", "abdicated", "confirmed", "announced", "made public", "married", "wedding",
+    "betrothed", "was born", "gave birth",
+)
+_FATAL_RE_EN = re.compile(r"\b(?:" + "|".join(re.escape(k) for k in _FATAL_KEYWORDS_EN) + r")\b", re.I)
+_CRITICAL_RE_EN = re.compile(r"\b(?:" + "|".join(re.escape(k) for k in _CRITICAL_KEYWORDS_EN) + r")\b", re.I)
+
+
+def _first_hit(text: str, cn_keywords, en_re) -> str:
+    """返回命中的关键词(中文子串优先,其次英文整词),未命中返回空串。"""
+    for kw in cn_keywords:
+        if kw in text:
+            return kw
+    m = en_re.search(text or "")
+    return m.group(0) if m else ""
+
+
 # importance map: chapter_facts.events[].importance → 0-100
 _IMPORTANCE_MAP = {
     "high": 70,
@@ -107,7 +133,7 @@ def seed_anchors_for_save(save_id: int, *, force: bool = False) -> dict[str, Any
             return {"ok": False, "reason": f"save {sid} not found"}
         script_id = int(save_row["script_id"])
         if not script_id:
-            return {"ok": False, "reason": f"save {sid} 没有关联 script_id"}
+            return {"ok": False, "reason": f"save {sid} has no linked script_id"}
 
         # 拉所有 chapter_facts (按 chapter 升序)
         facts = db.execute(
@@ -123,7 +149,7 @@ def seed_anchors_for_save(save_id: int, *, force: bool = False) -> dict[str, Any
         if not facts:
             return {
                 "ok": True, "seeded": 0, "by_phase": {}, "fatal_count": 0,
-                "reason": "no chapter_facts (剧本可能还没拆完书)",
+                "reason": "no chapter_facts (the script may not have finished importing)",
                 "script_id": script_id,
             }
 
@@ -266,10 +292,7 @@ def classify_event_fatal(event_text: str) -> bool:
     """是否是"死神来了"模式锚点 — 包含致命词。"""
     if not event_text:
         return False
-    for kw in _FATAL_KEYWORDS:
-        if kw in event_text:
-            return True
-    return False
+    return bool(_first_hit(event_text, _FATAL_KEYWORDS, _FATAL_RE_EN))
 
 
 def _compute_importance(event: dict[str, Any], summary: str) -> int:
@@ -298,14 +321,10 @@ def _compute_importance(event: dict[str, Any], summary: str) -> int:
         + min(len(locations), 3)
         + min(len(concepts), 3)
     )
-    for kw in _CRITICAL_KEYWORDS:
-        if kw in summary:
-            bonus += 15
-            break  # 单条只加一次
-    for kw in _FATAL_KEYWORDS:
-        if kw in summary:
-            bonus += 10
-            break
+    if _first_hit(summary, _CRITICAL_KEYWORDS, _CRITICAL_RE_EN):
+        bonus += 15  # 单条只加一次
+    if _first_hit(summary, _FATAL_KEYWORDS, _FATAL_RE_EN):
+        bonus += 10
     return min(100, max(0, base + bonus))
 
 
@@ -323,14 +342,12 @@ def _derive_must_preserve(summary: str, participants: list[Any]) -> list[str]:
             if name:
                 items.append(f"{name} 参与")
     # 命中的关键词
-    for kw in _CRITICAL_KEYWORDS:
-        if kw in summary:
-            items.append(kw)
-            break
-    for kw in _FATAL_KEYWORDS:
-        if kw in summary:
-            items.append(f"{kw} 这一结果")
-            break
+    kw = _first_hit(summary, _CRITICAL_KEYWORDS, _CRITICAL_RE_EN)
+    if kw:
+        items.append(kw)
+    kw = _first_hit(summary, _FATAL_KEYWORDS, _FATAL_RE_EN)
+    if kw:
+        items.append(f"the outcome: {kw}")
     return items[:5]
 
 

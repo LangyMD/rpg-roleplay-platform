@@ -55,34 +55,41 @@ class WorldbookResult:
             a = self.timeline_anchor
             parts.append(
                 f"=== 剧本时间线锚点 ===\n"
-                f"phase: {a.get('phase', '(未匹配)')}\n"
-                f"原著章节: 第{a.get('chapter_min', '?')}-{a.get('chapter_max', '?')}章\n"
-                f"时间标签: {a.get('time_label', '')}"
+                f"phase: {a.get('phase', '(unmatched)')}\n"
+                f"Source chapters: {a.get('chapter_min', '?')}-{a.get('chapter_max', '?')}\n"
+                f"Time label: {a.get('time_label', '')}"
             )
         if self.phase_digest and str(self.phase_digest.get('summary') or '').strip():
             pd = self.phase_digest
             parts.append(
                 f"=== 剧本阶段摘要 ({pd.get('phase_label', '')}) ===\n"
-                f"{pd.get('summary', '')[:1500]}"
+                f"{_cap(pd.get('summary', ''), 1500)}"
             )
         if self.chapter_facts:
             lines = []
             for cf in self.chapter_facts[:5]:
                 ev = "; ".join(str(e.get("event", "")) for e in (cf.get("events") or [])[:2])
                 lines.append(
-                    f"第{cf['chapter']}章《{cf.get('title', '')}》｜{cf.get('story_time_label', '')}\n"
-                    f"  摘要: {(cf.get('summary') or '')[:200]}\n"
-                    f"  事件: {ev[:160]}"
+                    f"Ch.{cf['chapter']} \"{cf.get('title', '')}\" | {cf.get('story_time_label', '')}\n"
+                    f"  Summary: {_cap(cf.get('summary') or '', 200)}\n"
+                    f"  Events: {_cap(ev, 160)}"
                 )
             parts.append("=== 剧本章节事实 ===\n" + "\n\n".join(lines))
         if self.worldbook_entries:
             lines = []
             for wb in self.worldbook_entries[:5]:
-                lines.append(f"【{wb.get('title', '')}】\n{(wb.get('content') or '')[:400]}")
+                lines.append(f"[{wb.get('title', '')}]\n{_cap(wb.get('content') or '', 400)}")
             parts.append("=== 世界设定 ===\n" + "\n\n".join(lines))
         if self.progress_note:
             parts.append(f"=== 跳跃进度说明 ===\n{self.progress_note}")
         return "\n\n".join(parts)
+
+
+def _cap(text: str, cjk_chars: int) -> str:
+    """按中文字数定的截断上限,换算到 text 的语言(英文同样 token 预算可放更多字符)。"""
+    from core.token_estimate import cjk_chars_to_budget
+    text = str(text or "")
+    return text[:cjk_chars_to_budget(text, cjk_chars)]
 
 
 def consult(
@@ -183,7 +190,7 @@ def consult(
                         _evs = [e for e in (pd.get("key_events") or [])
                                 if isinstance(e, dict) and int(e.get("chapter") or 0) >= _floor_ch]
                         pd["summary"] = "\n".join(
-                            f"第{e.get('chapter')}章:{str(e.get('event') or '').strip()[:160]}"
+                            f"Ch.{e.get('chapter')}: {_cap(str(e.get('event') or '').strip(), 160)}"
                             for e in _evs[:5])
                     result.phase_digest = pd
 
@@ -244,14 +251,14 @@ def consult(
                         if isinstance(e, dict)
                     )
                     result.progress_note = (
-                        f"玩家从 [{current_phase}] 跳到 [{jump_to_phase}]。"
-                        f"目标阶段共 {jp.get('chapter_count', '?')} 章,主要进度: {events_brief[:600]}"
+                        f"The player jumped from [{current_phase}] to [{jump_to_phase}]. "
+                        f"The target phase spans {jp.get('chapter_count', '?')} chapters; main progress: {events_brief[:600]}"
                     )
 
     except Exception as exc:
         result.confidence = 0.0
         result.elapsed_ms = int((time.time() - t0) * 1000)
-        result.progress_note = f"(子代理检索异常: {type(exc).__name__})"
+        result.progress_note = f"(sub-agent lookup error: {type(exc).__name__})"
         return result
 
     # 6) 算 confidence
