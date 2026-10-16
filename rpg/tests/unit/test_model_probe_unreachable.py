@@ -79,8 +79,8 @@ def test_unreachable_does_not_retry_v1_and_says_so(probe, exc_cls):
         probe["run"]("https://relay.example")  # 裸地址:以前会整轮补 /v1 再来一次
     msg = str(ei.value)
     assert probe["paths"] == ["/models"], f"连不上时不该重试或补 /v1,实际请求 {probe['paths']}"
-    assert "连不上这个地址" in msg
-    assert "缺 /v1" not in msg and "版本段" not in msg
+    assert "Cannot reach this address" in msg
+    assert "missing the /v1" not in msg and "version segment" not in msg
 
 
 def test_sdk_retries_disabled_and_timeout_bounded(probe):
@@ -146,7 +146,7 @@ def test_anthropic_unreachable_message(monkeypatch):
                         lambda **kw: httpx.Client(transport=httpx.MockTransport(_boom)))
     with pytest.raises(RuntimeError) as ei:
         model_probe._list_anthropic_models({"id": "anthropic", "kind": "anthropic"}, user_id=1)
-    assert "连不上这个地址" in str(ei.value)
+    assert "Cannot reach this address" in str(ei.value)
     assert len(calls) == 1, "SDK 不该自己重试"
 
 
@@ -205,7 +205,7 @@ def test_unreachable_via_credential_proxy_says_proxy(probe, monkeypatch):
     with pytest.raises(RuntimeError) as ei:
         probe["run"]("https://relay.example")
     msg = str(ei.value)
-    assert "连不上这个地址" in msg and "代理" in msg
+    assert "Cannot reach this address" in msg and "proxy" in msg
     assert "127.0.0.1:7890" in msg and "secret" not in msg, "代理地址要带上,但账号密码必须脱敏"
     assert probe["paths"] == ["/models"]
 
@@ -218,7 +218,7 @@ def test_unreachable_env_proxy_refusal_says_system_proxy(probe):
     with pytest.raises(RuntimeError) as ei:
         probe["run"]("https://relay.example")
     msg = str(ei.value)
-    assert "系统代理" in msg and "拒绝了这次连接" in msg and "连不上这个地址" in msg
+    assert "system proxy" in msg and "refused the connection" in msg and "Cannot reach this address" in msg
 
 
 def test_unreachable_plain_direct_message_unchanged(probe):
@@ -229,8 +229,8 @@ def test_unreachable_plain_direct_message_unchanged(probe):
     with pytest.raises(RuntimeError) as ei:
         probe["run"]("https://relay.example")
     msg = str(ei.value)
-    assert msg.startswith("连不上这个地址(连接超时或连接失败)")
-    assert "拒绝了这次连接" not in msg and "经连接方式里配的代理" not in msg
+    assert msg.startswith("Cannot reach this address (connection timed out or failed)")
+    assert "refused the connection" not in msg and "through the proxy configured" not in msg
 
 
 def test_unreachable_outbound_blocked_shows_gate_reason_not_proxy(probe, monkeypatch):
@@ -248,8 +248,8 @@ def test_unreachable_outbound_blocked_shows_gate_reason_not_proxy(probe, monkeyp
     with pytest.raises(RuntimeError) as ei:
         probe["run"]("https://relay.example")
     msg = str(ei.value)
-    assert "保留地址" in msg and "10.0.0.2" in msg
-    assert "代理" not in msg and "Connection error" not in msg
+    assert "reserved address" in msg and "10.0.0.2" in msg
+    assert "proxy" not in msg.lower() and "Connection error" not in msg
     assert probe["paths"] == ["/models"]
 
 
@@ -265,8 +265,8 @@ def test_unreachable_server_mode_does_not_suggest_proxy(probe, monkeypatch):
     with pytest.raises(RuntimeError) as ei:
         probe["run"]("https://relay.example")
     msg = str(ei.value)
-    assert msg.startswith("连不上这个地址(连接超时或连接失败)")
-    assert "代理" not in msg and "连接方式" not in msg
+    assert msg.startswith("Cannot reach this address (connection timed out or failed)")
+    assert "proxy" not in msg.lower() and "Connection method" not in msg
 
 
 def test_unreachable_local_mode_suggests_proxy(probe, monkeypatch):
@@ -281,8 +281,8 @@ def test_unreachable_local_mode_suggests_proxy(probe, monkeypatch):
     with pytest.raises(RuntimeError) as ei:
         probe["run"]("https://relay.example")
     msg = str(ei.value)
-    assert msg.startswith("连不上这个地址(连接超时或连接失败)")
-    assert "连接方式" in msg and "系统代理" in msg
+    assert msg.startswith("Cannot reach this address (connection timed out or failed)")
+    assert "Connection method" in msg and "system proxy" in msg
 
 
 def _openai_backend(base_url: str):

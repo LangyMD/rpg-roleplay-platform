@@ -45,14 +45,14 @@ _STATIC_PRICING: dict[str, dict[str, dict[str, Any]]] = {
     "anthropic": {
         # 2026-09-04 校准(官方 Anthropic 定价表)。⚠️ 上一版(task 57)把 Opus 系列记成
         # $15/$75 @200K —— 那是 Claude 3 Opus 时代的价,4.x 起 Opus 是 $5/$25 且上下文 1M。
-        "claude-fable-5-1":    {"input": 10.0, "output": 50.0, "context": 1000000, "notes": "Fable 5.1 · 当前最强"},
+        "claude-fable-5-1":    {"input": 10.0, "output": 50.0, "context": 1000000, "notes": "Fable 5.1 · current strongest"},
         "claude-fable-5":      {"input": 10.0, "output": 50.0, "context": 1000000, "notes": "Fable 5"},
-        "claude-opus-5":       {"input": 5.0,  "output": 25.0, "context": 1000000, "notes": "Opus 5 · 当前 Opus 旗舰"},
+        "claude-opus-5":       {"input": 5.0,  "output": 25.0, "context": 1000000, "notes": "Opus 5 · current Opus flagship"},
         "claude-opus-4-8":     {"input": 5.0,  "output": 25.0, "context": 1000000, "notes": "Opus 4.8"},
         "claude-opus-4-7":     {"input": 5.0,  "output": 25.0, "context": 1000000, "notes": "Opus 4.7"},
         "claude-opus-4-6":     {"input": 5.0,  "output": 25.0, "context": 1000000, "notes": "Opus 4.6"},
         "claude-opus-4-5":     {"input": 5.0,  "output": 25.0, "context": 200000, "notes": "Opus 4.5"},
-        "claude-sonnet-5":     {"input": 2.0,  "output": 10.0, "context": 1000000, "notes": "Sonnet 5 · 当前 Sonnet 旗舰"},
+        "claude-sonnet-5":     {"input": 2.0,  "output": 10.0, "context": 1000000, "notes": "Sonnet 5 · current Sonnet flagship"},
         "claude-sonnet-4-6":   {"input": 3.0,  "output": 15.0, "context": 1000000, "notes": "Sonnet 4.6"},
         "claude-sonnet-4-5":   {"input": 3.0,  "output": 15.0, "context": 200000},
         "claude-haiku-4-5":    {"input": 1.0,  "output": 5.0,  "context": 200000, "notes": "Haiku 4.5 · 2025-10"},
@@ -62,14 +62,14 @@ _STATIC_PRICING: dict[str, dict[str, dict[str, Any]]] = {
     "vertex_ai": {
         # 2026-09-04 校准(官方 Gemini 定价页)。3.8/3.7/3.6 Flash 同价,且 $0.75/$3.75 是
         # **限时价(至 2026-12-31)**,2027-01-01 起翻倍到 $1.50/$7.50 —— 到期需回来改。
-        "gemini-3.8-flash":      {"input": 0.75, "output": 3.75, "context": 1000000, "notes": "3.8 Flash · 当前旗舰(限时价,2027-01-01 起 $1.50/$7.50)"},
-        "gemini-3.7-flash":      {"input": 0.75, "output": 3.75, "context": 1000000, "notes": "3.7 Flash(限时价,2027-01-01 起 $1.50/$7.50)"},
-        "gemini-3.6-flash":      {"input": 0.75, "output": 3.75, "context": 1000000, "notes": "3.6 Flash(限时价,2027-01-01 起 $1.50/$7.50)"},
-        "gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50, "context": 1000000, "notes": "3.5 Flash-Lite · 最便宜"},
+        "gemini-3.8-flash":      {"input": 0.75, "output": 3.75, "context": 1000000, "notes": "3.8 Flash · current flagship (promo price; $1.50/$7.50 from 2027-01-01)"},
+        "gemini-3.7-flash":      {"input": 0.75, "output": 3.75, "context": 1000000, "notes": "3.7 Flash (promo price; $1.50/$7.50 from 2027-01-01)"},
+        "gemini-3.6-flash":      {"input": 0.75, "output": 3.75, "context": 1000000, "notes": "3.6 Flash (promo price; $1.50/$7.50 from 2027-01-01)"},
+        "gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50, "context": 1000000, "notes": "3.5 Flash-Lite · cheapest"},
         "gemini-3.5-flash":    {"input": 1.50,  "output": 9.00,  "context": 1000000, "notes": "3.5 Flash"},
-        "gemini-3.1-pro":      {"input": 2.00,  "output": 12.00, "context": 1000000, "notes": "3.1 Pro · prev flagship; >200K 时 $4/$18"},
-        "gemini-3-flash":      {"input": 1.50,  "output": 9.00,  "context": 1000000, "notes": "别名指向 3.5 Flash"},
-        "gemini-3-pro":        {"input": 1.25,  "output": 10.0,  "context": 2000000, "notes": "3 Pro · 旧 flagship"},
+        "gemini-3.1-pro":      {"input": 2.00,  "output": 12.00, "context": 1000000, "notes": "3.1 Pro · prev flagship; $4/$18 above 200K"},
+        "gemini-3-flash":      {"input": 1.50,  "output": 9.00,  "context": 1000000, "notes": "Alias for 3.5 Flash"},
+        "gemini-3-pro":        {"input": 1.25,  "output": 10.0,  "context": 2000000, "notes": "3 Pro · old flagship"},
         "gemini-2.5-flash":    {"input": 0.075, "output": 0.3,   "context": 1000000},
         "gemini-2.5-pro":      {"input": 1.25,  "output": 5.0,   "context": 2000000},
         "gemini-2.0-flash":    {"input": 0.075, "output": 0.3,   "context": 1000000},
@@ -78,16 +78,16 @@ _STATIC_PRICING: dict[str, dict[str, dict[str, Any]]] = {
         # 2026-09-04 校准(官方 OpenAI 定价页)。GPT-6 Astra 是当前最强,GPT-5.6 三档
         # (Sol/Terra/Luna)是主力;`gpt-5.6` 是 `gpt-5.6-sol` 的别名。上下文 1.05M。
         # 注:官方另有 long-context 档(超长输入翻倍计价),此处记标准档。
-        "gpt-6-astra":         {"input": 10.0, "output": 50.0, "context": 1050000, "notes": "GPT-6 Astra · 当前最强"},
-        "gpt-5.6-sol":         {"input": 4.0,  "output": 20.0, "context": 1050000, "notes": "GPT-5.6 Sol · 旗舰(别名 gpt-5.6)"},
-        "gpt-5.6":             {"input": 4.0,  "output": 20.0, "context": 1050000, "notes": "= gpt-5.6-sol 别名"},
-        "gpt-5.6-terra":       {"input": 2.0,  "output": 12.0, "context": 1050000, "notes": "GPT-5.6 Terra · 均衡"},
-        "gpt-5.6-luna":        {"input": 0.20, "output": 1.20, "context": 1050000, "notes": "GPT-5.6 Luna · 廉价"},
-        "gpt-5.5":             {"input": 2.5,  "output": 10.0, "context": 400000, "notes": "GPT-5.5 · 上一代"},
-        "gpt-5.5-instant":     {"input": 1.25, "output": 5.0,  "context": 400000, "notes": "GPT-5.5 Instant · 低延迟"},
-        "gpt-5.5-pro":         {"input": 5.0,  "output": 20.0, "context": 400000, "notes": "GPT-5.5 Pro · 付费"},
-        "gpt-5.5-thinking":    {"input": 5.0,  "output": 20.0, "context": 400000, "notes": "GPT-5.5 Thinking · 推理"},
-        "gpt-5":               {"input": 2.0,  "output": 8.0,  "context": 400000, "notes": "GPT-5 · 上一代"},
+        "gpt-6-astra":         {"input": 10.0, "output": 50.0, "context": 1050000, "notes": "GPT-6 Astra · current strongest"},
+        "gpt-5.6-sol":         {"input": 4.0,  "output": 20.0, "context": 1050000, "notes": "GPT-5.6 Sol · flagship (alias gpt-5.6)"},
+        "gpt-5.6":             {"input": 4.0,  "output": 20.0, "context": 1050000, "notes": "= alias of gpt-5.6-sol"},
+        "gpt-5.6-terra":       {"input": 2.0,  "output": 12.0, "context": 1050000, "notes": "GPT-5.6 Terra · balanced"},
+        "gpt-5.6-luna":        {"input": 0.20, "output": 1.20, "context": 1050000, "notes": "GPT-5.6 Luna · budget"},
+        "gpt-5.5":             {"input": 2.5,  "output": 10.0, "context": 400000, "notes": "GPT-5.5 · previous generation"},
+        "gpt-5.5-instant":     {"input": 1.25, "output": 5.0,  "context": 400000, "notes": "GPT-5.5 Instant · low latency"},
+        "gpt-5.5-pro":         {"input": 5.0,  "output": 20.0, "context": 400000, "notes": "GPT-5.5 Pro · paid"},
+        "gpt-5.5-thinking":    {"input": 5.0,  "output": 20.0, "context": 400000, "notes": "GPT-5.5 Thinking · reasoning"},
+        "gpt-5":               {"input": 2.0,  "output": 8.0,  "context": 400000, "notes": "GPT-5 · previous generation"},
         "gpt-4.1":             {"input": 2.0,  "output": 8.0,  "context": 1000000},
         "gpt-4o":              {"input": 2.5,  "output": 10.0, "context": 128000},
         "gpt-4o-mini":         {"input": 0.15, "output": 0.6,  "context": 128000},
@@ -116,12 +116,12 @@ _STATIC_PRICING: dict[str, dict[str, dict[str, Any]]] = {
     # ⚠️ 记的是 **<200K 上下文** 的标准档;官方对 **≥200K 的请求整单翻倍**
     # (grok-4.6 就变 $4/$12),长文玩法要按两倍估。
     "xai": {
-        "grok-4.6":                    {"input": 2.00, "output": 6.00, "context": 500000,  "notes": "Grok 4.6 · 2026-08-12 当前旗舰(≥200K 输入整单翻倍)"},
-        "grok-4.5":                    {"input": 2.00, "output": 6.00, "context": 500000,  "notes": "Grok 4.5(≥200K 输入整单翻倍)"},
-        "grok-4.3":                    {"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.3 · 1M 上下文(≥200K 输入整单翻倍)"},
-        "grok-4.20-0309-reasoning":    {"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.20 推理版"},
-        "grok-4.20-0309-non-reasoning":{"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.20 非推理版"},
-        "grok-4.20-multi-agent-0309":  {"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.20 多智能体"},
+        "grok-4.6":                    {"input": 2.00, "output": 6.00, "context": 500000,  "notes": "Grok 4.6 · 2026-08-12 current flagship (whole request price doubles at >=200K input)"},
+        "grok-4.5":                    {"input": 2.00, "output": 6.00, "context": 500000,  "notes": "Grok 4.5 (whole request price doubles at >=200K input)"},
+        "grok-4.3":                    {"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.3 · 1M context (whole request price doubles at >=200K input)"},
+        "grok-4.20-0309-reasoning":    {"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.20 reasoning"},
+        "grok-4.20-0309-non-reasoning":{"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.20 non-reasoning"},
+        "grok-4.20-multi-agent-0309":  {"input": 1.25, "output": 2.50, "context": 1000000, "notes": "Grok 4.20 multi-agent"},
         "grok-build-0.1":              {"input": 1.00, "output": 2.00, "context": 256000,  "notes": "Grok Build 0.1"},
     },
     # DeepSeek 直供平台(api.deepseek.com),区别于 siliconflow 转售
@@ -129,53 +129,53 @@ _STATIC_PRICING: dict[str, dict[str, dict[str, Any]]] = {
         # 2026-09-10 校准(官方 api-docs「Models & Pricing」页)。**记的是 off-peak 价**;
         # 官方高峰时段(UTC 周一至周五 01:00-04:00 / 06:00-10:00)整单翻倍,实际账单可能是此处两倍。
         # 现役只剩两个 ID:deepseek-flash(= DeepSeek-V4.1-Flash)与 deepseek-v4-pro。
-        "deepseek-flash":    {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "V4.1-Flash 现役 · off-peak(高峰翻倍);缓存命中 $0.003"},
+        "deepseek-flash":    {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "V4.1-Flash current · off-peak (doubles at peak); cache hit $0.003"},
         # v4-pro 自 2026-09-14 12:00(北京)起被官方路由到 V4.1-Flash 并按 Flash 价计费,
         # 直到 V4.1-Pro 发布为止。此处保留 Pro 自身价:重路由是临时的,且高报成本比低报安全。
-        "deepseek-v4-pro":   {"input": 0.66, "output": 1.98, "context": 1000000, "notes": "V4-Pro · off-peak(高峰翻倍);2026-09-14 起官方暂转由 V4.1-Flash 承接"},
+        "deepseek-v4-pro":   {"input": 0.66, "output": 1.98, "context": 1000000, "notes": "V4-Pro · off-peak (doubles at peak); served by V4.1-Flash since 2026-09-14"},
         # 下面两个是**已退役的旧别名**:官方仍接受,但请求实际由 V4.1-Flash 服务、按 Flash 价计费。
         # 记 Flash 价才是用户真实账单(此前记的 $0.22/$0.66 是老 V4-Flash 价,已失真)。
-        "deepseek-v4-flash": {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "旧别名 → 实由 V4.1-Flash 服务并按 Flash 价计费"},
-        "deepseek-v4-flash-vision-exp": {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "旧别名 → 实由 V4.1-Flash 服务并按 Flash 价计费"},
+        "deepseek-v4-flash": {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "Legacy alias -> actually served by V4.1-Flash at Flash pricing"},
+        "deepseek-v4-flash-vision-exp": {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "Legacy alias -> actually served by V4.1-Flash at Flash pricing"},
         # 生产日志实测到的预览别名(uid=233 在用,POST /v1/chat/completions 返 200)。非官方目录 ID,
         # 不进菜单,只兜底定价/能力,免得这类用户「有模型没价格没能力标签」。
         # 带日期后缀的变体(…-expires-on-0910)靠 get_pricing / get_capabilities 的最长前缀回退命中。
-        "deepseek-v4.1-flash": {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "V4.1-Flash 预览别名(实测存在,非官方目录 ID)"},
-        "deepseek-v3":       {"input": 0.27, "output": 1.10, "context": 64000,  "notes": "V3 旧版 · 已随 deepseek-chat/reasoner 于 2026-07-24 退役"},
+        "deepseek-v4.1-flash": {"input": 0.15, "output": 0.60, "context": 1000000, "notes": "V4.1-Flash preview alias (exists in practice; not an official catalog ID)"},
+        "deepseek-v3":       {"input": 0.27, "output": 1.10, "context": 64000,  "notes": "V3 legacy · retired with deepseek-chat/reasoner on 2026-07-24"},
         # 兼容驼峰大小写写法(同样已由 V4.1-Flash 承接)
         "DeepSeek-V4-Flash": {"input": 0.15, "output": 0.60, "context": 1000000},
         "DeepSeek-V4-Pro":   {"input": 0.66, "output": 1.98, "context": 1000000},
     },
     "siliconflow": {
         # task 57: DeepSeek V4 系列（2026-04-24 发布）
-        "deepseek-ai/DeepSeek-V4-Pro":   {"input": 1.74, "output": 3.48, "context": 1000000, "notes": "DeepSeek V4-Pro · 2026-04-24 · 1.6T 参数"},
-        "deepseek-ai/DeepSeek-V4-Flash": {"input": 0.30, "output": 1.20, "context": 1000000, "notes": "DeepSeek V4-Flash · 廉价版"},
-        "deepseek-ai/DeepSeek-V3":       {"input": 0.27, "output": 1.10, "context": 64000, "notes": "V3 · 旧版"},
+        "deepseek-ai/DeepSeek-V4-Pro":   {"input": 1.74, "output": 3.48, "context": 1000000, "notes": "DeepSeek V4-Pro · 2026-04-24 · 1.6T params"},
+        "deepseek-ai/DeepSeek-V4-Flash": {"input": 0.30, "output": 1.20, "context": 1000000, "notes": "DeepSeek V4-Flash · budget"},
+        "deepseek-ai/DeepSeek-V3":       {"input": 0.27, "output": 1.10, "context": 64000, "notes": "V3 · legacy"},
         "Qwen/Qwen3.7-Max":              {"input": 2.50, "output": 7.50, "context": 1000000, "notes": "Qwen 3.7-Max · 2026-05-21"},
         "Qwen/Qwen3.6-Flash":            {"input": 0.19, "output": 1.13, "context": 131072, "notes": "Qwen 3.6 Flash"},
         "Qwen/Qwen2.5-72B-Instruct":     {"input": 0.55, "output": 1.65, "context": 128000},
     },
     "minimax": {
-        "MiniMax-M1":      {"input": 0.55,  "output": 2.20, "context": 1000000, "notes": "约合 RMB ¥4/¥16"},
+        "MiniMax-M1":      {"input": 0.55,  "output": 2.20, "context": 1000000, "notes": "about RMB 4/16"},
         "abab6.5s-chat":   {"input": 0.14,  "output": 0.14, "context": 245760},
     },
     "dashscope": {
         # task 57: 阿里云 Model Studio 直供 Qwen 3.7 / 3.6 系列
         # 2026-09-04:3.8-Max 系列上线(国际站美元价按官方 0-1M 档;prime 为增强档)
-        "qwen3.8-max-prime": {"input": 5.00, "output": 15.00, "context": 1000000, "notes": "Qwen 3.8-Max Prime · 当前最强(国内 ¥24/¥72)"},
-        "qwen3.8-max":     {"input": 2.50,  "output": 7.50, "context": 1000000, "notes": "Qwen 3.8-Max · 旗舰(国内 ¥12/¥36)"},
+        "qwen3.8-max-prime": {"input": 5.00, "output": 15.00, "context": 1000000, "notes": "Qwen 3.8-Max Prime · current strongest (China pricing RMB 24/72)"},
+        "qwen3.8-max":     {"input": 2.50,  "output": 7.50, "context": 1000000, "notes": "Qwen 3.8-Max · flagship (China pricing RMB 12/36)"},
         "qwen3.7-max":     {"input": 2.50,  "output": 7.50, "context": 1000000, "notes": "Qwen 3.7-Max · 2026-05-21"},
         "qwen3.6-flash":   {"input": 0.19,  "output": 1.13, "context": 131072, "notes": "Qwen 3.6 Flash"},
-        "qwen-max":        {"input": 1.40,  "output": 5.6,  "context": 32000,  "notes": "旧 Qwen Max · 约合 RMB ¥10/¥40"},
+        "qwen-max":        {"input": 1.40,  "output": 5.6,  "context": 32000,  "notes": "Legacy Qwen Max · about RMB 10/40"},
         "qwen-plus":       {"input": 0.11,  "output": 0.28, "context": 131072},
         "qwen-turbo":      {"input": 0.04,  "output": 0.08, "context": 1000000},
     },
     "hunyuan": {
-        "hunyuan-turbos-latest": {"input": 0.11,  "output": 0.32, "context": 32000, "notes": "约合 RMB ¥0.8/¥2.3"},
+        "hunyuan-turbos-latest": {"input": 0.11,  "output": 0.32, "context": 32000, "notes": "about RMB 0.8/2.3"},
         "hunyuan-large":         {"input": 0.55,  "output": 1.65, "context": 28000},
     },
     "doubao": {
-        "doubao-1-5-pro-32k-250115":  {"input": 0.11, "output": 0.28, "context": 32000,  "notes": "约合 RMB ¥0.8/¥2"},
+        "doubao-1-5-pro-32k-250115":  {"input": 0.11, "output": 0.28, "context": 32000,  "notes": "about RMB 0.8/2"},
         "doubao-1-5-lite-32k-250115": {"input": 0.04, "output": 0.08, "context": 32000},
     },
     "xiaomi_mimo": {
@@ -392,7 +392,7 @@ def list_remote_models(
     """
     # 服务器模式强制：必须有 user-scoped 凭证
     if _require_user_credential() and not _has_user_credential(user_id, api_id):
-        return {"ok": False, "error": "需要在「个人主页 → API 凭证」中配置该 provider 的 key", "models": []}
+        return {"ok": False, "error": "Configure a key for this provider under Profile -> API credentials", "models": []}
 
     cache_key = f"{user_id or 0}::{api_id}"
     if not force_refresh:
@@ -407,7 +407,7 @@ def list_remote_models(
         catalog = load_model_catalog()
         api = find_api(catalog, api_id)
     if not api:
-        return {"ok": False, "error": f"api_id 不存在: {api_id}", "models": []}
+        return {"ok": False, "error": f"Unknown api_id: {api_id}", "models": []}
 
     # 不收编到 model_registry.api_kind:此处 api 可能是 api_override(自建中转站,不在
     # 全局 catalog),其 kind 来自调用方合成的 override dict;api_kind 走 catalog 查会丢掉它。
@@ -420,7 +420,7 @@ def list_remote_models(
                 if not has_user_sa(user_id):
                     return {
                         "ok": False,
-                        "error": "服务器模式下需先在「设置 → API & 模型 → Agent Platform」上传 Service Account JSON",
+                        "error": "In server mode, upload a Service Account JSON under Settings -> API & Models -> Agent Platform first",
                         "models": [],
                     }
             models = _list_vertex_models(api, user_id=user_id)
@@ -429,7 +429,7 @@ def list_remote_models(
         elif kind in {"openai", "openai_compat"}:
             models = _list_openai_compat_models(api, user_id=user_id)
         else:
-            return {"ok": False, "error": f"不支持的 provider kind: {kind}", "models": []}
+            return {"ok": False, "error": f"Unsupported provider kind: {kind}", "models": []}
     except Exception as exc:
         return {"ok": False, "error": str(exc), "models": []}
 
@@ -459,8 +459,8 @@ def _list_vertex_models(api: dict[str, Any], user_id: int | None = None) -> list
     creds, project_id = load_sa_credentials(user_id)
     if creds is None or project_id is None:
         raise RuntimeError(
-            "未找到 Vertex Service Account。"
-            "请在「设置 → Agent Platform」上传自己的 SA JSON。"
+            "No Vertex Service Account found. "
+            "Upload your own SA JSON under Settings -> Agent Platform."
         )
     client = genai.Client(vertexai=True, project=project_id, location="global", credentials=creds)
     models = []
@@ -516,8 +516,8 @@ def _resolve_provider_creds(api: dict[str, Any], user_id: int | None) -> dict[st
     # 拉取模型」会被这里挡住,等于配了用不了。
     if not resolved_is_usable(result):
         if _require_user_credential():
-            raise RuntimeError(f"未在「个人主页 → API 凭证」配置 {api_id} 的 key")
-        raise RuntimeError(f"找不到 {api_id} 的 API key（用户凭证未配置且环境变量未设）")
+            raise RuntimeError(f"No key configured for {api_id} under Profile -> API credentials")
+        raise RuntimeError(f"No API key found for {api_id} (no user credential configured and no environment variable set)")
     from core.outbound import credential_proxy
     return {"key": resolved_auth_token(result),
             "base_url_override": (result.get("base_url_override") or "").strip(),
@@ -606,33 +606,33 @@ def _unreachable_error(exc: BaseException, proxy: str | None = None) -> RuntimeE
     blocked = outbound_blocked_in_chain(exc)
     if blocked is not None:
         return RuntimeError(
-            "这个地址被平台的出站安全检查拦下了,和 API key、/v1 路径都没有关系。"
-            "常见原因是接口地址里的域名现在解析不到,或者解析到了内网 / 保留地址。"
-            "请确认接口地址(base_url)写对了、是公网能访问的地址,过一会儿再试。"
-            f"拦截原因:{redact_secrets(blocked, limit=200)}"
+            "This address was blocked by the platform's outbound security check; it has nothing to do with the API key or the /v1 path. "
+            "Usually the domain in the endpoint URL currently does not resolve, or resolves to a private / reserved address. "
+            "Check that the endpoint URL (base_url) is correct and publicly reachable, then try again later. "
+            f"Block reason: {redact_secrets(blocked, limit=200)}"
         )
     if proxy:
         from core.outbound import redact_proxy_url
         return RuntimeError(
-            f"经连接方式里配的代理({redact_proxy_url(proxy)})连不上这个地址(连接超时或连接失败),"
-            "和 API key、/v1 路径都没有关系。请确认代理软件开着、代理地址和端口没填错;"
-            f"如果这个地址本来就不用代理,把连接方式改回直连。原始错误:{exc}"
+            f"Cannot reach this address through the proxy configured under Connection method ({redact_proxy_url(proxy)}) (connection timed out or failed); "
+            "this has nothing to do with the API key or the /v1 path. Make sure the proxy software is running and the proxy host and port are correct; "
+            f"if this address does not need a proxy, switch Connection method back to direct. Original error: {exc}"
         )
     if _is_proxy_refusal(exc):
         return RuntimeError(
-            "连不上这个地址:系统代理(或环境变量 HTTPS_PROXY 里的代理)拒绝了这次连接,"
-            "和 API key、/v1 路径都没有关系。请检查代理软件是否正常,或者在这个供应商的"
-            f"「连接方式」里填一个能用的 HTTP 代理。原始错误:{exc}"
+            "Cannot reach this address: the system proxy (or the proxy in the HTTPS_PROXY environment variable) refused the connection; "
+            "this has nothing to do with the API key or the /v1 path. Check that your proxy software is working, or set a working HTTP proxy "
+            f"under this provider's Connection method. Original error: {exc}"
         )
     if _ssrf_enforced():
         return RuntimeError(
-            "连不上这个地址(连接超时或连接失败),和 API key、/v1 路径都没有关系。"
-            f"请确认接口地址写对了、这个服务现在能从公网访问,过一会儿再试。原始错误:{exc}"
+            "Cannot reach this address (connection timed out or failed); this has nothing to do with the API key or the /v1 path. "
+            f"Check that the endpoint URL is correct and the service is publicly reachable right now, then try again later. Original error: {exc}"
         )
     return RuntimeError(
-        "连不上这个地址(连接超时或连接失败),和 API key、/v1 路径都没有关系。"
-        "本地版如果访问这个服务需要代理,请在这个供应商的「连接方式」里选 HTTP 代理并填上代理地址,"
-        f"或者打开系统代理后再试。原始错误:{exc}"
+        "Cannot reach this address (connection timed out or failed); this has nothing to do with the API key or the /v1 path. "
+        "If this service needs a proxy from your machine, choose HTTP proxy under this provider's Connection method and enter the proxy address, "
+        f"or turn on your system proxy and try again. Original error: {exc}"
     )
 
 
@@ -699,7 +699,7 @@ def _list_openai_compat_models(api: dict[str, Any], user_id: int | None = None) 
     try:
         from openai import OpenAI
     except ImportError as exc:
-        raise RuntimeError("openai SDK 未安装") from exc
+        raise RuntimeError("openai SDK is not installed") from exc
     creds = _resolve_provider_creds(api, user_id)
     key = creds["key"]
     # 与 GM 运行路径(openai_compat backend: effective_base = override or base_url)一致:
@@ -760,10 +760,10 @@ def _list_openai_compat_models(api: dict[str, Any], user_id: int | None = None) 
                         or "failed_precondition" in _low or "failed precondition" in _low)
             if _geo_err:
                 raise RuntimeError(
-                    f"provider 拒绝:Google 封禁了服务器所在地区/数据中心 IP(HTTP {_code or '400'} "
-                    f"「User location is not supported」)。与你的 API key、base_url 都无关 —— Google AI "
-                    f"Studio 会封机房/VPS IP。解法:给 Google 出站配支持地区的代理,或改用 Vertex AI"
-                    f"(服务账号鉴权、面向服务器,不受此限)。原始:{_msg}"
+                    f"Provider refused: Google blocks the server's region / data-center IP (HTTP {_code or '400'} "
+                    f"\"User location is not supported\"). This is unrelated to your API key or base_url - Google AI "
+                    f"Studio blocks data-center/VPS IPs. Fix: route Google traffic through a proxy in a supported region, or use Vertex AI "
+                    f"(service-account auth, meant for servers, not subject to this limit). Original: {_msg}"
                 ) from exc
             _key_err = (_code in (401, 403)
                         or "api key" in _low or "api_key" in _low
@@ -771,9 +771,9 @@ def _list_openai_compat_models(api: dict[str, Any], user_id: int | None = None) 
                         or "invalid_argument" in _low or "invalid argument" in _low)
             if _key_err:
                 raise RuntimeError(
-                    f"provider 拒绝列模型:API key 无效 / 被拒 / 权限不足(HTTP {_code or '400'})。"
-                    f"URL 没问题——请核对该 provider 的 API key 是否正确、未过期,对应 API 已启用,"
-                    f"且没有 IP/来源限制挡住服务器。原始错误:{_msg}"
+                    f"Provider refused to list models: API key invalid / rejected / insufficient permissions (HTTP {_code or '400'}). "
+                    f"The URL is fine - check that this provider's API key is correct and not expired, that the API is enabled, "
+                    f"and that no IP/origin restriction blocks the server. Original error: {_msg}"
                 ) from exc
             # 404 = 这个 provider **根本没有** /models 这个接口,不是 base_url 写错。
             # 群反馈(行者无疆 2026-07-28,火山方舟 Agent Plan 订阅套餐地址):原文案把 404 也
@@ -782,13 +782,13 @@ def _list_openai_compat_models(api: dict[str, Any], user_id: int | None = None) 
             # 所以 404 必须单独成文案:说清「没有这个接口 ≠ 地址错」,并明确劝阻加 /v1。
             if _code == 404:
                 raise RuntimeError(
-                    "该 provider 没有提供模型列表接口(/models 返回 404)。这不是 base_url 或 "
-                    "API key 的问题 —— 手动填写模型 ID 即可正常使用(聊天接口不受影响)。"
-                    "注意:请不要为此在 base_url 后面加 /v1:有的 provider(如火山方舟订阅套餐 "
-                    "/api/plan/v3)加了会让 chat/completions 也一起 404。"
+                    "This provider does not offer a model list endpoint (/models returned 404). This is not a base_url or "
+                    "API key problem - just enter the model ID manually and it will work (chat is unaffected). "
+                    "Note: do not append /v1 to base_url because of this: for some providers (e.g. Volcengine Ark subscription plan "
+                    "/api/plan/v3) that makes chat/completions return 404 as well."
                 ) from exc
             raise RuntimeError(
-                f"provider 拒绝列模型(base_url 可能缺 /v1 版本段,或该 provider 不支持 /v1/models): {exc}"
+                f"Provider refused to list models (base_url may be missing the /v1 version segment, or the provider does not support /v1/models): {exc}"
             ) from exc
     for m in data:
         mid = getattr(m, "id", "") or getattr(m, "name", "")
@@ -843,7 +843,7 @@ def remote_list_api_meta(
             return None, str(exc)
     # 全局没这个 provider(自建中转站)→ 必须有 base_url 才能调,且按 openai_compat 路由
     if not api and not base_url:
-        return None, f"未知 provider「{api_id}」需先在凭证里填写 base_url"
+        return None, f"Unknown provider \"{api_id}\": set a base_url in its credential first"
     kind = meta_api.get("kind") or ("openai_compat" if base_url else api_id)
     return {
         "id": api_id,
@@ -886,7 +886,7 @@ def diff_catalog(api_id: str, user_id: int | None = None, *, user_view: bool = F
     if api is None and user_id:
         api = _mr.find_api(_mr.apply_user_overlay(catalog, user_id), api_id)
     if not api:
-        return {"ok": False, "error": f"api_id 不存在: {api_id}"}
+        return {"ok": False, "error": f"Unknown api_id: {api_id}"}
 
     local_ids = {m.get("real_name") for m in api.get("models", [])}
     remote_ids = {m["real_name"] for m in remote["models"]}
@@ -966,13 +966,13 @@ def _classify_probe_error(exc: Exception, err_str: str) -> str:
 def _probe_error_message(status_detail: str) -> str:
     """status_detail → 用户可读说明（中文）。"""
     return {
-        "key_expired": "API key 已失效或未授权，请在「个人主页 → API 凭证」更新密钥",
-        "forbidden": "API key 无权限访问该模型，请检查账号权限或模型授权",
-        "err": "探测失败（供应商故障或网络不可达），可稍后重试",
-        "degraded": "模型响应异常，功能可能受限",
+        "key_expired": "API key is invalid or unauthorized; update it under Profile -> API credentials",
+        "forbidden": "This API key has no access to the model; check your account permissions or model access",
+        "err": "Probe failed (provider outage or network unreachable); try again later",
+        "degraded": "Model is responding abnormally; functionality may be limited",
         "ok": "",
-        "untested": "尚未探测",
-    }.get(status_detail, "未知错误")
+        "untested": "Not probed yet",
+    }.get(status_detail, "Unknown error")
 
 
 def probe_availability(api_id: str, model_real_name: str | None = None, timeout_sec: int = 15, user_id: int | None = None) -> dict[str, Any]:
@@ -999,14 +999,14 @@ def probe_availability(api_id: str, model_real_name: str | None = None, timeout_
                     "ok": False,
                     "api_id": api_id,
                     "latency_ms": 0,
-                    "error": "服务器模式下需先在「设置 → Agent Platform」上传 Service Account JSON 才能探测 Vertex AI",
+                    "error": "In server mode, upload a Service Account JSON under Settings -> Agent Platform before probing Vertex AI",
                 }
         elif not _has_user_credential(user_id, api_id):
             return {
                 "ok": False,
                 "api_id": api_id,
                 "latency_ms": 0,
-                "error": "需要在「个人主页 → API 凭证」中配置该 provider 的 key 才能发探测请求",
+                "error": "Configure a key for this provider under Profile -> API credentials before sending probe requests",
             }
     from model_registry import find_api, load_model_catalog
 
@@ -1014,14 +1014,14 @@ def probe_availability(api_id: str, model_real_name: str | None = None, timeout_
     api = find_api(catalog, api_id)
     base_err = {"api_id": api_id, "latency_ms": 0}
     if not api:
-        return {"ok": False, "error": f"api_id 不存在: {api_id}", **base_err}
+        return {"ok": False, "error": f"Unknown api_id: {api_id}", **base_err}
     if not api.get("enabled"):
-        return {"ok": False, "error": "API 未启用（请在 catalog 中 enable，并确认 credential_env 已设置）", **base_err}
+        return {"ok": False, "error": "API is not enabled (enable it in the catalog and make sure credential_env is set)", **base_err}
 
     if not model_real_name:
         models = api.get("models", [])
         if not models:
-            return {"ok": False, "error": "该 API 没有注册任何 model", **base_err}
+            return {"ok": False, "error": "No models are registered for this API", **base_err}
         model_real_name = models[0].get("real_name") or models[0].get("id")
 
     start = time.monotonic()
@@ -1032,7 +1032,7 @@ def probe_availability(api_id: str, model_real_name: str | None = None, timeout_
         # timeout_sec 以前是死参数(函数体从没用过),探测沿用 GM 的 1800s/300s 读超时 + SDK 重试。
         bound_backend_for_probe(gm._backend, timeout_sec)
         text = gm._backend.call(
-            system="只回复一个字符：1",
+            system="Reply with exactly one character: 1",
             messages=[{"role": "user", "content": "1"}],
             max_tokens=8,
         )
@@ -1082,7 +1082,7 @@ def full_report(api_id: str, probe_model: bool = False, user_id: int | None = No
     catalog = load_model_catalog()
     api = find_api(catalog, api_id)
     if not api:
-        return {"ok": False, "error": f"api_id 不存在: {api_id}"}
+        return {"ok": False, "error": f"Unknown api_id: {api_id}"}
     kind = api_kind(api_id)  # catalog 查 kind(api 已确保来自 catalog 且非空,等价 api.get("kind") or api_id)
 
     report = {
@@ -1128,20 +1128,20 @@ def full_report(api_id: str, probe_model: bool = False, user_id: int | None = No
 # ══════════════════════════════════════════════════════════════════════
 # 能力标签词典（前端可用作筛选）
 CAPABILITY_LABELS = {
-    "text":         "文本生成",
-    "streaming":    "流式输出",
-    "image_input":  "视觉输入",
-    "audio_input":  "音频输入",
-    "video_input":  "视频输入",
-    "file_input":   "文件附件",
+    "text":         "Text generation",
+    "streaming":    "Streaming",
+    "image_input":  "Vision input",
+    "audio_input":  "Audio input",
+    "video_input":  "Video input",
+    "file_input":   "File attachments",
     "tools":        "Function Calling",
-    "json_mode":    "JSON 结构化输出",
-    "image_gen":    "图像生成",
-    "audio_gen":    "音频生成",
-    "reasoning":    "深度思考",
-    "computer_use": "电脑控制",
-    "code_exec":    "代码执行",
-    "web_search":   "联网搜索",
+    "json_mode":    "JSON structured output",
+    "image_gen":    "Image generation",
+    "audio_gen":    "Audio generation",
+    "reasoning":    "Deep thinking",
+    "computer_use": "Computer use",
+    "code_exec":    "Code execution",
+    "web_search":   "Web search",
 }
 
 # 模型默认能力（按 real_name 前缀匹配，精确名优先）。task 57 校准。

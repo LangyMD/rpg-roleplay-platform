@@ -279,9 +279,9 @@ def parse_card(data: dict[str, Any] | str | bytes) -> dict[str, Any]:
             decoded = base64.b64decode(stripped, validate=True).decode("utf-8")
             return parse_card(json.loads(decoded))
         except (binascii.Error, json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise ValueError(f"无法解析角色卡：既不是 JSON 也不是 base64({exc})") from exc
+            raise ValueError(f"Could not parse character card: it is neither JSON nor base64 ({exc})") from exc
     if not isinstance(data, dict):
-        raise ValueError(f"不支持的角色卡类型：{type(data)}")
+        raise ValueError(f"Unsupported character card type: {type(data)}")
     # 解包常见的外层包装（如 {"ok":true,"card":{...}}、{"data":{...}}、{"character":{...}}）。
     # 仅当根级缺少有效 data 时才尝试解包，避免误拆合法 V2 卡。
     root_has_valid_data = isinstance(data.get("data"), dict) and data["data"].get("name")
@@ -299,7 +299,7 @@ def parse_card(data: dict[str, Any] | str | bytes) -> dict[str, Any]:
     # 路由到 _normalize_v2 不会误路由真正的 V1 输入。
     # 没有这个分支，parse_card(parse_card(v1))——以及由此而来的
     # write_png_card(parse_card(v1)) → parse_png_card 自然往返——会报
-    # "V1 角色卡缺少 name"。
+    # "V1 character card is missing a name"。
     if data.get("spec") == "chara_card_v1" and isinstance(data.get("data"), dict):
         return _normalize_v2(data)
     return _v1_to_v2(data)
@@ -330,7 +330,7 @@ def _normalize_v2(card: dict[str, Any]) -> dict[str, Any]:
         },
     }
     if not out["data"]["name"]:
-        raise ValueError("角色卡缺少 name")
+        raise ValueError("Character card is missing a name")
     return out
 
 
@@ -338,7 +338,7 @@ def _v1_to_v2(card: dict[str, Any]) -> dict[str, Any]:
     """V1 扁平 → V2 标准化。"""
     name = (card.get("name") or card.get("char_name") or "").strip()
     if not name:
-        raise ValueError("V1 角色卡缺少 name")
+        raise ValueError("V1 character card is missing a name")
     return _normalize_v2({
         "spec": "chara_card_v1",
         "spec_version": "1.0",
@@ -375,11 +375,11 @@ def _safe_zlib_decompress(compressed: bytes, max_size: int) -> bytes:
     while pos < len(compressed):
         out += decomp.decompress(compressed[pos:pos + chunk_size], max_size - len(out))
         if len(out) >= max_size and decomp.unconsumed_tail:
-            raise ValueError(f"zTXt 解压超过上限 {max_size} 字节（疑似 zlib 炸弹）")
+            raise ValueError(f"zTXt decompression exceeded the {max_size}-byte limit (possible zlib bomb)")
         pos += chunk_size
     out += decomp.flush()
     if len(out) > max_size:
-        raise ValueError(f"zTXt 解压超过上限 {max_size} 字节")
+        raise ValueError(f"zTXt decompression exceeded the {max_size}-byte limit")
     return bytes(out)
 
 
@@ -390,9 +390,9 @@ def parse_png_card(blob: bytes) -> dict[str, Any]:
     超限直接 ValueError，避免 worker OOM。
     """
     if not blob.startswith(PNG_SIGNATURE):
-        raise ValueError("不是合法 PNG 文件")
+        raise ValueError("Not a valid PNG file")
     if len(blob) > _MAX_PNG_BYTES:
-        raise ValueError(f"PNG 文件过大（最大 {_MAX_PNG_BYTES // (1024*1024)}MB）")
+        raise ValueError(f"PNG file is too large (max {_MAX_PNG_BYTES // (1024*1024)}MB)")
     offset = 8
     text_chunks: dict[str, str] = {}
     while offset < len(blob):
@@ -400,7 +400,7 @@ def parse_png_card(blob: bytes) -> dict[str, Any]:
             break
         length = struct.unpack(">I", blob[offset:offset + 4])[0]
         if length > _MAX_CHUNK_LENGTH:
-            raise ValueError(f"PNG chunk 长度超过上限 {_MAX_CHUNK_LENGTH}")
+            raise ValueError(f"PNG chunk length exceeds the limit of {_MAX_CHUNK_LENGTH}")
         chunk_type = blob[offset + 4:offset + 8].decode("ascii", errors="replace")
         body = blob[offset + 8:offset + 8 + length]
         offset += 12 + length  # 4 type + length + 4 CRC
@@ -426,7 +426,7 @@ def parse_png_card(blob: bytes) -> dict[str, Any]:
     for search_key in ("ccv3", "chara"):
         if search_key in text_chunks:
             return parse_card(text_chunks[search_key])
-    raise ValueError("PNG 不包含 chara/ccv3 tEXt chunk")
+    raise ValueError("PNG does not contain a chara/ccv3 tEXt chunk")
 
 
 # ── 映射到我方 PC 卡(character_cards, card_type='pc')───────────────
@@ -570,29 +570,29 @@ def llm_structure_description(
     )
     schema = {
         "name": "emit_card_fields",
-        "description": "把角色卡自由文本档案按语义拆进结构化字段",
+        "description": "Split a free-text character profile into structured fields by meaning",
         "input_schema": {
             "type": "object",
             "properties": {
-                "identity": {"type": "string", "description": "身份/职业/年龄/性别等基本定位,简短一两行"},
-                "background": {"type": "string", "description": "背景故事/经历/家庭/社交关系/社会地位/人生目标/能力技能"},
-                "appearance": {"type": "string", "description": "外貌/体型/衣着风格"},
-                "personality": {"type": "string", "description": "性格/情绪/喜好厌恶/习惯/优缺点;以及 NSFW 取向/性癖/禁忌底线等亲密偏好与硬限(GM 需可见才能尊重)"},
-                "speech_style": {"type": "string", "description": "说话方式/语气/口癖;没有则空字符串"},
-                "current_status": {"type": "string", "description": "当前状态/近况;没有则空字符串"},
-                "secrets": {"type": "string", "description": "仅剧情秘密/隐藏设定(玩家知道但 GM/NPC 不应知道的);不要放 NSFW 偏好;没有则空字符串"},
+                "identity": {"type": "string", "description": "Basic identity: role, occupation, age, gender, etc. One or two short lines"},
+                "background": {"type": "string", "description": "Backstory, history, family, relationships, social standing, life goals, abilities and skills"},
+                "appearance": {"type": "string", "description": "Appearance, build, clothing style"},
+                "personality": {"type": "string", "description": "Personality, emotions, likes and dislikes, habits, strengths and flaws; also intimate preferences and hard limits such as NSFW orientation, kinks and taboos (the GM must see these to respect them)"},
+                "speech_style": {"type": "string", "description": "Way of speaking, tone, verbal tics; empty string if none"},
+                "current_status": {"type": "string", "description": "Current status / recent situation; empty string if none"},
+                "secrets": {"type": "string", "description": "Only plot secrets / hidden lore (things the player knows but the GM/NPCs should not); do not put NSFW preferences here; empty string if none"},
             },
             "required": ["identity", "background", "appearance", "personality"],
         },
     }
     system = (
-        "你是角色卡字段整理器。把用户给的角色档案原文,按语义归类拆进给定字段。规则:"
-        "1) 只做归类与适度精简,绝不新增或编造任何设定;"
-        "2) 原文是什么语言就用什么语言输出;"
-        "3) 找不到对应内容的字段填空字符串;"
-        "4) 必须且只能通过调用 emit_card_fields 工具输出结果。"
+        "You are a character-card field organizer. Sort the user's raw character profile into the given fields by meaning. Rules: "
+        "1) Only categorize and lightly condense; never add or invent any details; "
+        "2) Write each field in the same language as the source text; "
+        "3) Use an empty string for any field with no matching content; "
+        "4) Output the result only by calling the emit_card_fields tool."
     )
-    user = f"角色档案原文:\n\n{text[:8000]}"
+    user = f"Character profile source text:\n\n{text[:8000]}"
     try:
         out, _usage = call_agent_json_guarded(
             api_id, model, system, user, user_id,
@@ -668,7 +668,7 @@ def write_png_card(v2_card: dict[str, Any], template_png: bytes | None = None) -
     # 插到 IEND chunk 之前
     iend_pos = png.rfind(b"IEND")
     if iend_pos < 4:
-        raise ValueError("template_png 没有 IEND chunk")
+        raise ValueError("template_png has no IEND chunk")
     # IEND chunk 起点（length 字段在 type 前 4 字节）
     insert_at = iend_pos - 4
     return png[:insert_at] + text_chunk + png[insert_at:]
@@ -693,11 +693,11 @@ def _minimal_png() -> bytes:
 # secrets 不进 description —— 它是「玩家知道但 GM/NPC 不应知道」的硬隔离字段,绝不泄漏到任何
 # 酒馆客户端的 AI 可见字段;只随 extensions.stellatrix 保存。
 _EXPORT_DESC_SECTIONS = (
-    ("身份", "identity"),
-    ("背景", "background"),
-    ("外貌", "appearance"),
-    ("语气", "speech_style"),
-    ("当前状态", "current_status"),
+    ("Identity", "identity"),
+    ("Background", "background"),
+    ("Appearance", "appearance"),
+    ("Speech style", "speech_style"),
+    ("Current status", "current_status"),
 )
 
 

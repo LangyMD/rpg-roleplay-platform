@@ -118,11 +118,11 @@ class TestInviteMode(unittest.TestCase):
     CFG = {"mode": "invite", "require_email_verify": True, "auto_approve": True}
 
     def test_no_code_rejected(self):
-        with self.assertRaisesRegex(ValueError, "邀请码"):
+        with self.assertRaisesRegex(ValueError, "(?i)invite code"):
             _register(_Db(self.CFG, codes={_GOOD_CODE}))
 
     def test_wrong_code_rejected(self):
-        with self.assertRaisesRegex(ValueError, "邀请码无效"):
+        with self.assertRaisesRegex(ValueError, "Invite code is invalid"):
             _register(_Db(self.CFG, codes={_GOOD_CODE}), invite_code="WRONG")
 
     def test_valid_code_passes_and_is_reserved_for_confirm(self):
@@ -131,7 +131,7 @@ class TestInviteMode(unittest.TestCase):
         self.assertEqual(pending["invite_code"], _GOOD_CODE)
 
     def test_legacy_string_config_still_enforced(self):
-        with self.assertRaisesRegex(ValueError, "邀请码"):
+        with self.assertRaisesRegex(ValueError, "(?i)invite code"):
             _register(_Db(json.dumps(self.CFG)))
 
     def test_allowlisted_email_needs_no_code(self):
@@ -148,7 +148,7 @@ class TestInviteMode(unittest.TestCase):
 
 class TestAllowlistAlias(unittest.TestCase):
     def test_allowlist_mode_ignores_codes(self):
-        with self.assertRaisesRegex(ValueError, "白名单"):
+        with self.assertRaisesRegex(ValueError, "allowlist"):
             _register(_Db({"mode": "allowlist"}, codes={_GOOD_CODE}), invite_code=_GOOD_CODE)
         _out, pending = _register(_Db({"mode": "allowlist"}, allowlist={_EMAIL}))
         self.assertIsNone(pending["invite_code"])
@@ -175,11 +175,11 @@ class TestOpenMode(unittest.TestCase):
 
 class TestClosedMode(unittest.TestCase):
     def test_password_register_rejected(self):
-        with self.assertRaisesRegex(ValueError, "关闭"):
+        with self.assertRaisesRegex(ValueError, "closed"):
             _register(_Db({"mode": "closed"}, allowlist={_EMAIL}, codes={_GOOD_CODE}), invite_code=_GOOD_CODE)
 
     def test_apple_new_account_rejected(self):
-        with self.assertRaisesRegex(ValueError, "关闭"):
+        with self.assertRaisesRegex(ValueError, "closed"):
             auth._assert_registration_allowed(_Db({"mode": "closed"}, allowlist={_EMAIL}), _EMAIL)
 
 
@@ -264,7 +264,7 @@ class TestPasswordlessNewAccountFollowsGate(unittest.TestCase):
         for label, run in self.RUNNERS:
             with self.subTest(path=label):
                 db = _PasswordlessDb({"mode": "closed"}, allowlist={_EMAIL})
-                with self.assertRaisesRegex(ValueError, "关闭"):
+                with self.assertRaisesRegex(ValueError, "closed"):
                     run(db)
                 self.assertFalse(db.created_user(), "关闭注册时不该建号")
 
@@ -290,7 +290,7 @@ class TestPasswordlessNewAccountFollowsGate(unittest.TestCase):
         for label, run in self.RUNNERS:
             with self.subTest(path=label):
                 db = _PasswordlessDb({"mode": "open"})
-                with self.assertRaisesRegex(ValueError, "白名单"):
+                with self.assertRaisesRegex(ValueError, "allowlist"):
                     run(db)
                 self.assertFalse(db.created_user())
 
@@ -301,7 +301,7 @@ class TestAppleGate(unittest.TestCase):
 
     def test_invite_requires_allowlist(self):
         """Apple 登录没有邀请码输入,仅邀请模式下只认白名单(与改动前一致)。"""
-        with self.assertRaisesRegex(ValueError, "白名单"):
+        with self.assertRaisesRegex(ValueError, "allowlist"):
             auth._assert_registration_allowed(_Db({"mode": "invite"}), _EMAIL)
         auth._assert_registration_allowed(_Db({"mode": "invite"}, allowlist={_EMAIL}), _EMAIL)
 
@@ -398,7 +398,7 @@ class TestInviteCodeUsedJudgedByUsedAt(unittest.TestCase):
 
     def test_gate_rejects_code_of_deleted_user(self):
         db = _InviteDb({"mode": "invite"}, rows={_GOOD_CODE: dict(self.ORPHANED)})
-        with self.assertRaisesRegex(ValueError, "邀请码无效或已使用"):
+        with self.assertRaisesRegex(ValueError, "Invite code is invalid or already used"):
             _register(db, invite_code=_GOOD_CODE)
 
     def test_gate_still_accepts_fresh_code(self):
@@ -439,7 +439,7 @@ class TestInviteCodeUsedJudgedByUsedAt(unittest.TestCase):
             return auth.confirm_email_verification(_EMAIL, "123456")
 
     def test_confirm_reservation_refuses_code_of_deleted_user(self):
-        with self.assertRaisesRegex(ValueError, "邀请码已被使用"):
+        with self.assertRaisesRegex(ValueError, "invite code has already been used"):
             self._confirm_with(dict(self.ORPHANED))
 
     def test_confirm_reservation_takes_fresh_code(self):

@@ -46,7 +46,7 @@ async def api_register(request: Request):
         _auth._check_rate_limit(ip, normalized_username)
     except _auth.RateLimited as rl:
         return json_response(
-            {"ok": False, "error": f"请求频率过高，请 {rl.retry_after_sec} 秒后再试"},
+            {"ok": False, "error": f"Too many requests; please try again in {rl.retry_after_sec} seconds"},
             status_code=429,
             headers={"Retry-After": str(rl.retry_after_sec)},
         )
@@ -58,16 +58,16 @@ async def api_register(request: Request):
         if not _ok:
             _auth._record_login_fail(ip, normalized_username)
             return json_response(
-                {"ok": False, "error": "人机验证失败，请刷新页面后重试", "error_key": "auth.captcha_failed"},
+                {"ok": False, "error": "Human verification failed; please refresh the page and try again", "error_key": "auth.captcha_failed"},
                 status_code=400,
             )
     # 合规校验：服务条款 + 年龄确认
     terms_accepted = bool(body.get("terms_accepted"))
     age_confirmed = bool(body.get("age_confirmed"))
     if not terms_accepted:
-        raise HTTPException(400, detail={"error_key": "auth.terms_not_accepted", "message": "请阅读并同意《服务条款》和《隐私政策》"})
+        raise HTTPException(400, detail={"error_key": "auth.terms_not_accepted", "message": "Please read and accept the Terms of Service and Privacy Policy"})
     if not age_confirmed:
-        raise HTTPException(400, detail={"error_key": "auth.age_not_confirmed", "message": "请确认你已年满 18 周岁"})
+        raise HTTPException(400, detail={"error_key": "auth.age_not_confirmed", "message": "Please confirm that you are at least 18 years old"})
     # 首管理员引导令牌:body.setup_token 优先,其次 X-Setup-Token 头(server 模式才生效)
     setup_token = body.get("setup_token") or request.headers.get("X-Setup-Token")
     try:
@@ -113,7 +113,7 @@ async def api_verify_email(request: Request):
     email = body.get("email", "")
     code = body.get("code", "").strip()
     if not email or not code:
-        return json_response({"ok": False, "error": "email 和 code 不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "email and code cannot be empty"}, status_code=400)
     # SEC(L-5): per-IP 软上限,与 email 维度失败计数器叠加做纵深防御(防多 IP 轮询放大暴破)。
     _ip_key = _client_ip(request)
     # [round-4-P1] rate_incr 内部吞掉所有异常并返回 None(从不抛 ConnectionError/Timeout),
@@ -129,9 +129,9 @@ async def api_verify_email(request: Request):
             _bucket[:] = [t for t in _bucket if _now - t < _VERIFY_IP_WINDOW_SEC]
             _cnt = len(_bucket)
         if _cnt > _VERIFY_IP_LIMIT:
-            return json_response({"ok": False, "error": "尝试过于频繁,请稍后再试"}, status_code=429)
+            return json_response({"ok": False, "error": "Too many attempts; please try again later"}, status_code=429)
     elif _c > 60:
-        return json_response({"ok": False, "error": "尝试过于频繁,请稍后再试"}, status_code=429)
+        return json_response({"ok": False, "error": "Too many attempts; please try again later"}, status_code=429)
     try:
         user, token = _auth.confirm_email_verification(email, code)
         workspace.ensure_default(user["id"])
@@ -149,11 +149,11 @@ async def api_resend_code(request: Request):
     email = body.get("email", "")
     ip = _client_ip(request)
     if not email:
-        return json_response({"ok": False, "error": "email 不能为空"}, status_code=400)
+        return json_response({"ok": False, "error": "email cannot be empty"}, status_code=400)
     try:
         # 内部含同步 httpx.post(Resend API),移出 event loop 防阻塞 worker。
         await asyncio.to_thread(_auth.resend_verification_code, email, ip=ip)
-        return json_response({"ok": True, "message": "验证码已重发，请查收邮件"})
+        return json_response({"ok": True, "message": "Verification code resent; please check your email"})
     except ValueError as exc:
         return value_error_response(exc, status_code=429)
 
@@ -176,7 +176,7 @@ async def api_login(request: Request):
         return response
     except _auth.RateLimited as rl:
         return json_response(
-            {"ok": False, "error": f"登录失败次数过多，请 {rl.retry_after_sec} 秒后再试"},
+            {"ok": False, "error": f"Too many failed login attempts; please try again in {rl.retry_after_sec} seconds"},
             status_code=429,
             headers={"Retry-After": str(rl.retry_after_sec)},
         )
@@ -196,7 +196,7 @@ async def api_login_code_request(request: Request):
         return json_response(result)
     except _auth.RateLimited as rl:
         return json_response(
-            {"ok": False, "error": f"请求频率过高，请 {rl.retry_after_sec} 秒后再试"},
+            {"ok": False, "error": f"Too many requests; please try again in {rl.retry_after_sec} seconds"},
             status_code=429,
             headers={"Retry-After": str(rl.retry_after_sec)},
         )
@@ -219,7 +219,7 @@ async def api_login_code_verify(request: Request):
         return response
     except _auth.RateLimited as rl:
         return json_response(
-            {"ok": False, "error": f"请求频率过高，请 {rl.retry_after_sec} 秒后再试"},
+            {"ok": False, "error": f"Too many requests; please try again in {rl.retry_after_sec} seconds"},
             status_code=429,
             headers={"Retry-After": str(rl.retry_after_sec)},
         )
@@ -236,12 +236,12 @@ async def api_apple_signin(request: Request):
     raw_nonce = (body.get("raw_nonce") or "").strip()
     name = (body.get("name") or "").strip()
     if not identity_token:
-        return json_response({"ok": False, "error": "缺 identity_token"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing identity_token"}, status_code=400)
     ip = _client_ip(request)
     try:
         _auth._check_rate_limit(ip, "apple")
     except _auth.RateLimited:
-        return json_response({"ok": False, "error": "尝试过于频繁,请稍后再试"}, status_code=429)
+        return json_response({"ok": False, "error": "Too many attempts; please try again later"}, status_code=429)
     try:
         claims = await asyncio.to_thread(_auth.verify_apple_identity_token, identity_token, raw_nonce)
         user, token = await asyncio.to_thread(
@@ -276,7 +276,7 @@ async def api_desktop_login(request: Request, token: str = "", next: str = "/Pla
     from core.config import LOCAL_MODES
     from core.config import deployment_mode as _dm
     if (_dm() or "").strip().lower() not in LOCAL_MODES:
-        raise HTTPException(status_code=404, detail="仅本地部署可用")
+        raise HTTPException(status_code=404, detail="Only available on local deployments")
     # 防开放重定向:next 必须是站内相对路径(单个 /,不允许 // 或 \\ 或带协议)。
     # 反斜杠要挡:浏览器会把 /\evil.com 当成协议相对 URL → 跳站外。
     dest = next if (next.startswith("/") and not next.startswith("//") and "\\" not in next and ":" not in next) else "/Platform.html"
@@ -318,14 +318,14 @@ async def api_magic_consume(request: Request):
     token = (body.get("magic_token") or "").strip()
     email = (body.get("email") or "").strip().lower()
     if not token or not email:
-        return json_response({"ok": False, "error": "缺 magic_token 或 email"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing magic_token or email"}, status_code=400)
     ip = _client_ip(request)
     # [round-4-P2] 与 login()/confirm_login_code() 对齐:先做 per-IP/per-email 限流预检,
     #   锁定中直接 429,避免每个被锁请求仍打 DB(consume_magic_token 的 allowlist SELECT)。
     try:
         _auth._check_rate_limit(ip, email)
     except _auth.RateLimited as _rl:
-        return json_response({"ok": False, "error": "尝试过于频繁,请稍后再试"}, status_code=429)
+        return json_response({"ok": False, "error": "Too many attempts; please try again later"}, status_code=429)
     try:
         # Step 1: 校验 magic_token + email 匹配 + 30 天有效期（快速失败预筛，真正消费在 Step 2）
         await asyncio.to_thread(_auth.consume_magic_token, token, email)
@@ -379,7 +379,7 @@ async def api_admin_login_unlock(request: Request, admin=Depends(_require_admin)
     username = (body.get("username") or "").strip()
     ip = (body.get("ip") or "").strip()
     if not username and not ip:
-        return json_response({"ok": False, "error": "username 或 ip 至少传一个"}, status_code=400)
+        return json_response({"ok": False, "error": "Provide at least one of username or ip"}, status_code=400)
     _auth.admin_unlock(ip=ip, username=username)
     return json_response({"ok": True, "unlocked": {"username": username or None, "ip": ip or None}})
 
@@ -404,19 +404,19 @@ async def api_reset_password(request: Request):
     new_password = body.get("password") or ""
     ip = _client_ip(request)
     if not token or not new_password:
-        raise HTTPException(400, detail={"error_key": "auth.invalid_payload", "message": "参数不完整"})
+        raise HTTPException(400, detail={"error_key": "auth.invalid_payload", "message": "Incomplete parameters"})
     try:
         # Argon2id 哈希 ~150-300ms CPU 阻塞,移出 event loop 防冻结 worker。
         result = await asyncio.to_thread(_auth.confirm_password_reset, token, new_password, ip=ip)
         return json_response(result)
     except ValueError as exc:
         msg = str(exc)
-        if "invalid_token" in msg or "无效或已过期" in msg:
+        if "invalid_token" in msg or "无效或已过期" in msg or "invalid or expired" in msg.lower():
             raise HTTPException(400, detail={"error_key": "auth.reset_token_invalid_or_expired",
-                                             "message": "重置链接无效或已过期，请重新申请"})
-        if "已使用" in msg:
+                                             "message": "Reset link is invalid or expired; please request a new one"})
+        if "已使用" in msg or "already used" in msg.lower():
             raise HTTPException(400, detail={"error_key": "auth.reset_token_used",
-                                             "message": "该重置链接已使用过"})
+                                             "message": "This reset link has already been used"})
         raise HTTPException(400, detail={"error_key": "auth.reset_fail", "message": msg})
 
 
@@ -457,17 +457,17 @@ async def api_auth_schema():
     if not effective_auth_required():
         notes["first_user_is_admin"] = first_user_is_admin
     # 邀请码字段:仅邀请模式才出现。不设必填 —— 已预约内测(白名单)的邮箱不用码,由后端注册闸裁定。
-    invite_field = {"key": "invite_code", "label": "邀请码", "type": "text", "required": False,
-                    "placeholder": "已预约内测的邮箱可以不填"}
+    invite_field = {"key": "invite_code", "label": "Invite code", "type": "text", "required": False,
+                    "placeholder": "Not needed if your email is already signed up for the beta"}
     register_fields = [
-        {"key": "username", "label": "用户名", "type": "text", "required": True},
-        {"key": "display_name", "label": "昵称(可选)", "type": "text", "required": False},
-        {"key": "email", "label": "邮箱", "type": "email", "required": True, "autocomplete": "email"},
-        {"key": "birthday", "label": "出生日期", "type": "date", "required": True,
-         "placeholder": "YYYY-MM-DD", "note": "必须年满 18 周岁"},
-        {"key": "password", "label": "密码", "type": "password", "required": True, "min_length": pw_min},
-        {"key": "terms_accepted", "type": "boolean", "required": True, "label": "我已阅读并同意《服务条款》和《隐私政策》"},
-        {"key": "age_confirmed", "type": "boolean", "required": True, "label": "我已年满 18 周岁"},
+        {"key": "username", "label": "Username", "type": "text", "required": True},
+        {"key": "display_name", "label": "Display name (optional)", "type": "text", "required": False},
+        {"key": "email", "label": "Email", "type": "email", "required": True, "autocomplete": "email"},
+        {"key": "birthday", "label": "Date of birth", "type": "date", "required": True,
+         "placeholder": "YYYY-MM-DD", "note": "You must be at least 18"},
+        {"key": "password", "label": "Password", "type": "password", "required": True, "min_length": pw_min},
+        {"key": "terms_accepted", "type": "boolean", "required": True, "label": "I have read and accept the Terms of Service and Privacy Policy"},
+        {"key": "age_confirmed", "type": "boolean", "required": True, "label": "I am at least 18 years old"},
     ]
     if notes["invite_only"]:
         register_fields.insert(0, invite_field)
@@ -484,8 +484,8 @@ async def api_auth_schema():
 
     return json_response({
         "login": [
-            {"key": "username", "label": "用户名或邮箱", "type": "text", "required": True},
-            {"key": "password", "label": "密码", "type": "password", "required": True, "min_length": pw_min},
+            {"key": "username", "label": "Username or email", "type": "text", "required": True},
+            {"key": "password", "label": "Password", "type": "password", "required": True, "min_length": pw_min},
         ],
         "register": register_fields,
         "notes": notes,

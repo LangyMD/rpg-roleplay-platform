@@ -309,7 +309,7 @@ async def api_rules_encounter_start(
         return json_response({"ok": False, "error": d_result.error}, status_code=400)
     encounter = state.data.get("encounter") or {}
     _clear_pending_questions_after_rule_action(state, f"encounter:start:{encounter_id}")
-    _append_rules_receipt(state, _encounter_receipt("先攻", {"encounter": encounter}))
+    _append_rules_receipt(state, _encounter_receipt("Initiative", {"encounter": encounter}))
     state.save()
     _persist_runtime_checkpoint(state, api_user)
     return json_response({"ok": True, "rules": _rules_payload(state), "encounter": encounter})
@@ -342,7 +342,7 @@ async def api_rules_encounter_next(
         return json_response({"ok": False, "error": d_result.error}, status_code=400)
     encounter = state.data.get("encounter") or {}
     _clear_pending_questions_after_rule_action(state, "encounter:next")
-    _append_rules_receipt(state, _encounter_receipt("下一回合", {"encounter": encounter}))
+    _append_rules_receipt(state, _encounter_receipt("Next turn", {"encounter": encounter}))
     state.save()
     _persist_runtime_checkpoint(state, api_user)
     return json_response({"ok": True, "rules": _rules_payload(state), "encounter": encounter})
@@ -385,7 +385,7 @@ async def api_rules_encounter_enemy(
     encounter = state.data.get("encounter") or {}
     _clear_pending_questions_after_rule_action(state, f"enemy:{attacker_id}")
     _append_rules_receipt(state, _encounter_receipt(
-        "敌方攻击", {"result": {"target_name": target_id, "summary": d_result.result}}
+        "Enemy attack", {"result": {"target_name": target_id, "summary": d_result.result}}
     ))
     state.save()
     _persist_runtime_checkpoint(state, api_user)
