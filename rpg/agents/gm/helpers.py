@@ -20,32 +20,32 @@ def _anthropic_curator_tool_use(
     # native tool_use 强校验所有字段，配合 context_agent.AGENT_PROMPT 同步升级。
     tool = {
         "name": "select_context",
-        "description": "生成本轮 Demand Ledger：玩家意图、硬/软约束、候选动作、acceptance 验收标准、confidence 自评。",
+        "description": "Produce this turn's Demand Ledger: player intent, hard/soft constraints, candidate actions, acceptance criteria, confidence self-assessment.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "intent": {"type": "string", "description": "玩家意图一句话"},
-                "active_goal": {"type": "string", "description": "底层真实目标（不是字面）"},
-                "hard_constraints": {"type": "array", "items": {"type": "string"}, "description": "必须满足的硬约束"},
-                "soft_preferences": {"type": "array", "items": {"type": "string"}, "description": "希望满足的软偏好"},
-                "target_entities": {"type": "array", "items": {"type": "string"}, "description": "涉及角色/势力名"},
-                "target_location": {"type": "string", "description": "目标地点，无则空"},
-                "target_time": {"type": "string", "description": "目标时间，无则空"},
-                "timeline_target": {"type": "string", "description": "若请求跳时间的目标 label，无则空"},
-                "retrieval_query": {"type": "string", "description": "检索短查询"},
+                "intent": {"type": "string", "description": "The player's intent in one sentence"},
+                "active_goal": {"type": "string", "description": "The underlying real goal (not the literal request)"},
+                "hard_constraints": {"type": "array", "items": {"type": "string"}, "description": "Hard constraints that must be satisfied"},
+                "soft_preferences": {"type": "array", "items": {"type": "string"}, "description": "Soft preferences that should ideally be satisfied"},
+                "target_entities": {"type": "array", "items": {"type": "string"}, "description": "Names of characters / factions involved"},
+                "target_location": {"type": "string", "description": "Target location; empty if none"},
+                "target_time": {"type": "string", "description": "Target time; empty if none"},
+                "timeline_target": {"type": "string", "description": "Target label if a time skip is requested; empty if none"},
+                "retrieval_query": {"type": "string", "description": "Short retrieval query"},
                 "retrieval_plan": {
                     "type": "object",
                     "properties": {
-                        "must_include": {"type": "array", "items": {"type": "string"}, "description": "本轮必含事实"},
-                        "should_include": {"type": "array", "items": {"type": "string"}, "description": "有助非必须的素材"},
+                        "must_include": {"type": "array", "items": {"type": "string"}, "description": "Facts that must be included this turn"},
+                        "should_include": {"type": "array", "items": {"type": "string"}, "description": "Helpful but optional material"},
                     },
                 },
-                "candidate_actions": {"type": "array", "items": {"type": "string"}, "description": "本轮 GM 可执行的 2-5 个候选动作"},
-                "acceptance": {"type": "array", "items": {"type": "string"}, "description": "本轮成功的验收条件，每条可程序验证"},
-                "risk_flags": {"type": "array", "items": {"type": "string"}, "description": "风险标记"},
-                "confidence": {"type": "number", "description": "自评信心 0.0-1.0；<0.5 触发 clarifying_question"},
-                "clarifying_question": {"type": "string", "description": "confidence 低时填封闭式问题 + 候选答案；否则空"},
-                "reason": {"type": "string", "description": "为什么这样规划（不写给玩家）"},
+                "candidate_actions": {"type": "array", "items": {"type": "string"}, "description": "2-5 candidate actions the GM can take this turn"},
+                "acceptance": {"type": "array", "items": {"type": "string"}, "description": "Acceptance criteria for this turn's success, each programmatically verifiable"},
+                "risk_flags": {"type": "array", "items": {"type": "string"}, "description": "Risk flags"},
+                "confidence": {"type": "number", "description": "Self-assessed confidence 0.0-1.0; <0.5 triggers clarifying_question"},
+                "clarifying_question": {"type": "string", "description": "When confidence is low, a closed question + candidate answers; otherwise empty"},
+                "reason": {"type": "string", "description": "Why you planned it this way (not shown to the player)"},
             },
             "required": ["intent", "timeline_target", "retrieval_query", "risk_flags", "confidence", "reason"],
         },
@@ -75,7 +75,7 @@ def _anthropic_curator_tool_use(
     # 没拿到 tool_use 块 → 返回最小合法 JSON 让 _parse_curator_json 不崩
     return json.dumps({
         "intent": "", "timeline_target": "", "retrieval_query": "",
-        "must_include": [], "risk_flags": ["curator 未返回 tool_use"], "reason": "fallback",
+        "must_include": [], "risk_flags": ["curator returned no tool_use"], "reason": "fallback",
     }, ensure_ascii=False)
 
 
@@ -90,22 +90,22 @@ def _format_tools_for_prompt(tools: list[dict[str, Any]]) -> str:
         return ""
     lines = [
         "",
-        "【工具调用·正文铁律(text-marker 路径)】",
-        "调用工具(<<TOOL_CALL>>…<<END_TOOL_CALL>>)前后,绝不要用自然语言旁白工具的执行"
-        "过程或结果 —— 不写「角色已创建」「正在设置…」「一切就绪」「让我为你搭建…」这类"
-        "元叙述。正文只写故事本身(角色的言行、场景、对白);工具是后台机械,玩家看不见,"
-        "也不该从你的正文里读到它的存在。需要切换/搭建角色时直接发工具调用 marker,搭好后"
-        "用沉浸的故事正文自然承接,不解说幕后操作。",
+        "【Tool calls: prose iron rule (text-marker path)】",
+        "Before and after calling a tool (<<TOOL_CALL>>...<<END_TOOL_CALL>>), never narrate the tool's execution "
+        "or results in natural language — no meta-narration like \"character created\", \"setting things up...\", \"all set\", \"let me build this for you...\". "
+        "The prose is only the story itself (characters' words and actions, scenes, dialogue); tools are backstage machinery the player cannot see, "
+        "and they should not learn of their existence from your prose. When you need to switch / set up a character, emit the tool-call marker directly, and once it is done "
+        "carry on naturally with immersive story prose, without explaining the behind-the-scenes work.",
         "",
         # 格式说明必须跟着清单走:GM 的 _SYSTEM_BASE 里写了,但助手等其它调用方的 system 里没有,
         # 模型只看到「<<TOOL_CALL>>」一个词、不知道里面装什么,DeepSeek 就改用它原生的 DSML
         # 标记 → 解析器不认、原样漏给用户(反馈 #106)。
-        "【工具调用格式】每次调用单独输出一段:"
-        '<<TOOL_CALL>>{"server_id":"<清单里斜杠前的部分>","tool":"<斜杠后的部分>","arguments":{…}}<<END_TOOL_CALL>>,'
-        "写完 <<END_TOOL_CALL>> 立即停止本轮输出、等工具结果。只用这一种格式,"
-        "不要输出 function_calls / invoke / DSML 之类的其它工具标记。",
+        "【Tool call format】Output each call as its own block: "
+        '<<TOOL_CALL>>{"server_id":"<the part before the slash in the list>","tool":"<the part after the slash>","arguments":{...}}<<END_TOOL_CALL>>, '
+        "and stop this turn's output right after writing <<END_TOOL_CALL>> to wait for the tool result. Use only this format; "
+        "do not output any other tool markup such as function_calls / invoke / DSML.",
         "",
-        "【本轮可用 MCP 工具清单】",
+        "【MCP tools available this turn】",
     ]
     for t in tools[:40]:  # 防止 prompt 过长
         sid = t.get("server_id", "")
@@ -123,7 +123,7 @@ def _format_tools_for_prompt(tools: list[dict[str, Any]]) -> str:
                 ftype = spec.get("type") if isinstance(spec, dict) else None
                 star = "*" if k in required else ""
                 return f"{k}{star}:{ftype}" if ftype else f"{k}{star}"
-            arg_hint = " · 参数: " + ", ".join(_p(k) for k in list(props.keys())[:8])
+            arg_hint = " · args: " + ", ".join(_p(k) for k in list(props.keys())[:8])
         lines.append(f"  · {sid}/{name}: {desc}{arg_hint}")
     return "\n".join(lines)
 
@@ -146,7 +146,7 @@ def parse_tool_marker(raw: str, tools: list[dict[str, Any]] | None = None) -> tu
 
     data = json.loads((raw or "").strip())
     if not isinstance(data, dict):
-        raise ValueError("工具调用必须是一个 JSON 对象")
+        raise ValueError("A tool call must be a JSON object")
     fn = data.get("function")
     if isinstance(fn, dict):
         data = {**fn, **{k: v for k, v in data.items() if k != "function"}}
@@ -155,7 +155,7 @@ def parse_tool_marker(raw: str, tools: list[dict[str, Any]] | None = None) -> tu
     name = next((str(data[k]).strip() for k in _MARKER_NAME_KEYS
                  if isinstance(data.get(k), str) and data[k].strip()), "")
     if not name:
-        raise ValueError(f"缺少工具名(tool 字段)。格式:{_MARKER_FORMAT}")
+        raise ValueError(f"Missing tool name (the \"tool\" field). Format: {_MARKER_FORMAT}")
     args: Any = next((data[k] for k in _MARKER_ARG_KEYS if data.get(k) not in (None, "")), {})
     if isinstance(args, str):
         try:
@@ -176,7 +176,7 @@ def parse_tool_marker(raw: str, tools: list[dict[str, Any]] | None = None) -> tu
 
 
 def _marker_retry_hint(exc: Exception) -> str:
-    return f"【系统】上一条工具调用无法执行:{exc}。请按 {_MARKER_FORMAT} 重新生成,或放弃工具调用。"
+    return f"【System】The previous tool call could not be executed: {exc}. Regenerate it as {_MARKER_FORMAT}, or drop the tool call."
 
 
 def _openai_text_marker_loop(
@@ -238,7 +238,7 @@ def _openai_text_marker_loop(
                 try:
                     server_id, tool_name, arguments = parse_tool_marker(tool_json_raw, mcp_tools)
                 except Exception as exc:
-                    yield {"type": "tool_error", "error": f"工具调用解析失败: {exc}", "raw": tool_json_raw[:200]}
+                    yield {"type": "tool_error", "error": f"Failed to parse tool call: {exc}", "raw": tool_json_raw[:200]}
                     messages.append({"role": "assistant", "content": accumulated_text + START + tool_json_raw + END})
                     messages.append({"role": "user", "content": _marker_retry_hint(exc)})
                     accumulated_text = ""
@@ -247,7 +247,7 @@ def _openai_text_marker_loop(
                 try:
                     result = mcp_call(server_id, tool_name, arguments)
                 except Exception as exc:
-                    result = {"ok": False, "error": f"call_tool 异常: {exc}"}
+                    result = {"ok": False, "error": f"call_tool error: {exc}"}
                 yield {
                     "type": "tool_result", "ok": bool(result.get("ok")),
                     "result": result.get("result"), "error": result.get("error"),
@@ -258,8 +258,8 @@ def _openai_text_marker_loop(
                 messages.append({
                     "role": "user",
                     "content": (
-                        f"【工具结果：{server_id}/{tool_name}】\n{truncated_result}\n\n"
-                        f"请基于工具结果继续本轮回应（不要重复正文，可继续描写或追加状态标签）。"
+                        f"【Tool result: {server_id}/{tool_name}】\n{truncated_result}\n\n"
+                        f"Continue this turn's response based on the tool result (do not repeat the prose already written; you may keep narrating or append state write-backs)."
                     ),
                 })
                 accumulated_text = ""
@@ -282,7 +282,7 @@ def _openai_text_marker_loop(
                     try:
                         result = mcp_call(server_id, tool_name, arguments)
                     except Exception as exc:
-                        result = {"ok": False, "error": f"call_tool 异常: {exc}"}
+                        result = {"ok": False, "error": f"call_tool error: {exc}"}
                     yield {
                         "type": "tool_result", "ok": bool(result.get("ok")),
                         "result": result.get("result"), "error": result.get("error"),
@@ -291,19 +291,19 @@ def _openai_text_marker_loop(
                         {"server_id": server_id, "tool": tool_name, "arguments": arguments},
                         ensure_ascii=False) + END
                     result_blocks.append(
-                        f"【工具结果：{server_id}/{tool_name}】\n{json.dumps(result, ensure_ascii=False)[:2000]}")
+                        f"【Tool result: {server_id}/{tool_name}】\n{json.dumps(result, ensure_ascii=False)[:2000]}")
                 messages.append({"role": "assistant", "content": accumulated_text + marker_text})
                 messages.append({
                     "role": "user",
                     "content": "\n\n".join(result_blocks)
-                    + "\n\n请基于工具结果继续本轮回应（不要重复正文，可继续描写或追加状态标签）。",
+                    + "\n\nContinue this turn's response based on the tool result (do not repeat the prose already written; you may keep narrating or append state write-backs).",
                 })
                 accumulated_text = ""
                 continue
             if in_tool:
-                yield {"type": "tool_error", "error": "工具调用未闭合", "raw": buffer[:200]}
+                yield {"type": "tool_error", "error": "Unclosed tool call", "raw": buffer[:200]}
                 messages.append({"role": "assistant", "content": accumulated_text + START + buffer})
-                messages.append({"role": "user", "content": "【系统】上一条工具调用未闭合，请重新输出完整 marker 或放弃调用。"})
+                messages.append({"role": "user", "content": "【System】The previous tool call was not closed. Output the complete marker again, or drop the call."})
                 accumulated_text = ""
                 continue
             if dsml.seen and not dsml.calls:
@@ -313,4 +313,4 @@ def _openai_text_marker_loop(
             if buffer:
                 yield {"type": "text", "text": buffer}
             return
-    yield {"type": "text", "text": "\n\n【已达本轮工具调用上限 (限制为本次回复内的调用次数,下一条消息自动重置),本轮终止】"}
+    yield {"type": "text", "text": "\n\n[Tool-call limit reached for this reply (the limit counts calls within this one reply and resets with your next message); this turn has ended]"}

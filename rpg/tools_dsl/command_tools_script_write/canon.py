@@ -21,13 +21,13 @@ def _t_list_canon_entities(user_id: int, script_id: int | None, args: dict, stat
     """
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     try:
         from platform_app.db import connect, init_db
         init_db()
         with connect() as db:
             if not _user_can_read_script(db, sid, user_id):
-                return f"失败 (权限): 剧本 #{sid} 不属于当前用户或未订阅"
+                return f"Failed (permission): script #{sid} does not belong to the current user or is not subscribed"
             rows = db.execute(
                 "select logical_key, name, full_name, type, entity_subtype, importance "
                 "from kb_canon_entities where script_id = %s "
@@ -35,16 +35,16 @@ def _t_list_canon_entities(user_id: int, script_id: int | None, args: dict, stat
                 (sid,),
             ).fetchall() or []
         if not rows:
-            return f"(剧本 #{sid} 暂无 canon 实体。要新建用 upsert_canon_entity 给 name+type,logical_key 可省略自动生成。)"
+            return f"(Script #{sid} has no canon entities yet. To create one, call upsert_canon_entity with name+type; logical_key can be omitted and is generated automatically.)"
         return json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2, default=str)
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, state: Any) -> str:
     sid = _resolve_sid(script_id, args)
     if sid is None:
-        return "失败: script_id 必填"
+        return "Failed: script_id is required"
     logical_key = (args.get("logical_key") or "")
     logical_key = str(logical_key).strip()
     from kb.alias import invalidate_alias_cache
@@ -58,18 +58,18 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
     )
     key_problem = canon_logical_key_problem(logical_key)
     if key_problem:
-        return f"失败: {key_problem}"
+        return f"Failed: {key_problem}"
     # type:给了就必须认得出(与 REST 同一白名单,中文/近义写法归一);认不出直接失败,不落脏类型。
     entity_type = None
     if args.get("type") is not None and str(args.get("type")).strip():
         entity_type = normalize_canon_type(args.get("type"))
         if not entity_type:
-            return f"失败: type「{args.get('type')}」不认识,可选 {canon_type_choices_text()}"
+            return f"Failed: unknown type '{args.get('type')}'; options: {canon_type_choices_text()}"
     if "name" in args and args["name"] is not None and not str(args["name"]).strip():
-        return "失败: name 不能为空"
+        return "Failed: name must not be empty"
     if not logical_key and not (str(args.get("name") or "").strip() and entity_type):
-        return ("失败: 改已有实体要给 logical_key(先 list_canon_entities 查);"
-                "新建可以不给 logical_key,但必须给 name 和 type")
+        return ("Failed: changing an existing entity requires logical_key (look it up with list_canon_entities first); "
+                "creating one may omit logical_key but must give name and type")
     try:
         from psycopg.types.json import Jsonb
 
@@ -80,7 +80,7 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
         with connect() as db:
             # ② 严格 owner 闸
             if not script_owned(db, sid, user_id):
-                return "失败(权限): 剧本不属于当前用户"
+                return "Failed (permission): the script does not belong to the current user"
             existing = None
             if logical_key:
                 existing = db.execute(
@@ -96,9 +96,9 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
                 if new_name != existing["name"] or new_type != existing["type"]:
                     dup = find_same_name_canon(db, sid, new_name, new_type, exclude_key=logical_key)
                     if dup:
-                        return (f"失败: 剧本 #{sid} 已有同名同类型实体「{dup['name']}」"
-                                f"(logical_key={dup['logical_key']}),这样改会和它重复;"
-                                f"要改那一条请带它的 logical_key")
+                        return (f"Failed: script #{sid} already has an entity '{dup['name']}' with the same name and type "
+                                f"(logical_key={dup['logical_key']}); this change would duplicate it. "
+                                f"To change that one, pass its logical_key")
                 sets, params = [], []
                 for col in ("name", "full_name", "type", "summary", "identity",
                             "background", "entity_subtype", "parent_logical_key"):
@@ -125,7 +125,7 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
                     sets.append("attrs = coalesce(attrs,'{}'::jsonb) || %s::jsonb")
                     params.append(Jsonb({**args["attrs"], "source": "editor"}))
                 if not sets:
-                    return "失败: 没有要更新的字段"
+                    return "Failed: no fields to update"
                 # 有真实字段更新但没动 attrs → 仍标 source='editor',让重建保留这条用户编辑过的实体(harness 审计 P1)。
                 if not any(s.startswith("attrs") for s in sets):
                     sets.append("attrs = coalesce(attrs,'{}'::jsonb) || '{\"source\":\"editor\"}'::jsonb")
@@ -150,7 +150,7 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
                 try:
                     _write_commit(
                         db, script_id=sid, user_id=user_id, kind="canon_edit",
-                        message=f"编辑 canon entity: {logical_key}",
+                        message=f"Edit canon entity: {logical_key}",
                         payload={"table": "kb_canon_entities", "op": "edit",
                                  "ids": {"logical_key": logical_key}},
                     )
@@ -158,16 +158,16 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
                     pass
                 db.commit()
                 invalidate_alias_cache(sid)
-                return f"已更新 canon 实体「{logical_key}」(剧本 #{sid})"
+                return f"Updated canon entity '{logical_key}' (script #{sid})"
             else:
                 # ── 创建 ── name/type 是 NOT NULL,创建时必须给。
                 name = str(args.get("name") or "").strip()
                 if not name or not entity_type:
-                    return "失败: 创建 canon 实体必须提供 name 和 type"
+                    return "Failed: creating a canon entity requires name and type"
                 dup = find_same_name_canon(db, sid, name, entity_type)
                 if dup:
-                    return (f"失败: 剧本 #{sid} 已有同名同类型实体「{dup['name']}」"
-                            f"(logical_key={dup['logical_key']});要改它请带这个 logical_key 更新,不要重复新建")
+                    return (f"Failed: script #{sid} already has an entity '{dup['name']}' with the same name and type "
+                            f"(logical_key={dup['logical_key']}); to change it, update with that logical_key instead of creating a duplicate")
                 aliases = args.get("aliases")
                 attrs = args.get("attrs")
                 explicit_key = bool(logical_key)
@@ -206,11 +206,11 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
                     if new_row:
                         break
                 if not new_row:
-                    return f"失败: canon 实体「{logical_key}」已存在(并发创建?)"
+                    return f"Failed: canon entity '{logical_key}' already exists (concurrent creation?)"
                 try:
                     _write_commit(
                         db, script_id=sid, user_id=user_id, kind="canon_add",
-                        message=f"新增 canon entity: {logical_key}",
+                        message=f"Add canon entity: {logical_key}",
                         payload={"table": "kb_canon_entities", "op": "add",
                                  "ids": {"logical_key": logical_key}},
                     )
@@ -218,10 +218,10 @@ def _t_upsert_canon_entity(user_id: int, script_id: int | None, args: dict, stat
                     pass
                 db.commit()
                 invalidate_alias_cache(sid)
-                return f"已创建 canon 实体「{logical_key}」(剧本 #{sid})"
+                return f"Created canon entity '{logical_key}' (script #{sid})"
     except ValueError as exc:
-        return f"失败: {exc}"
+        return f"Failed: {exc}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 

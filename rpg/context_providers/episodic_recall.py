@@ -13,6 +13,8 @@ feature gate: episodic_recall(与 novel 路径同一 flag,全局已开);无命�
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -61,21 +63,21 @@ class EpisodicRecallProvider(ContextProvider):
         lines: list[str] = []
         for i, h in enumerate(hits, 1):
             if h.get("kind") == "history":
-                lines.append(f"{i}. [第{h['turn']}回合·{h['role']}] {h['text']}")
+                lines.append(f"{i}. [Turn {h['turn']} · {h['role']}] {h['text']}")
             else:
                 meta = h.get("meta") or ""
                 lines.append(f"{i}. {h['text']}" + (f"  ({meta})" if meta else ""))
         source = ",".join(sorted({h.get("kind") or "" for h in hits}))
 
         text = "\n".join(
-            ["以下是按本回合输入从【全程游戏历史】召回的相关往事,当作已发生事实参考,勿复述成新发生:"]
+            ["Relevant past events recalled from the [whole play history] based on this turn's input. Treat them as facts that already happened; do not retell them as if they were happening now:"]
             + lines
         )
         import logging
         logging.getLogger(__name__).info(
             "[episodic_recall] 注入 %d 条 (source=%s, save=%s)", len(lines), source, save_id)
         layer = self.make_layer(
-            "episodic_recall", "相关往事·全程历史召回", text,
+            "episodic_recall", "Relevant Past Events · Full History Recall", text,
             sticky=False, priority=PRIORITY,
         )
         return ContextContribution(
@@ -83,7 +85,7 @@ class EpisodicRecallProvider(ContextProvider):
             kind="episodic_recall",
             priority=PRIORITY,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"source": source, "hits": len(lines)},
         )
 

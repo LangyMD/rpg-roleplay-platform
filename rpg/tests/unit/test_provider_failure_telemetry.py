@@ -45,7 +45,7 @@ def test_unclassified_error_is_recorded(captured):
     """未分类分支 = 「错误码 Exxx」盲区。它最需要被数出来。"""
     msg = _client_safe_error(RuntimeError("something nobody has seen before"),
                              user_id=7, save_id=42, api_id="deepseek", model="v4-pro")
-    assert "错误码 E" in msg
+    assert "error code E" in msg
     assert len(captured) == 1, "未分类错误没落库 —— 盲区依旧不可测"
     row = captured[0]
     assert row["category"] == "unclassified"
@@ -77,7 +77,7 @@ def test_runtime_prereq_branch_is_recorded(captured):
 def test_error_id_in_message_matches_the_recorded_row(captured):
     """客户端拿到的码必须能在库里查到 —— 否则玩家报「错误码 Exxx」我们依旧反查不到。"""
     msg = _client_safe_error(RuntimeError("boom"), user_id=9)
-    eid = msg.split("错误码 ")[1].rstrip(")）")
+    eid = msg.split("error code ")[1].rstrip(")）")
     assert captured[0]["error_id"] == eid, (msg, captured[0])
 
 
@@ -101,7 +101,7 @@ def test_telemetry_failure_never_breaks_error_handling(monkeypatch):
 
     monkeypatch.setattr(usage_mod, "record_provider_failure", _boom)
     msg = _client_safe_error(RuntimeError("boom"), user_id=5)
-    assert "错误码 E" in msg
+    assert "error code E" in msg
 
 
 def test_both_stream_entrypoints_pass_context():

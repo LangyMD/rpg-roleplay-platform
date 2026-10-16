@@ -10,6 +10,21 @@ _MOVEMENT_VERBS = (
     "靠近", "前往", "走向", "走到", "走过", "穿过", "翻过", "回到", "进入", "退回",
     "去", "沿", "往", "向", "通过", "潜入", "溜过去", "钻进", "上到", "下到",
 )
+# English movement verbs (word-boundary; in-place verbs like look/listen/inspect excluded).
+_EN_MOVEMENT_RE = re.compile(
+    r"\b(?:go|goes|going|went|head|heading|headed|walk|walking|move|moving|enter|entering"
+    r"|approach|approaching|climb|climbing|descend|descending|ascend|ascending|follow|following"
+    r"|cross|crossing|proceed|proceeding|travel|travelling|traveling|return|returning|sneak|sneaking"
+    r"|slip|slipping|crawl|crawling|run|running|make my way|step (?:into|through|inside|out)"
+    r"|go (?:up|down|back|through|inside|outside)|toward|towards|into)\b",
+    re.IGNORECASE,
+)
+_EN_DIRECTIONS = (
+    ("east", ("east",)), ("west", ("west",)), ("north", ("north",)), ("south", ("south",)),
+    ("down", ("down", "descend", "lower", "below", "stair")),
+    ("up", ("up", "ascend", "upper", "above", "stair")),
+)
+_EN_LABEL_STOP = frozenset(("the", "and", "of", "to", "a", "an", "path", "way", "door", "exit"))
 
 # ── 战斗意图分类器 (5E module_adventure hard gate) ───────────────────────
 #
@@ -44,13 +59,32 @@ _MOVE_AWAY_HINTS = (
     "远离", "撤离", "撤退", "脱身",
 )
 
+# English equivalents (word-boundary regexes on the raw text; Chinese tuples above unchanged).
+_EN_ATTACK_RE = re.compile(
+    r"\b(?:attack|attacks|attacking|shoot|shoots|shooting|shot at|open fire|fire at|loose an arrow"
+    r"|stab|stabs|stabbing|slash|slashes|slashing|kill|ambush)\b", re.IGNORECASE)
+_EN_ATTACK_SOFT_RE = re.compile(
+    r"\b(?:fire|aim|aiming|draw|swing|swinging|throw|throwing|hurl|strike|cut|thrust)\b", re.IGNORECASE)
+_EN_RANGED_RE = re.compile(
+    r"\b(?:shortbow|longbow|crossbow|bow|arrows?|bolts?|javelins?|throwing knife|throwing knives"
+    r"|ranged)\b", re.IGNORECASE)
+_EN_MELEE_RE = re.compile(
+    r"\b(?:shortsword|short sword|longsword|long sword|sword|dagger|axe|battleaxe|warhammer|hammer"
+    r"|club|mace|melee|hand-to-hand|fists?)\b", re.IGNORECASE)
+_EN_DISENGAGE_RE = re.compile(r"\b(?:disengag\w*|break (?:away|contact))\b", re.IGNORECASE)
+_EN_DODGE_RE = re.compile(r"\b(?:dodge|dodging|parry|parrying|defensive stance)\b", re.IGNORECASE)
+_EN_MOVE_AWAY_RE = re.compile(
+    r"\b(?:back away|backing away|back off|step back|steps back|stepping back|fall back|falling back"
+    r"|retreat|retreating|withdraw|withdrawing|keep (?:my |our )?distance|put (?:some )?distance"
+    r"|get (?:some )?distance|move away|get away from|pull back|backpedal)\b", re.IGNORECASE)
+
 
 def _has_movement_intent(text: str) -> bool:
     """玩家文本是否明确包含移动到另一处的动词。
     用于决定是否做跨房间 skill check 推断（如 stealth 到相邻房间）。"""
     if not text:
         return False
-    return any(v in text for v in _MOVEMENT_VERBS)
+    return any(v in text for v in _MOVEMENT_VERBS) or bool(_EN_MOVEMENT_RE.search(text))
 
 
 def _direction_to_exit(text: str, current_room: dict) -> str | None:
@@ -77,6 +111,18 @@ def _direction_to_exit(text: str, current_room: dict) -> str | None:
         ):
             if direction in text and any(kw in label for kw in exit_keywords):
                 score += 2
+        # English label words ("the north tunnel" vs "head into the tunnel")
+        label_lower = label.lower()
+        for word in re.findall(r"[a-z]{3,}", label_lower):
+            if word not in _EN_LABEL_STOP and re.search(r"\b" + re.escape(word), text_lower):
+                score += 3
+        # English direction words
+        for direction, exit_keywords in _EN_DIRECTIONS:
+            if re.search(r"\b" + direction + r"(?:ward|wards|ern)?\b", text_lower) and any(
+                re.search(r"\b" + kw, label_lower) or re.search(r"\b" + kw, to_id.lower())
+                for kw in exit_keywords
+            ):
+                score += 2
         # 英文 fallback
         if to_id and to_id.lower() in text_lower:
             score += 5
@@ -91,33 +137,33 @@ def _has_any(text: str, needles: tuple[str, ...]) -> bool:
 
 
 def _detect_ranged_weapon(text: str) -> bool:
-    return _has_any(text, _RANGED_WEAPON_HINTS)
+    return _has_any(text, _RANGED_WEAPON_HINTS) or bool(_EN_RANGED_RE.search(text))
 
 
 def _detect_melee_weapon(text: str) -> bool:
-    return _has_any(text, _MELEE_WEAPON_HINTS)
+    return _has_any(text, _MELEE_WEAPON_HINTS) or bool(_EN_MELEE_RE.search(text))
 
 
 def _detect_attack_verb(text: str) -> bool:
     """攻击意图。整词命中 (如"攻击 / 射击") 或软动词 + 武器名同现。"""
-    if _has_any(text, _ATTACK_PHRASES):
+    if _has_any(text, _ATTACK_PHRASES) or _EN_ATTACK_RE.search(text):
         return True
     # "我用短弓射" / "拔短剑刺" 这种 — 软动词紧贴武器名
-    has_soft = _has_any(text, _ATTACK_SOFT_VERBS)
+    has_soft = _has_any(text, _ATTACK_SOFT_VERBS) or bool(_EN_ATTACK_SOFT_RE.search(text))
     has_weapon = _detect_ranged_weapon(text) or _detect_melee_weapon(text)
     return has_soft and has_weapon
 
 
 def _detect_move_away(text: str) -> bool:
-    return _has_any(text, _MOVE_AWAY_HINTS)
+    return _has_any(text, _MOVE_AWAY_HINTS) or bool(_EN_MOVE_AWAY_RE.search(text))
 
 
 def _detect_disengage(text: str) -> bool:
-    return _has_any(text, _DISENGAGE_HINTS)
+    return _has_any(text, _DISENGAGE_HINTS) or bool(_EN_DISENGAGE_RE.search(text))
 
 
 def _detect_dodge(text: str) -> bool:
-    return _has_any(text, _DODGE_HINTS)
+    return _has_any(text, _DODGE_HINTS) or bool(_EN_DODGE_RE.search(text))
 
 
 def classify_combat_intent(text: str, state) -> dict | None:
@@ -165,12 +211,12 @@ def classify_combat_intent(text: str, state) -> dict | None:
     if wants_combat and not encounter_active and not room_enemies:
         return {
             "kind": "no_target_combat",
-            "question": "你做出战斗姿态,但当下视野里没有明确的敌人或目标。要先做什么?",
+            "question": "You ready yourself for a fight, but there is no clear enemy or target in sight. What do you do first?",
             "options": [
-                "仔细观察四周",
-                "保持警戒慢慢推进",
-                "出声试探或呼喊",
-                "保持隐蔽继续探索",
+                "Look around carefully",
+                "Advance slowly, staying alert",
+                "Call out or make a noise to test the area",
+                "Stay hidden and keep exploring",
             ],
             "source": "rules_engine",
             "reason": "wants_combat 但无敌人 + 无 encounter — GM 不应幻觉敌人",
@@ -185,20 +231,21 @@ def classify_combat_intent(text: str, state) -> dict | None:
     # 5E:在敌人的 melee reach 内用远程武器要 disadvantage,直接移动要触发借机攻击。
     # 玩家想"边退边射"是经典含糊意图,必须明确选择策略。
     if encounter_active and live_enemies and has_move_away and has_ranged and not has_disengage:
-        enemy_names = "、".join(
-            (e.get("name") or e.get("id") or "敌人") for e in live_enemies[:3]
+        enemy_names = ", ".join(
+            (e.get("name") or e.get("id") or "enemy") for e in live_enemies[:3]
         )
         return {
             "kind": "combat_pending_question",
             "question": (
-                f"敌人 ({enemy_names}) 在你的近战威胁范围 (~5 ft) 内。"
-                "短弓在这个距离会有不利攻击;直接后退会触发借机攻击。请明确选一个:"
+                f"Enemies ({enemy_names}) are within melee reach (~5 ft). "
+                "A shortbow attack at this range has disadvantage; simply backing away provokes "
+                "an opportunity attack. Choose one:"
             ),
             "options": [
-                "Disengage 后撤 (使用动作,免借机)",
-                "直接后退 (敌人借机攻击 1 次,然后离开)",
-                "切换近战 (短剑) 原地砍",
-                "原地短弓射击 (不利攻击)",
+                "Disengage and withdraw (uses your action, no opportunity attack)",
+                "Just back away (the enemy gets 1 opportunity attack, then you leave)",
+                "Switch to melee (shortsword) and strike where you stand",
+                "Shoot the shortbow from here (attack with disadvantage)",
             ],
             "source": "rules_engine",
             "reason": "encounter 中含糊战斗: move_away + ranged 同现",
@@ -212,18 +259,19 @@ def classify_combat_intent(text: str, state) -> dict | None:
     # ──────── case 3: encounter 中,只 move_away 没说怎么处理敌人 ────────
     # 比 case 2 弱 — 玩家没明示用什么武器,但还是要选 Disengage / 借机后退 / 留下。
     if encounter_active and live_enemies and has_move_away and not has_disengage:
-        enemy_names = "、".join(
-            (e.get("name") or e.get("id") or "敌人") for e in live_enemies[:3]
+        enemy_names = ", ".join(
+            (e.get("name") or e.get("id") or "enemy") for e in live_enemies[:3]
         )
         return {
             "kind": "combat_pending_question",
             "question": (
-                f"你想离开敌人 ({enemy_names}) 的威胁区,但没说怎么处理借机攻击:"
+                f"You want to leave the threat range of the enemies ({enemy_names}), "
+                "but haven't said how you'll handle the opportunity attack:"
             ),
             "options": [
-                "Disengage 后撤 (使用动作,免借机)",
-                "直接后退 (承受借机攻击)",
-                "原地不动改用其他动作",
+                "Disengage and withdraw (uses your action, no opportunity attack)",
+                "Just back away (take the opportunity attack)",
+                "Stay put and take a different action",
             ],
             "source": "rules_engine",
             "reason": "encounter 中含糊离场",

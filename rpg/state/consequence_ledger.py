@@ -91,34 +91,34 @@ def register_consequence(
     """
     text = _clean_item(text or "")
     if not text:
-        return False, "后果登记忽略(缺文本)"
+        return False, "Consequence ignored (no text)"
 
     due: dict[str, Any] = {}
     if due_turns is not None:
         try:
             turns_int = int(due_turns)
         except (TypeError, ValueError):
-            return False, f"后果登记忽略(due_turns 非法: {due_turns!r})"
+            return False, f"Consequence ignored (invalid due_turns: {due_turns!r})"
         if turns_int <= 0:
-            return False, f"后果登记忽略(due_turns 必须为正整数: {due_turns!r})"
+            return False, f"Consequence ignored (due_turns must be a positive integer: {due_turns!r})"
         due["turns"] = turns_int
     location = _clean_item(due_location or "")
     if location:
         due["location"] = location
 
     if not due:
-        return False, "后果登记忽略(缺 due_turns 或 due_location)"
+        return False, "Consequence ignored (needs due_turns or due_location)"
 
     ledger = _ledger(state_data)
 
     pending = [e for e in ledger if e.get("status") == "pending"]
     if len(pending) >= MAX_PENDING:
-        return False, f"后果登记拒绝(pending 已达上限 {MAX_PENDING} 条)"
+        return False, f"Consequence rejected (already {MAX_PENDING} pending, the maximum)"
 
     fp = _fingerprint(text, due)
     for e in ledger:
         if _fingerprint(e.get("text", ""), e.get("due") or {}) == fp:
-            return False, "后果登记忽略(重复:同文本同期限已登记)"
+            return False, "Consequence ignored (duplicate: same text and due condition already recorded)"
 
     turn = int(created_turn if created_turn is not None else state_data.get("turn", 0) or 0)
     entry = {
@@ -131,7 +131,7 @@ def register_consequence(
         "origin": origin if origin in ("gm", "recorder", "player") else "gm",
     }
     ledger.append(entry)
-    return True, f"后果登记：{text[:40]}"
+    return True, f"Consequence recorded: {text[:40]}"
 
 
 def scan_and_fire(state_data: dict) -> list[dict]:

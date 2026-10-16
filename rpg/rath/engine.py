@@ -106,7 +106,7 @@ def _trace(exp_id: int, msg: str, *, clock: int = 0) -> None:
 def _clock_label(total_min: int) -> str:
     d, rem = divmod(max(0, int(total_min)), 1440)
     h, m = divmod(rem, 60)
-    return f"第{d + 1}日 {h:02d}:{m:02d}"
+    return f"Day {d + 1} {h:02d}:{m:02d}"
 
 
 def _read_snapshot(db, save_id: int) -> tuple[dict, int]:
@@ -171,7 +171,7 @@ def _compute_preflight(db, user_id: int, save_id: int) -> dict:
         "select id, user_id, script_id, save_kind from game_saves where id=%s", (int(save_id),)
     ).fetchone()
     if not save or int(save["user_id"]) != int(user_id):
-        return {"ok": False, "error": "存档不存在或不属于你"}
+        return {"ok": False, "error": "The save does not exist or does not belong to you"}
     sid = int(save.get("script_id") or 0)
     save_kind = str(save.get("save_kind") or "game")
 
@@ -212,21 +212,21 @@ def _compute_preflight(db, user_id: int, save_id: int) -> dict:
     warnings: list[str] = []
     if sid:
         if river["source"] == "none":
-            warnings.append("本剧本无章节事实也无时间线锚点,河道将完全依赖自由演化")
+            warnings.append("This script has neither chapter facts nor timeline anchors, so the river will rely entirely on free evolution")
         elif river["source"] == "anchors":
-            warnings.append(f"本剧本无章节事实,河道将回退为时间线锚点({river['beats']}条)")
+            warnings.append(f"This script has no chapter facts, so the river falls back to timeline anchors ({river['beats']})")
         if cast_count < 3:
-            warnings.append(f"角色卡不足(仅{cast_count}人达标),离线戏可能单薄")
+            warnings.append(f"Not enough character cards (only {cast_count} qualify), so offline scenes may be thin")
         if wb_count < 3:
-            warnings.append(f"世界书条目不足(仅{wb_count}条),世界观细节可能欠缺")
+            warnings.append(f"Not enough worldbook entries (only {wb_count}), so world details may be lacking")
         if loc_count == 0:
-            warnings.append("无独立地点条目,场景可能局限于出生点")
+            warnings.append("No separate location entries, so scenes may stay at the starting point")
 
     can_create = True
     reason = ""
     if save_kind == "tavern":
         can_create = False
-        reason = "酒馆存档暂不支持离线世界"
+        reason = "Tavern saves do not support the offline world yet"
 
     return {
         "ok": True, "can_create": can_create, "reason": reason, "tier": tier,
@@ -254,26 +254,26 @@ def create_experiment(user_id: int, save_id: int) -> dict:
         # 不留「tick 每次崩溃后静默重试烧预算」的旧路(P0 finding1 同根)。
         pf = _compute_preflight(db, user_id, save_id)
         if not pf.get("ok"):
-            return {"ok": False, "error": pf.get("error") or "存档不存在或不属于你"}
+            return {"ok": False, "error": pf.get("error") or "The save does not exist or does not belong to you"}
         if not pf.get("can_create"):
-            return {"ok": False, "error": pf.get("reason") or "该存档暂不支持创建离线实验"}
+            return {"ok": False, "error": pf.get("reason") or "Offline experiments cannot be created for this save yet"}
         save = db.execute(
             "select id, user_id, script_id, save_kind from game_saves where id=%s", (int(save_id),)
         ).fetchone()
         if not save or int(save["user_id"]) != int(user_id):
-            return {"ok": False, "error": "存档不存在或不属于你"}
+            return {"ok": False, "error": "The save does not exist or does not belong to you"}
         n = db.execute(
             "select count(*) c from rath_experiments where user_id=%s and status in ('running','paused')",
             (int(user_id),),
         ).fetchone()["c"]
         if int(n) >= MAX_RUNNING_PER_USER:
-            return {"ok": False, "error": f"同时最多 {MAX_RUNNING_PER_USER} 个实验,请先归档旧实验"}
+            return {"ok": False, "error": f"At most {MAX_RUNNING_PER_USER} experiments can run at once; archive an old one first"}
         dup = db.execute(
             "select id from rath_experiments where save_id=%s and status in ('running','paused')",
             (int(save_id),),
         ).fetchone()
         if dup:
-            return {"ok": False, "error": "该存档已有进行中的实验", "id": int(dup["id"])}
+            return {"ok": False, "error": "This save already has an experiment in progress", "id": int(dup["id"])}
         # v4.1(269 浸泡实锤):世界钟从 0=午夜起步,新实验前 6 拍全落夜律窗口(全员安睡
         # 零场景)=第一印象灾难。改从第1日 08:00(480min)清晨起步,建档即有戏可看。
         row = db.execute(
@@ -360,13 +360,13 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
                 )
                 if hasattr(db, "commit"):
                     db.commit()
-                _trace(exp_id, "无可用模型,已自动暂停,请检查模型凭据")
+                _trace(exp_id, "No usable model; paused automatically. Please check your model credentials")
                 return {"ok": False, "reason": "no_model"}
     # ── 段1:认领 + 只读材料 ──
     with connect() as db:
         claim = _claim_tick(db, exp_id, manual=manual)
         if not claim:
-            return {"ok": False, "reason": "未到期/预算尽/已被认领/未运行"}
+            return {"ok": False, "reason": "not due / budget used up / already claimed / not running"}
         if hasattr(db, "commit"):
             db.commit()
         save_id, user_id = int(claim["save_id"]), int(claim["user_id"])
@@ -507,7 +507,7 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
             canon_rows = []
             canon_locations = []
     if not snap or not commit_id:
-        return {"ok": False, "reason": "快照不可读"}
+        return {"ok": False, "reason": "snapshot unreadable"}
     world_context = "\n".join(
         f"- {r['title']}: {str(r.get('content') or '')[:140]}" for r in (wb_rows or [])
     )
@@ -515,23 +515,23 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
     cast_names = [str(r.get("name") or "").strip() for r in (cast_rows or []) if r.get("name")]
     cast_dossiers = {
         str(r["name"]).strip():
-            "原著重要人物(当前阶段身份以正文为准);" +
-            ";".join(x for x in [
+            "Major character from the source novel (their identity at this stage follows the text); " +
+            "; ".join(x for x in [
                 str(r.get("personality") or "").strip()[:60],
-                ("外貌:" + str(r.get("appearance") or "").strip()[:40]) if r.get("appearance") else "",
+                ("Appearance: " + str(r.get("appearance") or "").strip()[:40]) if r.get("appearance") else "",
             ] if x)
         for r in (cast_rows or []) if r.get("name")
     }
     new_clock = int(claim["new_clock"])
     gain_min = max(0, new_clock - int(claim["old_clock"] or 0))
-    _trace(exp_id, f"推进开始({'手动' if manual else '自动'}):世界时间 +{gain_min}分钟 → {_clock_label(new_clock)}", clock=new_clock)
-    elapsed_hint = f"世界内约 {gain_min // 60} 小时 {gain_min % 60} 分钟(观测钟 {_clock_label(new_clock)})"
+    _trace(exp_id, f"Tick started ({'manual' if manual else 'automatic'}): world time +{gain_min} min -> {_clock_label(new_clock)}", clock=new_clock)
+    elapsed_hint = f"about {gain_min // 60} h {gain_min % 60} min of in-world time (observer clock {_clock_label(new_clock)})"
     recent = [r["summary"] for r in (recent_rows or [])]
     player_name = str(((snap.get("player") or {}).get("name")) or "")
     location = str(((snap.get("player") or {}).get("current_location")) or "")
 
-    _trace(exp_id, "材料装配:卡司候选[" + ",".join(cast_names or ["无"]) + "]"
-           + f" · 世界书要点 {len(wb_rows or [])} 条 · 引导:" + (directive[:40] + "…" if len(directive) > 40 else directive or "无"),
+    _trace(exp_id, "Material assembled: cast candidates [" + ", ".join(cast_names or ["none"]) + "]"
+           + f" · {len(wb_rows or [])} worldbook notes · guidance: " + (directive[:40] + "..." if len(directive) > 40 else directive or "none"),
            clock=new_clock)
 
     # ── 段2:仿真环(v2,状态优先;LLM 阶段不持任何 DB 连接) ──
@@ -549,26 +549,26 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
                 _cb2 = _load_canon_beats(db, _sid, _refill_from, limit=8)
                 _n_ref = S.extend_canon(sim, _cb2["rows"])
                 if _n_ref:
-                    _src_label = "锚点" if _cb2["source"] == "anchors" else "章节事实"
-                    _trace(exp_id, f"原著河道补给:+{_n_ref} 段({_src_label},第{_refill_from}章起续拉)",
+                    _src_label = "anchors" if _cb2["source"] == "anchors" else "chapter facts"
+                    _trace(exp_id, f"Canon river refilled: +{_n_ref} beats ({_src_label}, continuing from chapter {_refill_from})",
                            clock=new_clock)
     if not isinstance(sim, dict) or not sim.get("cast"):
         sim = S.init_sim_state(snap, [dict(r) for r in (cast_rows or [])],
                               [dict(r) for r in (wb_rows or [])], clock_min=new_clock,
                               canon_beats=[dict(r) for r in (canon_rows or [])],
                               canon_locations=list(canon_locations or []))
-        _trace(exp_id, f"仿真态初始化:角色 {len(sim['cast'])} 人 · 地点 {len(sim['places'])} 处"
-               + f" · 剧情线 {len(sim['threads'])} 条 · 原著河道 {len(sim['canon']['beats'])} 段", clock=new_clock)
+        _trace(exp_id, f"Simulation state initialised: {len(sim['cast'])} characters · {len(sim['places'])} places"
+               + f" · {len(sim['threads'])} plot threads · {len(sim['canon']['beats'])} canon river beats", clock=new_clock)
     sim["clock_min"] = new_clock
     decayed = S.decay_threads(sim)
     if decayed:
-        _trace(exp_id, f"张力衰减:{decayed} 条剧情线 -1(压力需持续喂养)", clock=new_clock)
+        _trace(exp_id, f"Tension decay: {decayed} plot threads -1 (pressure must keep being fed)", clock=new_clock)
     closed = S.close_stale_threads(sim)
     if closed:
-        _trace(exp_id, "剧情线平息:" + ";".join(c[:30] for c in closed), clock=new_clock)
+        _trace(exp_id, "Plot threads settled: " + "; ".join(c[:30] for c in closed), clock=new_clock)
     forced = S.enforce_night(sim)
     if forced:
-        _trace(exp_id, f"时间推进:夜间,{forced} 人转入睡眠", clock=new_clock)
+        _trace(exp_id, f"Time advance: night, {forced} characters went to sleep", clock=new_clock)
 
     wrote: list[str] = []
     scene: dict | None = None
@@ -595,13 +595,13 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
                 if data:
                     break
                 if _att == 1:
-                    _trace(exp_id, "调度:输出不可解析,重试一次", clock=new_clock)
+                    _trace(exp_id, "Scheduler: output unparseable, retrying once", clock=new_clock)
             if data:
                 verdict = S.apply_scheduler_output(sim, data, world_context=world_context)
                 ap = verdict["applied"]
-                _trace(exp_id, f"调度裁决:角色更新 {ap['cast']} 项 · 事件 {len(ap['events'])} 条"
-                       + f" · 剧情线 {ap['threads']} 项 · 事实 {ap['facts']} 条"
-                       + (" · 拒收:" + ";".join(verdict["rejected"][:3]) if verdict["rejected"] else ""),
+                _trace(exp_id, f"Scheduler verdict: {ap['cast']} character updates · {len(ap['events'])} events"
+                       + f" · {ap['threads']} thread updates · {ap['facts']} facts"
+                       + (" · rejected: " + "; ".join(verdict["rejected"][:3]) if verdict["rejected"] else ""),
                        clock=new_clock)
                 wrote = ap["events"]
                 interaction = ap.get("interaction")
@@ -610,30 +610,30 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
                 # scene 写入同比放大)。此处让预算真正生效:超额只丢弃呈现(interaction),
                 # cast_updates/facts 已经 apply_scheduler_output 过、照常保留。
                 if interaction and int(claim.get("scenes_today") or 0) >= MAX_SCENES_PER_DAY:
-                    _trace(exp_id, f"预算闸:今日场景已达上限({MAX_SCENES_PER_DAY}),"
-                           "本拍相遇改记为事实、不再演绎", clock=new_clock)
+                    _trace(exp_id, f"Budget gate: today's scene limit ({MAX_SCENES_PER_DAY}) reached; "
+                           "this beat's meeting is recorded as a fact instead of being staged", clock=new_clock)
                     sim.setdefault("facts", []).append(
-                        ("、".join(interaction["participants"]) + "在" + interaction["place"]
-                         + "见了一面:" + interaction["reason"])[:120])
+                        (" and ".join(interaction["participants"]) + " met at " + interaction["place"]
+                         + ": " + interaction["reason"])[:120])
                     interaction = None
                 # 河道前行的动向并入事件流(浸泡实锤:只进 facts 池=情景召回看不到
                 # 原著进程,违反 RATH 产物 kb_events 闭环铁律)
                 if ap.get("canon_advance"):
-                    _trace(exp_id, "原著河道:动向成熟,前行一格", clock=new_clock)
+                    _trace(exp_id, "Canon river: development matured, advanced one step", clock=new_clock)
                     if ap.get("canon_text"):
-                        wrote = wrote + ["【原著进程】" + str(ap["canon_text"])[:120]]
+                        wrote = wrote + [S.CANON_FACT_TAG + str(ap["canon_text"])[:120]]
                 stalled = S.advance_stalled_canon(sim)
                 if stalled:
-                    _trace(exp_id, "原著河道:滞留强制前行 —— " + stalled[:60], clock=new_clock)
-                    wrote = wrote + ["【原著进程】" + stalled[:120]]
+                    _trace(exp_id, "Canon river: stalled, forced forward - " + stalled[:60], clock=new_clock)
+                    wrote = wrote + [S.CANON_FACT_TAG + stalled[:120]]
                 if interaction:
-                    _trace(exp_id, "相遇:" + "×".join(interaction["participants"])
-                           + f" @ {interaction['place']} · 缘由:{interaction['reason'][:40]}", clock=new_clock)
+                    _trace(exp_id, "Meeting: " + " x ".join(interaction["participants"])
+                           + f" @ {interaction['place']} · reason: {interaction['reason'][:40]}", clock=new_clock)
             else:
-                _trace(exp_id, "调度:输出不可解析,本拍世界静默", clock=new_clock)
+                _trace(exp_id, "Scheduler: output unparseable; the world stays quiet this beat", clock=new_clock)
         except Exception as exc:
             log.warning("[rath] 调度失败(非致命): %s", exc)
-            _trace(exp_id, f"调度失败跳过({str(exc)[:60]})", clock=new_clock)
+            _trace(exp_id, f"Scheduler failed, skipped ({str(exc)[:60]})", clock=new_clock)
 
         # ② 呈现(LLM-B):只演绎已裁决的相遇
         if interaction:
@@ -652,15 +652,15 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
                         break
                 if scene:
                     S.absorb_scene(sim, interaction, scene)
-                    _trace(exp_id, "呈现:通过验收 —— " + scene["scene_summary"][:60], clock=new_clock)
+                    _trace(exp_id, "Rendering: accepted - " + scene["scene_summary"][:60], clock=new_clock)
                 else:
-                    _trace(exp_id, "呈现拒收(结构/名词/状态守恒),相遇改记为事实", clock=new_clock)
+                    _trace(exp_id, "Rendering rejected (structure / nouns / state conservation); meeting recorded as a fact", clock=new_clock)
                     sim.setdefault("facts", []).append(
-                        ("、".join(interaction["participants"]) + "在" + interaction["place"]
-                         + "见了一面:" + interaction["reason"])[:120])
+                        (" and ".join(interaction["participants"]) + " met at " + interaction["place"]
+                         + ": " + interaction["reason"])[:120])
             except Exception as exc:
                 log.warning("[rath] 呈现失败(非致命): %s", exc)
-                _trace(exp_id, f"呈现失败跳过({str(exc)[:60]})", clock=new_clock)
+                _trace(exp_id, f"Rendering failed, skipped ({str(exc)[:60]})", clock=new_clock)
 
     # ── 段3:落库(连接B;sim_state + kb_events + rath 表) ──
     with connect() as db:
@@ -673,7 +673,7 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
             ).fetchone()
             _fresh_cid = int((_fresh or {}).get("active_commit_id") or 0)
             if _fresh_cid and _fresh_cid != commit_id:
-                _trace(exp_id, f"落库前发现分支已切换(commit {commit_id}→{_fresh_cid}),改用最新值",
+                _trace(exp_id, f"Branch switched before saving (commit {commit_id}->{_fresh_cid}); using the latest value",
                        clock=new_clock)
                 commit_id = _fresh_cid
             db.execute("update rath_experiments set sim_state=%s where id=%s",
@@ -688,7 +688,7 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
             if scene and interaction:
                 npc_a, npc_b = interaction["participants"][0], interaction["participants"][1]
                 record_event(db, save_id, commit_id, f"rath_scene_{exp_id}_{new_clock}",
-                             summary=f"{npc_a}与{npc_b}:{scene['scene_summary']}",
+                             summary=f"{npc_a} and {npc_b}: {scene['scene_summary']}",
                              story_time=_clock_label(new_clock), participants=[npc_a, npc_b],
                              metadata={"source": "rath_npc_scene"})
                 db.execute(
@@ -705,8 +705,8 @@ def tick_experiment(exp_id: int, *, manual: bool = False) -> dict:
                 db.commit()
         except Exception as exc:
             log.warning("[rath] 落库失败(非致命): %s", exc)
-    _trace(exp_id, f"推进完成:事件 {len(wrote)} 条" + (" + 相遇 1 场" if scene else "")
-           + f" · 剧情线 {len(sim.get('threads') or [])} 条 @ {_clock_label(new_clock)}", clock=new_clock)
+    _trace(exp_id, f"Tick finished: {len(wrote)} events" + (" + 1 meeting" if scene else "")
+           + f" · {len(sim.get('threads') or [])} plot threads @ {_clock_label(new_clock)}", clock=new_clock)
     log.info("[rath] tick exp=%s clock=%s events=%d scene=%s",
              exp_id, _clock_label(new_clock), len(wrote), bool(scene))
     return {"ok": True, "wrote_events": wrote,
@@ -751,7 +751,7 @@ def run_due_ticks() -> int:
         if hasattr(db, "commit"):
             db.commit()
     for r in (resumed or []):
-        _trace(int(r["id"]), "玩家离开约2小时,世界继续")
+        _trace(int(r["id"]), "The player has been away about 2 hours; the world continues")
     ticked = 0
     for r in (due or []):
         try:

@@ -28,7 +28,7 @@ def continue_from(user_id: int, node_id: int) -> dict[str, Any]:
     with connect() as db:
         node = _commit_for_user(db, user_id, node_id)
         if not node:
-            raise ValueError("无权访问该分支节点")
+            raise ValueError("No access to this branch node")
 
         save_id = node["save_id"]
         # 与回合提交 / autosave 同 key 的锁:防并发覆盖 game_saves 活跃指针(读指针前取)。
@@ -70,7 +70,7 @@ def activate_node(user_id: int, node_id: int) -> dict[str, Any]:
     with connect() as db:
         node = _commit_for_user(db, user_id, node_id)
         if not node:
-            raise ValueError("无权访问该分支节点")
+            raise ValueError("No access to this branch node")
         # 与回合提交 / autosave 同 key 的锁:防并发覆盖 game_saves 活跃指针(写指针前取)。
         acquire_save_advisory_lock(db, node["save_id"], user_id)
         ref = _find_or_create_ref_for_commit(db, user_id, node)
@@ -135,7 +135,7 @@ def activate_save(user_id: int, save_id: int) -> dict[str, Any]:
             (save_id, user_id),
         ).fetchone()
         if not save:
-            raise ValueError("无权访问该存档")
+            raise ValueError("No access to this save")
         node_id = save.get("active_branch_node_id")
         commit_row = None
         if node_id:
@@ -155,7 +155,7 @@ def activate_save(user_id: int, save_id: int) -> dict[str, Any]:
                 (save_id,),
             ).fetchone()
         if not commit_row:
-            raise ValueError("save 没有任何 commit，无法激活")
+            raise ValueError("Save has no commits; cannot activate")
         ref = _find_or_create_ref_for_commit(db, user_id, commit_row)
         _set_save_active(db, save_id, commit_row["id"], ref["id"])
         _write_checkout(db, user_id, save_id, ref["id"], commit_row["id"])

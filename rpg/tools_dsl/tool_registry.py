@@ -109,7 +109,7 @@ def save_mcp_catalog(catalog: dict[str, Any]) -> None:
 
 def upsert_mcp_server(server: dict[str, Any]) -> dict[str, Any]:
     if not deployment_capabilities()["mcp_config_write_enabled"]:
-        raise PermissionError("当前部署模式不允许写入 MCP 服务器配置")
+        raise PermissionError("The current deployment mode does not allow writing MCP server configuration")
     catalog = load_mcp_catalog()
     normalized = _normalize_mcp_server(server)
     existing = next((item for item in catalog["servers"] if item["id"] == normalized["id"]), None)
@@ -124,7 +124,7 @@ def upsert_mcp_server(server: dict[str, Any]) -> dict[str, Any]:
 
 def set_mcp_server_enabled(server_id: str, enabled: bool) -> dict[str, Any]:
     if not deployment_capabilities()["mcp_config_write_enabled"]:
-        raise PermissionError("当前部署模式不允许写入 MCP 服务器配置")
+        raise PermissionError("The current deployment mode does not allow writing MCP server configuration")
     catalog = load_mcp_catalog()
     for server in catalog["servers"]:
         if server["id"] == server_id:
@@ -136,7 +136,7 @@ def set_mcp_server_enabled(server_id: str, enabled: bool) -> dict[str, Any]:
 
 def delete_mcp_server(server_id: str) -> dict[str, Any]:
     if not deployment_capabilities()["mcp_config_write_enabled"]:
-        raise PermissionError("当前部署模式不允许写入 MCP 服务器配置")
+        raise PermissionError("The current deployment mode does not allow writing MCP server configuration")
     catalog = load_mcp_catalog()
     catalog["servers"] = [server for server in catalog["servers"] if server["id"] != server_id]
     save_mcp_catalog(catalog)
@@ -147,7 +147,7 @@ def validate_mcp_server(server_id: str) -> dict[str, Any]:
     catalog = load_mcp_catalog()
     server = next((item for item in catalog["servers"] if item["id"] == server_id), None)
     if not server:
-        raise ValueError(f"未知 MCP 服务器：{server_id}")
+        raise ValueError(f"Unknown MCP server: {server_id}")
 
     transport = server.get("transport", "stdio")
     command = server.get("command", "")
@@ -206,11 +206,11 @@ def _scan_skill_dir() -> list[dict[str, Any]]:
 
 def import_skill_bundle(item: dict[str, Any]) -> dict[str, Any]:
     if not deployment_capabilities()["skill_import_enabled"]:
-        raise PermissionError("当前部署模式不允许导入 Skill")
+        raise PermissionError("The current deployment mode does not allow importing Skills")
     name = Path(str(item.get("name") or "skill.md")).name
     data = _decode_upload(item)
     if len(data) > MAX_SKILL_BYTES:
-        raise ValueError("Skill 文件过大")
+        raise ValueError("Skill file is too large")
     USER_SKILL_DIR.mkdir(parents=True, exist_ok=True)
     skill_id = _slugify(Path(name).stem or "skill")
     target = _dedupe_dir(USER_SKILL_DIR / skill_id)
@@ -222,7 +222,7 @@ def import_skill_bundle(item: dict[str, Any]) -> dict[str, Any]:
     skill_file = target / "SKILL.md"
     if not skill_file.exists():
         shutil.rmtree(target, ignore_errors=True)
-        raise ValueError("导入包里没有 SKILL.md")
+        raise ValueError("The imported package has no SKILL.md")
     skill = {
         "id": target.name,
         "name": _skill_title(skill_file) or target.name,
@@ -258,7 +258,7 @@ def _validate_interpreter_args(command: str, args: list[str]) -> None:
     for raw in args:
         a = str(raw)
         if any(a == f or a.startswith(f) for f in forbidden):
-            raise ValueError(f"{command} 禁用内联执行 flag: {a!r}(MCP server 必须以模块/脚本形式启动)")
+            raise ValueError(f"{command} inline-execution flag is forbidden: {a!r} (an MCP server must be started as a module/script)")
 
 # P1-3 SEC: npx 专项 args 校验 ─────────────────────────────────────────────
 # 允许的包名：@modelcontextprotocol/<slug> 或普通小写短名
@@ -283,15 +283,15 @@ def _validate_npx_args(args: list[str]) -> None:
     - 允许包名后跟子命令字符串（传给该包内部），但禁止 -- 后跟 shell 分隔。
     """
     if not args:
-        raise ValueError("npx 至少需要 1 个参数（包名）")
+        raise ValueError("npx needs at least 1 argument (the package name)")
     pkg = args[0]
     if pkg.startswith("-"):
         raise ValueError(
-            f"npx 第一个参数必须是包名，不能是 flag: {pkg!r}"
+            f"npx's first argument must be a package name, not a flag: {pkg!r}"
         )
     if not _MCP_NPX_PACKAGE_RE.match(pkg):
         raise ValueError(
-            f"npx 包名不在白名单（要求 @modelcontextprotocol/<slug> 或 [a-z][a-z0-9-]{{1,32}}）: {pkg!r}"
+            f"npx package name is not on the allowlist (must be @modelcontextprotocol/<slug> or [a-z][a-z0-9-]{{1,32}}): {pkg!r}"
         )
     for arg in args:
         # 精确匹配（如 --package）或前缀匹配（如 --package=evil）
@@ -299,7 +299,7 @@ def _validate_npx_args(args: list[str]) -> None:
             arg.startswith(f"{flag}=") for flag in _MCP_NPX_FORBIDDEN_FLAGS
         ):
             raise ValueError(
-                f"npx 禁用 flag: {arg!r}（该 flag 可下载并执行任意代码）"
+                f"npx flag is forbidden: {arg!r} (it can download and execute arbitrary code)"
             )
 
 
@@ -376,17 +376,17 @@ def _normalize_mcp_server(server: dict[str, Any], *, validate: bool = True) -> d
     if transport == "http" and validate:
         # HTTP transport: 需要 URL，不需要 command
         if not url:
-            raise ValueError("HTTP transport 的 MCP server 必须提供 url")
+            raise ValueError("An MCP server with HTTP transport must provide a url")
         if not url.startswith(("http://", "https://")):
-            raise ValueError(f"MCP server URL 必须以 http:// 或 https:// 开头: {url!r}")
+            raise ValueError(f"MCP server URL must start with http:// or https://: {url!r}")
     else:
         # stdio transport: 需要 command，不需要 url
         # P1-2 SEC: command 白名单 + 安全字符集校验（禁止 / 和 ..）
         if command:
             if "/" in command or ".." in command:
-                raise ValueError(f"MCP server command 不能包含路径分隔符: {command!r}")
+                raise ValueError(f"MCP server command must not contain path separators: {command!r}")
             if command not in _MCP_CMD_WHITELIST:
-                raise ValueError(f"MCP server command 不在白名单(仅允许 {sorted(_MCP_CMD_WHITELIST)}): {command!r}")
+                raise ValueError(f"MCP server command is not on the allowlist (only {sorted(_MCP_CMD_WHITELIST)} allowed): {command!r}")
             # P1-3 SEC + C-1: 每种命令都校验 args,禁止内联代码执行(npx evil-pkg / python -c / node -e)
             if command == "npx":
                 _validate_npx_args([str(a) for a in args])
@@ -542,11 +542,11 @@ def _decode_upload(item: dict[str, Any]) -> bytes:
     if "," in data_url:
         encoded = data_url.split(",", 1)[1]
     if not encoded:
-        raise ValueError("上传内容为空")
+        raise ValueError("Uploaded content is empty")
     try:
         return base64.b64decode(encoded, validate=False)
     except (binascii.Error, ValueError) as exc:
-        raise ValueError("上传内容不是有效 base64") from exc
+        raise ValueError("Uploaded content is not valid base64") from exc
 
 
 def _extract_skill_zip(data: bytes, target: Path) -> None:
@@ -572,7 +572,7 @@ def _extract_skill_zip(data: bytes, target: Path) -> None:
                     continue
                 extracted_count += 1
                 if extracted_count > MAX_SKILL_FILES:
-                    raise ValueError("Skill 压缩包文件数超限")
+                    raise ValueError("Skill archive has too many files")
                 relative = member_path
                 if root_prefix not in {"", "."} and str(member_path).startswith(root_prefix + "/"):
                     relative = Path(str(member_path)[len(root_prefix) + 1:])
@@ -588,7 +588,7 @@ def _extract_skill_zip(data: bytes, target: Path) -> None:
                         if total_written > MAX_SKILL_UNPACKED_BYTES:
                             dst.close()
                             out_path.unlink(missing_ok=True)
-                            raise ValueError("Skill 压缩包展开后超过大小限制")
+                            raise ValueError("Skill archive exceeds the size limit when extracted")
                         dst.write(chunk)
     finally:
         zip_path.unlink(missing_ok=True)
@@ -618,4 +618,4 @@ def _dedupe_dir(path: Path) -> Path:
         candidate = path.with_name(f"{path.name}-{index}")
         if not candidate.exists():
             return candidate
-    raise ValueError("无法分配 Skill 目录名")
+    raise ValueError("Could not allocate a Skill directory name")

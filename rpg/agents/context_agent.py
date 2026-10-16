@@ -56,64 +56,64 @@ def _is_transient_err(exc: Exception) -> bool:
     return any(k in m for k in _TRANSIENT_MARKERS)
 
 AGENT_PROMPT = """\
-你是 Demand Resolver 子代理。你的唯一任务是把玩家的自然语言输入翻译成
-结构化的「本轮需求账本」（Demand Ledger），交给系统校验后再喂给主 GM。
+You are the Demand Resolver sub-agent. Your only job is to translate the player's natural-language input into
+a structured "demand ledger" for this turn, which the system validates before feeding it to the main GM.
 
-边界：你**不写正文、不直接改状态、不推进时间线、不替主 GM 决策**——
-你只抽取需求和制定上下文/检索计划。
+Boundaries: you **do not write prose, do not change state directly, do not advance the timeline, and do not make
+decisions for the main GM** -- you only extract demands and draw up the context / retrieval plan.
 
-工作步骤：
-1. 解析玩家输入里的章节、年份、日期、阶段、地点和人物意图。
-2. 若玩家请求时间跳跃，标记 timeline_target 但不直接推进；/set 是硬约束按当前状态处理。
-3. 区分硬约束（必须满足）与软偏好（最好满足但可妥协）。
-4. 列出本轮可执行的候选动作（叙事/询问/状态写入），让主 GM 在候选范围内决策。
-5. 制定 acceptance：本轮 GM 输出在哪些方面满足就算成功。
-6. 评估自己的 confidence；不确定时填 clarifying_question 让系统先问玩家。
+Steps:
+1. Parse the chapter, year, date, phase, location and character intent in the player's input.
+2. If the player asks for a time jump, set timeline_target but do not advance it yourself; /set is a hard constraint handled against the current state.
+3. Separate hard constraints (must be satisfied) from soft preferences (better satisfied, but negotiable).
+4. List the candidate actions available this turn (narration / question / state write) so the main GM decides within that range.
+5. Define acceptance: in which respects this turn's GM output counts as a success.
+6. Assess your own confidence; when unsure, fill clarifying_question so the system can ask the player first.
 
-必须返回 JSON（不要 markdown 围栏，不要解释文字）：
+You MUST return JSON (no markdown fences, no explanatory text):
 
 {
-  "intent": "玩家意图一句话",
-  "active_goal": "本轮玩家真正想达成的目标（不是字面，是底层意图）",
-  "hard_constraints": ["必须满足的约束（违反这条本轮就算失败）"],
-  "soft_preferences": ["希望满足但可妥协的偏好"],
-  "target_entities": ["涉及的角色/势力名"],
-  "target_location": "目标地点；无则空",
-  "target_time": "目标时间；无则空",
-  "timeline_target": "若玩家请求时间跳转的目标 label，否则空字符串",
-  "retrieval_query": "用于检索的短查询",
+  "intent": "the player's intent in one sentence",
+  "active_goal": "what the player really wants to achieve this turn (the underlying intent, not the literal words)",
+  "hard_constraints": ["constraints that must be satisfied (violating one means this turn failed)"],
+  "soft_preferences": ["preferences that should be satisfied but are negotiable"],
+  "target_entities": ["names of the characters / factions involved"],
+  "target_location": "target location; empty if none",
+  "target_time": "target time; empty if none",
+  "timeline_target": "the target label if the player requests a time jump, otherwise an empty string",
+  "retrieval_query": "a short query for retrieval",
   "retrieval_plan": {
-    "must_include": ["必须进入主 GM 上下文的事实"],
-    "should_include": ["有助但非必须的素材"]
+    "must_include": ["facts that must enter the main GM's context"],
+    "should_include": ["helpful but optional material"]
   },
   "candidate_actions": [
-    "本轮 GM 可以做的 2-5 个具体动作（如 '叙事：<角色>推开<地点>的门，描写室内' / '询问：是否要先观察再进入' / '写状态：player.current_location=<地点>'）。示例里的尖括号占位必须换成本局真实的人名地名，不要照抄"
+    "2-5 concrete things the GM can do this turn (e.g. 'narrate: <character> pushes open the door of <place> and the room is described' / 'ask: observe first or go straight in?' / 'write state: player.current_location=<place>'). Angle-bracket placeholders in the examples MUST be replaced with real names from this game; do not copy them"
   ],
   "rule_candidate_actions": [
-    "（仅当当前为 5E-compatible 规则模组时）触发系统规则的候选动作。每条至少含 kind 字段，例：",
-    "  {\"kind\":\"skill_check\",\"skill\":\"stealth\",\"target\":\"minecart_track\",\"dc_hint\":13,\"reason\":\"玩家表示悄悄靠近\"}",
+    "(only when the current scene runs a 5E-compatible rules module) candidate actions that trigger system rules. Each has at least a kind field, e.g.:",
+    "  {\"kind\":\"skill_check\",\"skill\":\"stealth\",\"target\":\"minecart_track\",\"dc_hint\":13,\"reason\":\"player says they sneak closer\"}",
     "  {\"kind\":\"attack\",\"target\":\"ash_skulker_1\",\"weapon\":\"shortsword\"}",
     "  {\"kind\":\"saving_throw\",\"ability\":\"con\",\"dc_hint\":12,\"reason\":\"poison_fog\"}",
     "  {\"kind\":\"investigate\",\"target\":\"collapsed_shaft\",\"skill\":\"investigation\",\"dc_hint\":12}",
     "  {\"kind\":\"move\",\"target\":\"rest_cavern\"}",
-    "GM **不能自己掷骰**；如果意图含糊，把动作留空并让 GM 追问或给选项。"
+    "The GM **cannot roll dice itself**; if the intent is vague, leave the actions empty and let the GM ask or offer options."
   ],
   "acceptance": [
-    "本轮 GM 输出满足以下条件即算成功，每条要可验证（如 '正文里 GM 回应了玩家想去<目标地点>的请求' / '没把原著里本局尚未推进到的事件当作已发生'）。只能引用本局上下文里真实出现过的人名地名时间"
+    "this turn's GM output succeeds if these conditions hold; each must be verifiable (e.g. 'the GM responds in the prose to the player's request to go to <target place>' / 'events of the source this game has not reached yet are not treated as having happened'). Only reference names, places and times that actually appear in this game's context"
   ],
-  "risk_flags": ["可能造成错位的风险（如 'pending_jump 待确认中，不要叙事到未来时间'）"],
+  "risk_flags": ["risks that could cause misalignment (e.g. 'pending_jump awaiting confirmation; do not narrate into the future')"],
   "confidence": 0.85,
   "clarifying_question": "",
-  "reason": "为什么这样规划本轮（不会写给玩家）"
+  "reason": "why you planned this turn this way (never shown to the player)"
 }
 
-confidence 阈值：
-- >= 0.7：清晰意图，正常调主 GM
-- 0.5-0.7：有歧义但可推进，把歧义写进 risk_flags
-- < 0.5：意图模糊，填 clarifying_question 记录你的疑问；但主 GM 本轮仍会做最合理解读推进（管线已不再短路等待，仅在真正互斥抉择时由主 GM 用 question op 弹窗）
+confidence thresholds:
+- >= 0.7: clear intent, call the main GM normally
+- 0.5-0.7: ambiguous but workable; write the ambiguity into risk_flags
+- < 0.5: unclear intent; record your doubt in clarifying_question -- the main GM will still go ahead with the most reasonable reading this turn (the pipeline no longer stops to wait; only genuinely mutually exclusive choices are put to the player by the main GM via a question op)
 
-clarifying_question 写法：直接的封闭式问题 + 2-3 个候选答案。
-例（占位需换成本局真实人名地名）：「你想让<角色>先在门外观察，还是直接推门进去？(A) 观察 (B) 推门进入 (C) 退后撤离」
+How to write clarifying_question: a direct closed question + 2-3 candidate answers.
+E.g. (replace the placeholders with real names from this game): "Do you want <character> to watch from outside the door first, or push it open right away? (A) Watch (B) Push the door open (C) Back off"
 """
 
 
@@ -156,7 +156,7 @@ def run_context_agent(
     def stopped() -> bool:
         if not stop_requested():
             return False
-        yield_step = step("aborted", "玩家已停止上下文子代理，本轮不会调用主 GM。", "stopped")
+        yield_step = step("aborted", "The player stopped the context sub-agent; the main GM will not be called this turn.", "stopped")
         steps[-1] = yield_step["step"]
         return True
 
@@ -167,7 +167,7 @@ def run_context_agent(
     )
     yield step(
         "prompt",
-        f"加载上下文子代理运行提示（模式：{mode}）。",
+        f"Loading the context sub-agent prompt (mode: {mode}).",
         "done",
         prompt=AGENT_PROMPT,
         mode=mode,
@@ -181,18 +181,18 @@ def run_context_agent(
     is_set = _is_set_command(user_input)
     directives = [] if is_set else detect_time_directives(user_input or "")
     if is_set:
-        yield step("intent", "识别到 /set 强制设定；按已写入的用户硬约束构建上下文。", "done")
+        yield step("intent", "Detected a /set override; building context from the user's hard constraints already written.", "done")
     elif directives:
         for directive in directives:
             state.request_time_jump(directive.target, directive.raw)
         yield step(
             "intent",
-            f"识别到时间线请求：{directives[0].target}",
+            f"Detected a timeline request: {directives[0].target}",
             "done",
             directives=[directive.__dict__ for directive in directives],
         )
     else:
-        yield step("intent", "未发现显式时间跳跃；沿用当前锁定时间线。", "done")
+        yield step("intent", "No explicit time jump found; keeping the currently locked timeline.", "done")
     if stopped():
         yield {"type": "stopped", "steps": steps}
         return
@@ -217,7 +217,7 @@ def run_context_agent(
     if llm_curator:
         yield step(
             "llm_curator",
-            "正在调用大模型子代理判断本轮上下文需求。",
+            "Calling the LLM sub-agent to work out this turn's context needs.",
             "running",
             request_isolated=True,
             expected_output="json",
@@ -245,7 +245,7 @@ def run_context_agent(
             state.request_time_jump(target, user_input)
         yield step(
             "llm_curator",
-            curator_plan.get("intent") or "大模型子代理已完成上下文判断。",
+            curator_plan.get("intent") or "The LLM sub-agent has finished its context assessment.",
             "done",
             raw=llm_text,
             plan=curator_plan,
@@ -253,7 +253,7 @@ def run_context_agent(
     elif use_harness:
         yield step(
             "llm_curator",
-            f"经统一 harness 调 curator（api={api_id_override or 'auto'}, model={model_override or 'auto'}）。",
+            f"Calling the curator through the unified harness (api={api_id_override or 'auto'}, model={model_override or 'auto'}).",
             "running",
             request_isolated=True,
             expected_output="json",
@@ -278,11 +278,11 @@ def run_context_agent(
             # Option A:把真实原因(403/401/余额/限流…)明确告诉用户,不再静默「调用失败」。
             _emsg = harness_err.get("message")
             if _emsg:
-                _notice = (f"子代理调用失败:{_emsg}"
-                           f"(服务商 {harness_err.get('api')} · 模型 {harness_err.get('model')})"
-                           f" 本回合已临时降级到本地规则。")
+                _notice = (f"Sub-agent call failed: {_emsg}"
+                           f" (provider {harness_err.get('api')} · model {harness_err.get('model')})."
+                           f" Falling back to local rules for this turn.")
             else:
-                _notice = "子代理调用失败(网络/超时等),已临时降级到本地规则。"
+                _notice = "Sub-agent call failed (network / timeout etc.); falling back to local rules for this turn."
             curator_plan = _local_fallback_plan(directives, user_input, reason=_notice)
             yield step(
                 "llm_curator",
@@ -302,14 +302,14 @@ def run_context_agent(
                 state.request_time_jump(target, user_input)
             yield step(
                 "llm_curator",
-                curator_plan.get("intent") or "大模型子代理已完成上下文判断。",
+                curator_plan.get("intent") or "The LLM sub-agent has finished its context assessment.",
                 "done",
                 raw=llm_text,
                 plan=curator_plan,
             )
     else:
         curator_plan = _local_fallback_plan(directives, user_input,
-                                            reason="没有传入 llm_curator 且未指定 api_id_override。")
+                                            reason="No llm_curator was passed and no api_id_override was given.")
 
     # 5E-compatible：当前为模组场景时，补一份本地关键词回退的 rule_candidate_actions。
     # LLM 已返回 rule_candidate_actions 时优先用它，否则用本地匹配确保规则层不会缺动作。
@@ -337,7 +337,7 @@ def run_context_agent(
     manifest = resolve_content_pack(state, script_id=script_id)
     yield step(
         "manifest",
-        f"已解析 ContentPack：kind={manifest.get('kind')} · id={manifest.get('id')}",
+        f"Resolved ContentPack: kind={manifest.get('kind')} · id={manifest.get('id')}",
         "done",
         manifest_kind=manifest.get("kind"),
         manifest_id=manifest.get("id"),
@@ -368,7 +368,7 @@ def run_context_agent(
         if contrib.applied:
             yield step(
                 f"provider:{contrib.provider_id}",
-                f"{contrib.provider_id} 贡献 {len(contrib.layers)} 层、{len(contrib.facts)} 条事实",
+                f"{contrib.provider_id} contributed {len(contrib.layers)} layers, {len(contrib.facts)} facts",
                 "done",
                 provider_id=contrib.provider_id,
                 kind=contrib.kind,
@@ -382,7 +382,7 @@ def run_context_agent(
             sk_msg = contrib.debug.get("skipped") or contrib.debug.get("error") or "skipped"
             yield step(
                 f"provider:{contrib.provider_id}",
-                f"{contrib.provider_id} 跳过（{sk_msg}）",
+                f"{contrib.provider_id} skipped ({sk_msg})",
                 "skipped",
                 provider_id=contrib.provider_id,
                 warnings=contrib.warnings,
@@ -411,7 +411,7 @@ def run_context_agent(
     cache = bundle["debug"].get("cache_plan", {})
     yield step(
         "assembly",
-        "已生成主 GM 上下文清单；按 manifest+contributions 拼层。",
+        "Main GM context manifest built; layers assembled from manifest + contributions.",
         "done",
         estimated_tokens=bundle["debug"].get("estimated_tokens", 0),
         layer_count=len(bundle["debug"].get("layers", [])),
@@ -455,13 +455,22 @@ def _resolve_need_retrieval(plan: dict[str, Any], user_input: str) -> bool:
     _LORE_MARK = ("?", "？", "为什么", "怎么", "如何", "是谁", "什么", "哪", "历史", "来历",
                   "由来", "背景", "设定", "原著", "讲讲", "讲述", "告诉我", "介绍", "规则",
                   "发生了", "之前", "当年", "据说", "传说", "典故")
+    # English equivalents (matched on the lower-cased input padded with spaces → whole-word-ish)
+    _LORE_MARK_EN = (" why ", " how ", " who is ", " who was ", " who are ", " what ", " where ",
+                     " which ", " history", " background", " lore", " origin", " tell me",
+                     " explain", " describe", " rules", " happened", " before ", " legend",
+                     " rumor", " rumour", " the story of", " used to ")
     if any(m in text for m in _LORE_MARK):
+        return True
+    _low = f" {text.lower()} "
+    if any(m in _low for m in _LORE_MARK_EN):
         return True
     # 去新地点 / 时间跳转 → 检索(这些字段污染少)
     if str(plan.get("target_location") or "").strip() or str(plan.get("timeline_target") or "").strip():
         return True
     # 短输入且无 lore 信号 → 纯对话/情绪/简单动作,跳过检索
-    if len(text) <= 18:
+    from core.token_estimate import is_cjk_text
+    if (len(text) <= 18) if is_cjk_text(text) else (len(text.split()) <= 10):
         return False
     return True
 
@@ -510,10 +519,10 @@ def _pick_retrieval_text(contributions) -> str:
 def _timeline_message(label: str, anchor: dict[str, Any]) -> str:
     if anchor.get("anchor_chapter"):
         return (
-            f"时间线锚定到第{anchor.get('anchor_chapter')}章，"
-            f"检索窗口 {anchor.get('chapter_min')} - {anchor.get('chapter_max')}。"
+            f"Timeline anchored to chapter {anchor.get('anchor_chapter')}; "
+            f"retrieval window {anchor.get('chapter_min')} - {anchor.get('chapter_max')}."
         )
-    return f"未精确命中原著锚点：{label}"
+    return f"No exact source anchor matched: {label}"
 
 
 def _preview(text: str, limit: int = 180) -> str:
@@ -544,15 +553,18 @@ def _recent_dialogue_json(state) -> str:
         msgs = state.history_messages(limit_turns=3, include_digest=False)
     except TypeError:  # 老 state 实现(测试替身)没有 include_digest
         msgs = state.history_messages(limit_turns=3)
+    from core.token_estimate import CJK_CHARS_PER_TOKEN, cjk_chars_to_budget, estimate_tokens
     picked: list[dict[str, Any]] = []
     budget = _RECENT_BUDGET
     for msg in reversed(msgs or []):
         if not isinstance(msg, dict):
             continue
         text = str(msg.get("content") or "")
-        if len(text) > _RECENT_PER_MSG:
-            text = text[:_RECENT_PER_MSG] + "…"
-        cost = len(text) + 24  # json 的 role/引号/逗号开销
+        # 预算按「中文字符当量」计(token 口径):英文同等预算可装 ~2.5x 字符
+        _per = cjk_chars_to_budget(text, _RECENT_PER_MSG)
+        if len(text) > _per:
+            text = text[:_per] + "…"
+        cost = int(estimate_tokens(text) * CJK_CHARS_PER_TOKEN) + 24  # json 的 role/引号/逗号开销
         if picked and cost > budget:
             break
         picked.append({"role": msg.get("role") or "user", "content": text})
@@ -573,46 +585,50 @@ def _curator_task_prompt(state, user_input: str, directives: list[Any],
     _ss = (steering_strength or "guided").strip().lower()
     if _ss == "free":
         goal_block = [
-            "【当前目标/主线（仅背景，自由模式勿强推）】",
+            "[Current objective / main quest (background only; do not push it in free mode)]",
             _main,
-            "【引导强度=自由(free)】玩家在自由发挥。本轮 acceptance 只覆盖玩家实际请求/所处场景，"
-            "**严禁**凭空造「推进主线/修炼进度」之类与玩家本轮行动无关的验收点；日常/亲密/休息等"
-            "与主线无关的场景，acceptance 可只含「如实响应玩家所提场景」或留空。",
+            "[Steering = free] The player is improvising freely. This turn's acceptance covers only what the player "
+            "actually asked for / the scene they are in. **Never** invent acceptance points unrelated to the player's "
+            "action this turn, such as 'advance the main quest / cultivation progress'; for everyday / intimate / resting "
+            "scenes unrelated to the main quest, acceptance may contain only 'respond faithfully to the scene the player "
+            "raised', or be empty.",
         ]
     elif _ss == "rail":
         goal_block = [
-            "【当前目标/主线】",
+            "[Current objective / main quest]",
             _main,
-            "【引导强度=贴原著(rail)】可围绕主线设定 acceptance，推动剧情朝原著走向收束。",
+            "[Steering = rail (follow the source)] You may set acceptance around the main quest and steer the plot "
+            "to converge toward the source's course.",
         ]
     else:  # guided（默认）
         goal_block = [
-            "【当前目标/主线】",
+            "[Current objective / main quest]",
             _main,
-            "【引导强度=引导(guided)】可朝主线温和推进，但玩家明显跑题（日常/亲密/休息）时以玩家"
-            "意图为先，**不要**造把当前场景硬拉回主线的 acceptance。",
+            "[Steering = guided] You may gently advance toward the main quest, but when the player clearly wanders off "
+            "(everyday life / intimacy / rest) the player's intent comes first; **do not** create acceptance that drags "
+            "the current scene back to the main quest.",
         ]
     return "\n".join([
-        "请为本轮 RPG 生成前的上下文选择做判断，只返回 JSON。",
+        "Assess the context selection for this RPG turn before generation; return JSON only.",
         "",
-        "【玩家输入】",
+        "[Player input]",
         user_input or "",
         "",
-        "【当前时间线】",
+        "[Current timeline]",
         str(world.get("time", "")),
         "",
-        "【本地已识别时间线请求】",
+        "[Timeline requests detected locally]",
         json.dumps(local_directives, ensure_ascii=False),
         "",
-        "【强制设定规则】",
-        "/set 开头的玩家输入代表用户显式改写设定、时间线、世界观或人设，必须作为硬约束交给主 GM，不得因为原时间线 locked 而忽略。",
+        "[Override rule]",
+        "Player input starting with /set means the user is explicitly rewriting the setting, timeline, world or persona; it MUST be passed to the main GM as a hard constraint and must not be ignored because the original timeline is locked.",
         "",
         *goal_block,
         "",
-        "【最近对话】(按时间正序，最后一条最新)",
+        "[Recent dialogue] (chronological; the last entry is the newest)",
         _recent_dialogue_json(state),
         "",
-        "只输出 JSON，不要 Markdown。",
+        "Output JSON only, no Markdown.",
     ])
 
 
@@ -627,19 +643,19 @@ class _CuratorStopped(Exception):
 def _local_fallback_plan(directives: list[Any], user_input: str, *,
                          reason: str = "") -> dict[str, Any]:
     return {
-        "intent": "本地规则解析",
+        "intent": "Parsed by local rules",
         "timeline_target": getattr(directives[0], "target", "") if directives else "",
         "retrieval_query": user_input,
         "must_include": [],
-        "risk_flags": ["未启用大模型子代理，仅使用确定性规则。"],
-        "reason": reason or "没有可用的 LLM 通道。",
+        "risk_flags": ["LLM sub-agent not enabled; deterministic rules only."],
+        "reason": reason or "No LLM channel available.",
         "rule_candidate_actions": [],
     }
 
 
 _CURATOR_TOOL_SCHEMA = {
     "name": "emit_curator_plan",
-    "description": "把本轮 RPG 的 Demand Ledger 输出为结构化对象。",
+    "description": "Emit this RPG turn's Demand Ledger as a structured object.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -803,7 +819,7 @@ def _parse_curator_json(text: str) -> dict[str, Any]:
         data = json.loads(raw)
     except Exception:
         return {
-            "intent": "大模型子代理返回无法解析，已回退到规则检索。",
+            "intent": "The LLM sub-agent's reply could not be parsed; fell back to rule-based retrieval.",
             "active_goal": "",
             "hard_constraints": [],
             "soft_preferences": [],
@@ -917,7 +933,8 @@ def _normalize_timeline_target(value: str) -> str:
     if not value:
         return ""
     if re.fullmatch(r"\d{1,5}", value):
-        return f"第{value}章"
+        # 英文写法;消费方(timeline_state._TIME_TOKEN / script_timeline._extract_chapter_number)中英都认
+        return f"Chapter {value}"
     return value
 
 

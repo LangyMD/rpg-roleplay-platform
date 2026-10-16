@@ -37,6 +37,16 @@ class TestBulkRetirementExcluded(unittest.TestCase):
         self.assertTrue(B._is_bulk_retirement(_DEATH))
         self.assertTrue(B._is_bulk_retirement(_PHASE))
 
+    def test_english_writers_are_recognised(self):
+        self.assertTrue(B._is_bulk_retirement(
+            'Character "Zhang" has died — future anchors involving only them can no longer happen'))
+        self.assertTrue(B._is_bulk_retirement(
+            "phase 'Vol 1' closed (turn 88) without being triggered; bypassed automatically"))
+        self.assertEqual(B._source_of(
+            "Per-turn deterministic system check: this turn's story clearly reached this anchor"), "system")
+        self.assertEqual(B._source_of(
+            "Player manually marked as reached in the world line panel"), "player_declared")
+
     def test_real_events_are_backfilled(self):
         for d in (_SYS, _PLAYER, _GM, ""):
             self.assertFalse(B._is_bulk_retirement(d), d)

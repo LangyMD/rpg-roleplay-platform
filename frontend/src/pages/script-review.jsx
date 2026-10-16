@@ -5,6 +5,7 @@
 import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { uiLocale } from '../i18n/index.js';
 
 const API = () => (window.__API_BASE || '');
 
@@ -72,7 +73,7 @@ function ReviewStatusBanner({ scriptId, status, busy, onChange }) {
   const reviewedAtLabel = reviewedAt
     ? ((window.__fmt && window.__fmt.time)
         ? window.__fmt.time(reviewedAt)
-        : new Date(reviewedAt).toLocaleString('zh-CN', { hour12: false }))
+        : new Date(reviewedAt).toLocaleString(uiLocale(), { hour12: false }))
     : null;
   return (
     <div style={{

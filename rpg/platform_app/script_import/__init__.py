@@ -109,12 +109,12 @@ def delete_script(user_id: int, script_id: int, *, force: bool = False) -> dict[
     with connect() as db:
         owned = script_owned(db, script_id, user_id)
         if not owned:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         save_count = int(db.execute(
             "select count(*) as n from game_saves where script_id = %s", (script_id,)
         ).fetchone()["n"])
         if save_count and not force:
-            raise ValueError(f"该剧本下有 {save_count} 个存档，需先删存档或传 force=true")
+            raise ValueError(f"This script has {save_count} saves; delete them first or pass force=true")
         # 级联：scripts CASCADE 删 script_chapters / books / character_cards / worldbook /
         # chapter_facts；game_saves 用户传 force 才会删
         if save_count and force:
@@ -130,7 +130,7 @@ def delete_script(user_id: int, script_id: int, *, force: bool = False) -> dict[
             base_resolved = BASE.resolve()
             if base_resolved not in p.parents and p != base_resolved:
                 source_file_kept = True
-                kept_reason = "source_path 越界,拒绝删除"
+                kept_reason = "source_path is out of bounds; refusing to delete"
                 logger.warning(
                     "delete_script: %s out of BASE, keeping source file (script_id=%s)",
                     src, script_id,
@@ -179,20 +179,20 @@ def resplit_script(
     with connect() as db:
         script = script_owned(db, script_id, user_id)
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         src = (script.get("source_path") or "").strip()
         if not src:
-            raise ValueError("剧本源文件路径丢失")
+            raise ValueError("Script source file path is missing")
         p = (BASE / src).resolve() if not Path(src).is_absolute() else Path(src).resolve()
         if BASE.resolve() not in p.parents and p != BASE.resolve():
-            raise ValueError("source_path 越界, 拒绝操作")
+            raise ValueError("source_path is out of bounds; refusing to proceed")
         if not p.exists():
-            raise ValueError("剧本源文件不存在，无法重切")
+            raise ValueError("Script source file does not exist; cannot re-split")
         raw = p.read_bytes()
 
     if (split_rule or "").strip() == "custom":
         if not (custom_pattern or "").strip():
-            raise ValueError("split_rule=custom 时必须提供 custom_pattern")
+            raise ValueError("custom_pattern is required when split_rule=custom")
         _validate_custom_pattern(custom_pattern)
 
     text, encoding = chapter_splitter.decode_bytes(raw)
@@ -203,7 +203,7 @@ def resplit_script(
         source_name=Path(src).name, title=script.get("title") or "",
     )
     if not chapters:
-        raise ValueError("重切结果为空")
+        raise ValueError("Re-split produced no chapters")
 
     total_words = sum(len(c.get("content") or "") for c in chapters)
     with connect() as db:
@@ -222,7 +222,7 @@ def resplit_script(
                     values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     [
-                        (script_id, i, str(c.get("title") or f"第{i}章")[:200],
+                        (script_id, i, str(c.get("title") or f"Chapter {i}")[:200],
                          str(c.get("content") or ""), len(str(c.get("content") or "")),
                          str(c.get("volume_title") or ""), str(c.get("source_marker") or ""),
                          float(report.get("confidence") or 0),

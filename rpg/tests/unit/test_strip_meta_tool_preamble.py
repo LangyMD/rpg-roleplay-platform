@@ -47,3 +47,42 @@ def test_non_meta_english_tail_unchanged():
 def test_empty_and_none_safe():
     assert strip_meta_tool_preamble("") == ""
     assert strip_meta_tool_preamble("   ") in ("   ", "")
+
+
+# ── English narration ────────────────────────────────────────────────
+
+def test_english_final_narration_line_with_ill_is_kept():
+    txt = ("The tavern falls silent as the stranger leaves.\n"
+           "I'll mark this night in memory, the old bard murmurs to no one in particular.")
+    assert strip_meta_tool_preamble(txt) == txt
+
+
+def test_english_let_me_narration_is_kept():
+    txt = "Rain hammers the shutters.\nLet me tell you about the night the river burned."
+    assert strip_meta_tool_preamble(txt) == txt
+    txt2 = "You step into the hall. I'll set the table, says the innkeeper, waving you in."
+    assert strip_meta_tool_preamble(txt2) == txt2
+
+
+def test_english_dialogue_line_is_kept():
+    txt = 'You nod.\n"Let me update the state of the realm for you," the herald says.'
+    assert strip_meta_tool_preamble(txt) == txt
+
+
+def test_english_meta_tool_line_is_stripped():
+    narrative = "The gate groans shut behind you, and the courtyard falls quiet."
+    txt = narrative + "\nNow let me call the update_state tool to record the anchors."
+    assert strip_meta_tool_preamble(txt) == narrative
+
+
+def test_english_meta_sentence_after_narration_on_same_line_is_stripped():
+    narrative = "The gate groans shut behind you."
+    txt = narrative + " I'll update the game state with a JSON patch now."
+    assert strip_meta_tool_preamble(txt) == narrative
+
+
+def test_english_multiple_trailing_meta_sentences_are_stripped():
+    narrative = "Snow keeps falling over the pass."
+    txt = (narrative + "\nThe scene has progressed naturally. "
+           "Let me mark the anchors that have been satisfied through our gameplay.")
+    assert strip_meta_tool_preamble(txt) == narrative

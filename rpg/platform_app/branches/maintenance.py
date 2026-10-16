@@ -20,7 +20,7 @@ def ensure_summaries(db, save_id: int) -> None:
     by_id = {row["id"]: row for row in rows}
     for row in rows:
         current = row.get("summary") or ""
-        if current and current != "空回合" and not current.startswith("我好像"):
+        if current and current not in ("Empty turn", "空回合") and not current.startswith("我好像"):
             continue
         player_text = row.get("player_input") or ""
         gm_text = row.get("gm_output") or ""

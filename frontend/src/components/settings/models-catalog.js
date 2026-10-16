@@ -42,55 +42,55 @@ function fmtPrice(v) {
 const MODELS_DATA = [
   {
     id: "openai", name: "OpenAI", base_url: "https://api.openai.com/v1",
-    enabled: true, status: "online", key_set: true, key_hint: "·sk-…3a9f", proxy: "直连",
+    enabled: true, status: "online", key_set: true, key_hint: "·sk-…3a9f", proxy: "Direct",
     models: [
-      { id: "gpt-6-astra", real_name: "gpt-6-astra", display: "GPT-6 Astra · 最强", capabilities: ["text", "vision", "tool-use", "rpg"], enabled: true, price: "$10.00 / $50.00", context: "1.05M", health: "ok", visible: true },
-      { id: "gpt-5.6-sol", real_name: "gpt-5.6-sol", display: "GPT-5.6 Sol · 旗舰", capabilities: ["text", "vision", "tool-use", "rpg"], enabled: true, price: "$4.00 / $20.00", context: "1.05M", health: "ok", visible: true },
-      { id: "gpt-5.6-terra", real_name: "gpt-5.6-terra", display: "GPT-5.6 Terra · 均衡", capabilities: ["text", "vision", "tool-use"], enabled: true, price: "$2.00 / $12.00", context: "1.05M", health: "ok", visible: true },
-      { id: "gpt-5.6-luna", real_name: "gpt-5.6-luna", display: "GPT-5.6 Luna · 廉价", capabilities: ["fast", "vision"], enabled: false, price: "$0.20 / $1.20", context: "1.05M", health: "ok", visible: true },
+      { id: "gpt-6-astra", real_name: "gpt-6-astra", display: "GPT-6 Astra · Strongest", capabilities: ["text", "vision", "tool-use", "rpg"], enabled: true, price: "$10.00 / $50.00", context: "1.05M", health: "ok", visible: true },
+      { id: "gpt-5.6-sol", real_name: "gpt-5.6-sol", display: "GPT-5.6 Sol · Flagship", capabilities: ["text", "vision", "tool-use", "rpg"], enabled: true, price: "$4.00 / $20.00", context: "1.05M", health: "ok", visible: true },
+      { id: "gpt-5.6-terra", real_name: "gpt-5.6-terra", display: "GPT-5.6 Terra · Balanced", capabilities: ["text", "vision", "tool-use"], enabled: true, price: "$2.00 / $12.00", context: "1.05M", health: "ok", visible: true },
+      { id: "gpt-5.6-luna", real_name: "gpt-5.6-luna", display: "GPT-5.6 Luna · Budget", capabilities: ["fast", "vision"], enabled: false, price: "$0.20 / $1.20", context: "1.05M", health: "ok", visible: true },
     ]
   },
   {
     id: "anthropic", name: "Anthropic", base_url: "https://api.anthropic.com/v1",
-    enabled: true, status: "online", key_set: true, key_hint: "·sk-***", proxy: "直连",
+    enabled: true, status: "online", key_set: true, key_hint: "·sk-***", proxy: "Direct",
     models: [
-      { id: "claude-opus-5", real_name: "claude-opus-5", display: "Claude Opus 5 · 长文", capabilities: ["long", "tool-use", "rpg"], enabled: true, price: "$5 / $25", context: "1M", health: "ok", visible: true },
+      { id: "claude-opus-5", real_name: "claude-opus-5", display: "Claude Opus 5 · Long-form", capabilities: ["long", "tool-use", "rpg"], enabled: true, price: "$5 / $25", context: "1M", health: "ok", visible: true },
       { id: "claude-sonnet-5", real_name: "claude-sonnet-5", display: "Claude Sonnet 5", capabilities: ["text", "fast", "tool-use"], enabled: true, price: "$2 / $10", context: "1M", health: "ok", visible: true },
-      { id: "claude-opus-4-7", real_name: "claude-opus-4-7", display: "Claude Opus 4.7 · 上一代", capabilities: ["long", "tool-use"], enabled: false, price: "$5 / $25", context: "1M", health: "ok", visible: true },
+      { id: "claude-opus-4-7", real_name: "claude-opus-4-7", display: "Claude Opus 4.7 · Previous gen", capabilities: ["long", "tool-use"], enabled: false, price: "$5 / $25", context: "1M", health: "ok", visible: true },
       { id: "claude-haiku-4-5", real_name: "claude-haiku-4-5", display: "Claude Haiku 4.5", capabilities: ["fast"], enabled: false, price: "$1.00 / $5", context: "200K", health: "ok", visible: true },
     ]
   },
   {
     id: "google", name: "Google", base_url: "https://generativelanguage.googleapis.com/v1beta",
-    enabled: false, status: "未连接", key_set: false, proxy: "需配置 API key",
+    enabled: false, status: "Not connected", key_set: false, proxy: "API key required",
     models: [
-      { id: "gemini-3.8-flash", real_name: "gemini-3.8-flash", display: "Gemini 3.8 Flash · 当前旗舰", capabilities: ["fast", "vision", "tool-use", "reasoning"], enabled: false, price: "$0.75 / $3.75", context: "1M", health: "ok", visible: true },
-      { id: "gemini-3.5-flash-lite", real_name: "gemini-3.5-flash-lite", display: "Gemini 3.5 Flash Lite · 最便宜", capabilities: ["fast", "vision"], enabled: false, price: "$0.30 / $2.50", context: "1M", health: "ok", visible: true },
-      { id: "gemini-2.5-flash", real_name: "gemini-2.5-flash", display: "Gemini 2.5 Flash · 兜底默认", capabilities: ["fast", "vision", "tool-use"], enabled: false, price: "$0.075 / $0.30", context: "1M", health: "ok", visible: true },
+      { id: "gemini-3.8-flash", real_name: "gemini-3.8-flash", display: "Gemini 3.8 Flash · Current flagship", capabilities: ["fast", "vision", "tool-use", "reasoning"], enabled: false, price: "$0.75 / $3.75", context: "1M", health: "ok", visible: true },
+      { id: "gemini-3.5-flash-lite", real_name: "gemini-3.5-flash-lite", display: "Gemini 3.5 Flash Lite · Cheapest", capabilities: ["fast", "vision"], enabled: false, price: "$0.30 / $2.50", context: "1M", health: "ok", visible: true },
+      { id: "gemini-2.5-flash", real_name: "gemini-2.5-flash", display: "Gemini 2.5 Flash · Fallback default", capabilities: ["fast", "vision", "tool-use"], enabled: false, price: "$0.075 / $0.30", context: "1M", health: "ok", visible: true },
     ]
   },
   {
-    id: "qwen", name: "通义千问", base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    enabled: true, status: "online", key_set: true, key_hint: "·sk-…c024", proxy: "直连",
+    id: "qwen", name: "Qwen (Tongyi Qianwen)", base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    enabled: true, status: "online", key_set: true, key_hint: "·sk-…c024", proxy: "Direct",
     models: [
-      { id: "qwen3.8-max", real_name: "qwen3.8-max", display: "Qwen 3.8-Max · 旗舰", capabilities: ["cn", "rpg", "text", "reasoning"], enabled: true, price: "$2.50 / $7.50", context: "1M", health: "ok", visible: true },
-      { id: "qwen3.7-max", real_name: "qwen3.7-max", display: "Qwen 3.7-Max · 上一代", capabilities: ["cn", "rpg", "text", "reasoning"], enabled: false, price: "$2.50 / $7.50", context: "1M", health: "ok", visible: true },
+      { id: "qwen3.8-max", real_name: "qwen3.8-max", display: "Qwen 3.8-Max · Flagship", capabilities: ["cn", "rpg", "text", "reasoning"], enabled: true, price: "$2.50 / $7.50", context: "1M", health: "ok", visible: true },
+      { id: "qwen3.7-max", real_name: "qwen3.7-max", display: "Qwen 3.7-Max · Previous gen", capabilities: ["cn", "rpg", "text", "reasoning"], enabled: false, price: "$2.50 / $7.50", context: "1M", health: "ok", visible: true },
       { id: "qwen3.6-flash", real_name: "qwen3.6-flash", display: "Qwen 3.6 Flash", capabilities: ["cn", "fast"], enabled: true, price: "$0.19 / $1.13", context: "131K", health: "ok", visible: true },
       { id: "qwen-turbo", real_name: "qwen-turbo", display: "Qwen Turbo", capabilities: ["cn", "fast"], enabled: false, price: "¥0.04 / ¥0.08", context: "1M", health: "ok", visible: true },
     ]
   },
   {
     id: "deepseek", name: "DeepSeek", base_url: "https://api.deepseek.com/v1",
-    enabled: true, status: "online", key_set: true, key_hint: "·sk-…a8d2", proxy: "直连",
+    enabled: true, status: "online", key_set: true, key_hint: "·sk-…a8d2", proxy: "Direct",
     models: [
       { id: "deepseek-flash", real_name: "deepseek-flash", display: "DeepSeek Flash · V4.1", capabilities: ["reasoning", "vision", "cn", "fast", "tool-use"], enabled: true, price: "$0.15 / $0.60", context: "1M", health: "ok", visible: true },
-      { id: "deepseek-v4-pro", real_name: "deepseek-v4-pro", display: "DeepSeek V4-Pro · 旗舰", capabilities: ["reasoning", "cn", "tool-use"], enabled: true, price: "$0.66 / $1.98", context: "1M", health: "ok", visible: true },
-      { id: "deepseek-v4-flash", real_name: "deepseek-v4-flash", display: "DeepSeek V4-Flash · 旧别名", capabilities: ["reasoning", "vision", "cn", "fast", "tool-use"], enabled: true, price: "$0.15 / $0.60", context: "1M", health: "ok", visible: true },
+      { id: "deepseek-v4-pro", real_name: "deepseek-v4-pro", display: "DeepSeek V4-Pro · Flagship", capabilities: ["reasoning", "cn", "tool-use"], enabled: true, price: "$0.66 / $1.98", context: "1M", health: "ok", visible: true },
+      { id: "deepseek-v4-flash", real_name: "deepseek-v4-flash", display: "DeepSeek V4-Flash · Legacy alias", capabilities: ["reasoning", "vision", "cn", "fast", "tool-use"], enabled: true, price: "$0.15 / $0.60", context: "1M", health: "ok", visible: true },
     ]
   },
   {
     id: "openrouter", name: "OpenRouter", base_url: "https://openrouter.ai/api/v1",
-    enabled: true, status: "online", key_set: true, key_hint: "·sk-or-…f72e", proxy: "直连",
+    enabled: true, status: "online", key_set: true, key_hint: "·sk-or-…f72e", proxy: "Direct",
     models: ((() => {
       const data = [
         ["openai/gpt-4o", "GPT-4o", ["text", "vision", "tool-use"], "$2.50 / $10.00", "128K", true],
@@ -140,10 +140,10 @@ const MODELS_DATA = [
     })()),
   },
   {
-    id: "local", name: "本地 vLLM", base_url: "http://127.0.0.1:8000/v1",
-    enabled: false, status: "未启动", key_set: false, proxy: "局域网",
+    id: "local", name: "Local vLLM", base_url: "http://127.0.0.1:8000/v1",
+    enabled: false, status: "Not started", key_set: false, proxy: "LAN",
     models: [
-      { id: "qwen-72b", real_name: "Qwen2.5-72B-Instruct", display: "Qwen2.5-72B · 本地", capabilities: ["cn", "long"], enabled: false, price: "本地", context: "128K", health: "ok", visible: true },
+      { id: "qwen-72b", real_name: "Qwen2.5-72B-Instruct", display: "Qwen2.5-72B · Local", capabilities: ["cn", "long"], enabled: false, price: "Local", context: "128K", health: "ok", visible: true },
     ]
   },
 ];
@@ -222,7 +222,7 @@ const PROVIDERS_CONFIG = [
     // 火山同一域名下有两个不同产品的入口,这里给的是 OpenAI 兼容那条(doubao 系模型):
     //   · /api/v3   —— Ark OpenAI 兼容(本条)
     //   · /api/plan —— Agent Plan(Anthropic Messages 原生 + AUTH_TOKEN),走「自定义」配
-    id: "doubao", name: "火山方舟 Doubao (Volcengine Ark)", kind: "openai_compat",
+    id: "doubao", name: "Volcengine Ark Doubao (火山方舟)", kind: "openai_compat",
     defaultBase: "https://ark.cn-beijing.volces.com/api/v3",
     keyEnv: "ARK_API_KEY",
     noteKey: "settings.more.providers.note_doubao",
@@ -230,7 +230,7 @@ const PROVIDERS_CONFIG = [
   {
     // 火山方舟「Agent Plan」订阅套餐 —— 与上面的 Ark 是同域名下的两个不同产品。
     // 地址与「没有 /models」都由反馈者实测确认(deepseek-v4-pro 返 200;/models 恒 404)。
-    id: "ark_agent_plan", name: "火山方舟 Agent Plan (订阅套餐)", kind: "openai_compat",
+    id: "ark_agent_plan", name: "Volcengine Ark Agent Plan (火山方舟 subscription)", kind: "openai_compat",
     defaultBase: "https://ark.cn-beijing.volces.com/api/plan/v3",
     keyEnv: "ARK_API_KEY",
     noteKey: "settings.more.providers.note_ark_agent_plan",

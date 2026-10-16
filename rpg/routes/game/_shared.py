@@ -32,8 +32,12 @@ def _sanitize_payload(obj):
         return obj
 
 _CLIENT_SAFE_RUNTIME_PREFIXES = (
+    # 生产方在 agents/gm/backends/vertex.py;中英两种文案都认(翻译过渡期)
     "未找到 Vertex AI Service Account。",
     "Vertex AI 调用被拒(403)。",
+    "Vertex AI Service Account not found",
+    "Vertex AI call was rejected (403)",
+    "Vertex AI request was rejected (403)",
 )
 
 
@@ -77,7 +81,7 @@ def _client_safe_error(
     if isinstance(exc, RuntimeError) and raw_message.startswith(_CLIENT_SAFE_RUNTIME_PREFIXES):
         _log.warning("[chat] client-safe stream error (error_id=%s): %s", error_id, raw_message)
         _persist("runtime_prereq")
-        return f"{raw_message}\n\n如果已经上传,请重新测试凭证或切换到已配置的模型。(错误码 {error_id})"
+        return f"{raw_message}\n\nIf you have already uploaded it, test the credential again or switch to a configured model. (error code {error_id})"
     known = classify_provider_error(exc)
     if known:
         category, message = known
@@ -92,11 +96,11 @@ def _client_safe_error(
         _log.warning("[chat] client-safe %s stream error (error_id=%s): %s | provider: %s",
                      category, error_id, type(exc).__name__, redact_secrets(exc))
         _persist(category)
-        return f"{message}(错误码 {error_id})"
+        return f"{message} (error code {error_id})"
     _log.exception("[chat] unhandled stream error (error_id=%s)", error_id)
     # 未分类:正是「错误码 Exxx」那条盲区(码是随机的、反查不到),落库后才数得出来它有多少
     _persist("unclassified")
-    return f"本轮处理出错,请重试(错误码 {error_id})"
+    return f"Something went wrong this turn; please retry (error code {error_id})"
 
 
 def _note_channel_health_failure(exc: Exception, api_id: str, api_user: dict[str, Any] | None) -> None:

@@ -78,7 +78,7 @@ def test_player_active_auto_resume_checks_branch_commits_gap():
     assert "t.paused_at < now() - interval '2 hours'" in resume_block
     assert "pause_reason=null" in resume_block.replace(" ", "")
     assert "last_tick_at=now()" in resume_block.replace(" ", "")
-    assert '"玩家离开约2小时,世界继续"' in body
+    assert '"The player has been away about 2 hours; the world continues"' in body
 
 
 # ── A3: MAX_SCENES_PER_DAY 强制 P0 ───────────────────────────────────
@@ -106,7 +106,7 @@ def test_no_model_precheck_happens_before_claim():
     assert i_precheck < i_no_model_return < i_claim_call, (
         "no_model 判定与 return 必须先于 _claim_tick 调用——否则钟已经白白推进一拍")
     assert "pause_reason='no_model'" in ENGINE.replace(" ", "")
-    assert '"无可用模型,已自动暂停,请检查模型凭据"' in ENGINE
+    assert '"No usable model; paused automatically. Please check your model credentials"' in ENGINE
 
 
 # ── A5: last_viewed 语义 ─────────────────────────────────────────────
@@ -166,7 +166,7 @@ def test_game_py_pauses_on_player_turn():
     assert "status='running'" in GAME_ROUTES.replace(" ", "")
     assert "paused_at=now()" in GAME_ROUTES.replace(" ", "")
     assert "last_tick_at=now()" in GAME_ROUTES.replace(" ", "")
-    assert '"玩家回归,世界暂停"' in GAME_ROUTES
+    assert '"Player returned; world paused"' in GAME_ROUTES
     # 非致命:必须包在 try/except 里,绝不能让 RATH 钩子挂掉聊天主流程
     i = GAME_ROUTES.find("pause_reason='player_active'")
     surrounding = GAME_ROUTES[max(0, i - 1600):i]
@@ -256,9 +256,9 @@ def test_clock_label_pure_function():
     import sys
     sys.path.insert(0, str(ROOT))
     from rath.engine import _clock_label
-    assert _clock_label(0) == "第1日 00:00"
-    assert _clock_label(61) == "第1日 01:01"
-    assert _clock_label(1441) == "第2日 00:01"
+    assert _clock_label(0) == "Day 1 00:00"
+    assert _clock_label(61) == "Day 1 01:01"
+    assert _clock_label(1441) == "Day 2 00:01"
 
 
 def test_create_experiment_starts_at_morning():

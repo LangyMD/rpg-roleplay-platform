@@ -14,6 +14,14 @@ _ASKING_FOR_CONFIRM_PATTERNS = (
     r"向玩家提问",
     r"先(?:让|请)?(?:子代理|GM|你)?(?:检查|确认|核对)",
     r"不要(?:直接|立即)?(?:跳过|改写|锁定)",
+    # English equivalents (narration language defaults to English)
+    r"\b(?:should|shall) (?:we|i) (?:skip|jump|advance|fast[- ]forward)",
+    r"\b(?:do|would) you (?:want|like) (?:me )?to (?:skip|jump|advance|fast[- ]forward)",
+    r"\bplease (?:confirm|choose|decide)\b",
+    r"\b(?:waiting|wait) for (?:the )?player'?s? (?:to )?(?:confirm|confirmation|answer|choice|choose|decision|decide|response|respond)",
+    r"\bpending (?:player )?confirmation\b",
+    r"\bask(?:ing)? the player\b",
+    r"\bdo not (?:directly |immediately )?(?:skip|rewrite|lock)\b",
 )
 
 
@@ -37,12 +45,16 @@ def _gm_is_asking_for_time_confirm(gm_response: str, tags: list[str]) -> bool:
     has_explicit_confirm = False
     has_pending_signal = False
 
-    pending_value_markers = ("待确认", "未确认", "暂不", "暂缓", "pending", "awaiting")
+    pending_value_markers = ("待确认", "未确认", "暂不", "暂缓", "pending", "awaiting",
+                             "unconfirmed", "not confirmed", "on hold", "deferred")
     pending_tag_keywords = (
         "询问玩家", "向玩家提问", "澄清问题",
         "时间跳跃待确认", "时间提案", "时间冲突",
         "设定冲突", "设定校验",  # 冲突/校验通常表示"先不要写入"
         "等待玩家回答", "等待玩家",
+        "ask player", "asking player", "question for player", "clarifying question",
+        "time jump pending", "time proposal", "time conflict",
+        "setting conflict", "setting check", "awaiting player", "waiting for player",
     )
 
     for tag in tags or []:
@@ -55,7 +67,7 @@ def _gm_is_asking_for_time_confirm(gm_response: str, tags: list[str]) -> bool:
             _key, _val = tag.split(":", 1)
         else:
             _key, _val = tag, ""
-        if "时间跳跃确认" in _key or "时间跳跃确认" in tag:
+        if "时间跳跃确认" in _key or "时间跳跃确认" in tag or "time jump confirm" in tag.lower():
             val_low = _val.lower()
             # value 里出现"待确认/pending/awaiting"=不是真的同意确认
             if any(m in _val for m in pending_value_markers) or any(m in val_low for m in pending_value_markers):
@@ -63,7 +75,7 @@ def _gm_is_asking_for_time_confirm(gm_response: str, tags: list[str]) -> bool:
             else:
                 has_explicit_confirm = True
             continue
-        if any(kw in tag for kw in pending_tag_keywords):
+        if any(kw in tag or kw in tag.lower() for kw in pending_tag_keywords):
             has_pending_signal = True
 
     if not has_pending_signal:
@@ -91,7 +103,7 @@ def _looks_like_time_value(value: str) -> bool:
 
 def _format_pending_timeline(pending: dict | None) -> str:
     if not pending:
-        return "无"
+        return "none"
     return f"{pending.get('from', '')} → {pending.get('to', '')}"
 
 
@@ -106,7 +118,7 @@ def _phase_for_time(time_desc: str) -> str:
     之前这里 hardcoded 柏林剧本专有词("柏林/图卢兹/哈布斯堡/北城/内城/基地"
     → "柏林暗流篇"),完全无法泛化到别的剧本。已删。
     """
-    return "玩家分支"
+    return "Player branch"
 
 
 # ── 时间连续性护栏 v0(天数倒退检测)─────────────────────────────────────
@@ -147,15 +159,53 @@ def _cjk_to_int(s: str) -> int | None:
     return total if total > 0 or s == "零" else None
 
 
+_EN_ORDINALS = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6, "seventh": 7,
+    "eighth": 8, "ninth": 9, "tenth": 10, "eleventh": 11, "twelfth": 12, "thirteenth": 13,
+    "fourteenth": 14, "fifteenth": 15, "sixteenth": 16, "seventeenth": 17, "eighteenth": 18,
+    "nineteenth": 19, "twentieth": 20, "thirtieth": 30,
+}
+_EN_CARDINALS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+    "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
+    "twenty": 20, "thirty": 30,
+}
+_EN_DAY_RES = None  # 惰性编译
+
+
+def _en_day_number(label: str) -> int | None:
+    """English day counters: "Day 3", "day three", "3rd day", "the third day". None if absent.
+    Deliberately does not match "Day of the Dead"/"today"/"days later" (no counter → dormant)."""
+    global _EN_DAY_RES
+    import re as _re
+    if _EN_DAY_RES is None:
+        _EN_DAY_RES = (
+            _re.compile(r"\bday\s+(\d{1,3})\b", _re.I),
+            _re.compile(r"\b(\d{1,3})(?:st|nd|rd|th)\s+day\b", _re.I),
+            _re.compile(r"\bday\s+(" + "|".join(_EN_CARDINALS) + r")\b", _re.I),
+            _re.compile(r"\b(" + "|".join(_EN_ORDINALS) + r")\s+day\b", _re.I),
+        )
+    for rx in _EN_DAY_RES:
+        m = rx.search(label or "")
+        if not m:
+            continue
+        tok = m.group(1).lower()
+        if tok.isdigit():
+            return int(tok)
+        return _EN_CARDINALS.get(tok) or _EN_ORDINALS.get(tok)
+    return None
+
+
 def _day_number(label: str) -> int | None:
-    """从时间标签抽「第N天」的 N。抽不出(无天数计法)返 None=护栏休眠。"""
+    """从时间标签抽「第N天」的 N(also English "Day N"/"Nth day")。抽不出(无天数计法)返 None=护栏休眠。"""
     global _DAY_NUM_RE
     import re as _re
     if _DAY_NUM_RE is None:
         _DAY_NUM_RE = _re.compile(r"第([0-9零一两二三四五六七八九十百]+)天")
     m = _DAY_NUM_RE.search(label or "")
     if not m:
-        return None
+        return _en_day_number(label or "")
     return _cjk_to_int(m.group(1))
 
 
@@ -172,7 +222,7 @@ def detect_day_regression(old_label: str, new_label: str) -> str | None:
         return None
     if new_day < old_day:
         return (
-            f"时间疑似倒退(第{old_day}天 → 第{new_day}天)。"
-            "若非玩家有意的设定回调,建议 /retry 或用 /set 纠正时间线。"
+            f"Time appears to have gone backwards (Day {old_day} -> Day {new_day}). "
+            "Unless the player deliberately rewound the setting, consider /retry or use /set to fix the timeline."
         )
     return None

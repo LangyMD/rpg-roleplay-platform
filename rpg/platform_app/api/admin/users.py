@@ -91,16 +91,16 @@ async def admin_update_user(
 
     # 禁止管理员降级自己
     if new_role == "user" and admin.get("id") == user_id:
-        raise HTTPException(status_code=400, detail="不允许将自己降级为普通用户")
+        raise HTTPException(status_code=400, detail="You cannot demote yourself to a regular user")
 
     with connect() as db:
         if not db.execute("SELECT 1 FROM users WHERE id = %s", (user_id,)).fetchone():
-            raise HTTPException(status_code=404, detail="用户不存在")
+            raise HTTPException(status_code=404, detail="User does not exist")
         if new_role is not None:
             # task: vip_user 享受平台 RAG embedder 兜底,但仍 LLM BYOK,跟 admin 区别
             # 是 vip_user 没 admin 权限(不能改其他用户、看 audit log 等)
             if new_role not in ("user", "vip_user", "admin"):
-                raise HTTPException(status_code=400, detail="role 只能是 user / vip_user / admin")
+                raise HTTPException(status_code=400, detail="role must be user / vip_user / admin")
             db.execute("update users set role = %s where id = %s", (new_role, user_id))
             _write_audit(db, admin, "user.update_role",
                          target_type="user", target_id=str(user_id),
@@ -138,7 +138,7 @@ async def admin_deactivate_user(
     # 禁止管理员停用自己:deactivated_at 让自己的 token 立即失效 + 删自己的 session →
     # 自锁在门外且无法撤销(已停用进不了 admin)。与 update_role 的自降级保护一致。
     if admin.get("id") == user_id:
-        raise HTTPException(status_code=400, detail="不允许停用自己的账户")
+        raise HTTPException(status_code=400, detail="You cannot disable your own account")
     with connect() as db:
         db.execute(
             "update users set deactivated_at = now() where id = %s",

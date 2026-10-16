@@ -51,7 +51,7 @@ class CombatStalemateTimeout(unittest.TestCase):
         self.assertTrue(res.get("ok"))
         self.assertTrue(res.get("resolved"), "兜底结束应回报 resolved")
         self.assertEqual(res.get("outcome"), "stalemate")
-        self.assertIn("僵局", res.get("message", ""))
+        self.assertIn("stalemate", res.get("message", ""))
         self.assertFalse(enc["active"])
         # 僵局不写 victory_flag
         self.assertEqual(st.flags, {})

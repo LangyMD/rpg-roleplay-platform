@@ -27,23 +27,32 @@ from ._shared import _client_safe_error, _note_channel_health_failure, router
 # 修复边界:底层 generate_opening 通用化(只收 prompt+预算);这里——游戏这条流水线——按
 # steering_strength 决定 rail 时用"忠实重现原著开篇"的提示 + 更大预算。酒馆/编辑器不调此处,零影响。
 _RAIL_OPENING_INSTRUCTION = """\
-玩家选择了【贴原著】引导强度。请基于【本轮上下文包】中的「锚点章节原文 · 贴原著档」段,
-忠实重现原著的开场场景,作为玩家进入故事的起点。
+The player chose the "follow the source" steering strength. Using the anchor chapter source text
+(follow-the-source tier) in this turn's context bundle, faithfully recreate the source's opening scene
+as the player's entry point into the story.
 
-要求：
-- 严格沿用原著开场的时间、地点、**登场人物与关键对话/事件**;原著开篇出现的配角、群像也要保留,
-  不要只写主角、不要替换或省略原著开场出现的人物。
-- 保留原著关键对白的原话或原意;原著开篇的冲突/相遇/转折不得跳过或一笔带过。
-- 玩家角色按其角色卡/出生点切入这一场景(视角与切入点可由玩家身份决定),但不得让开场脱离原著走向。
-- 以注入的原著正文为准,不要凭训练记忆自由另写一个开场。
-- **只重现注入原文中【确实出现】的内容**:不要补充原文之外的剧情、结局、人物去向或晋升/封赏等
-  发展(原文写到哪就到哪);状态写回(memory.facts 等)也只记原文确有的事,不要脑补。
+Requirements:
+- Keep the source opening's time, place, **characters present and key dialogue/events**. Keep the
+  supporting characters and crowd that appear in the source opening too; do not write only the
+  protagonist, and do not replace or omit characters who appear in the source opening.
+- Keep key lines of dialogue verbatim or in their original meaning. Do not skip or gloss over the
+  conflicts, encounters or turns in the source opening.
+- Bring the player character into this scene according to their character card / starting point
+  (their identity can decide the viewpoint and entry point), but do not let the opening drift away
+  from the source.
+- Treat the injected source text as authoritative; do not freely write a different opening from
+  training memory.
+- **Only recreate what actually appears in the injected source text**: do not add plot, endings,
+  character fates, promotions or rewards beyond it (stop where the source stops). State write-back
+  (memory.facts etc.) should also record only what the source contains; do not invent.
 
-**用户导演指令(最高优先级)**:若上下文出现 `【玩家给 GM 的高优先级引导指令】`,在原著开场框架内
-尽量贴合该意图(场景细节/切入角度),但不得删改原著开场的主要人物与关键事件。
+**User director instruction (highest priority)**: if the context contains a high-priority steering
+instruction from the player to the GM, follow that intent within the source opening's framework
+(scene details / angle of entry), but do not remove or change the main characters and key events.
 
-结尾留一个可行动的悬念或选择,不要替玩家做决定。
-字数:500-900字(开场需足够篇幅容纳原著登场人物与场景,不要压缩成极短)。
+End with an actionable hook or choice, and do not make decisions for the player.
+Length: 500-900 words (the opening needs enough room for the source's characters and setting; do not
+compress it into something very short).
 """
 
 
@@ -77,7 +86,7 @@ async def api_opening(
 
     async def stream():
         # task 121a: 4 阶段 stage 事件让前端能显示 thinking pill,避免 5-15s 无反馈
-        yield _sse("stage", {"phase": "retrieving", "label": "翻阅剧本设定中…"})
+        yield _sse("stage", {"phase": "retrieving", "label": "Reading the script lore…"})
         # 修(task 117):走 phase 算法路径 — 不硬编码"第一章"。
         script_id = _active_script_id(api_user)
         if script_id:
@@ -108,7 +117,7 @@ async def api_opening(
             _bundle = _build_turn_context(state, query, _ctx, script_id=script_id, save_id=_save_id_for_ctx)
             return _bundle
 
-        yield _sse("stage", {"phase": "building_context", "label": "组装上下文…"})
+        yield _sse("stage", {"phase": "building_context", "label": "Assembling context…"})
         bundle = await asyncio.to_thread(_retrieve_and_build)
         # 游戏层决定开场策略:读该存档引导强度,rail→忠实重现原著开篇提示+大预算(#73)。
         _steering = "guided"
@@ -127,7 +136,7 @@ async def api_opening(
             _steering = "guided"
         _open_prompt, _open_tokens = _game_opening_policy(_steering)
         yield _sse("status", _payload_sse(api_user))
-        yield _sse("stage", {"phase": "generating", "label": "GM 构思开场中…"})
+        yield _sse("stage", {"phase": "generating", "label": "GM is planning the opening…"})
         text = ""
         try:
             # P0-1: generate_opening_stream 是同步 generator,通过 bridge 异步化
@@ -178,7 +187,7 @@ async def api_opening(
                 _logging.getLogger(__name__).warning("opening apply_structured_updates failed", exc_info=True)
             after_questions = len((state.data.get("permissions") or {}).get("pending_questions") or [])
             if opening_options and after_questions == before_questions:
-                state.add_pending_question("你想怎么行动？", source="gm:opening_options", options=opening_options)
+                state.add_pending_question("What do you do?", source="gm:opening_options", options=opening_options)
             state.save()
             try:
                 persist_user_id, active_save_id = _resolve_persist_target(api_user)
@@ -193,7 +202,7 @@ async def api_opening(
                     # 发冲突错误让前端刷新,跳过后续 session/messages 写入,不落半个开场。
                     if isinstance(_open_rt, dict) and _open_rt.get("conflict"):
                         yield _sse("error", {
-                            "message": "开场已在别处生成,请刷新后重试。",
+                            "message": "The opening was already generated elsewhere; please refresh and try again.",
                             "kind": "save_conflict",
                         })
                         yield _sse("done", {"status": _payload_sse(api_user), "interrupted": True})

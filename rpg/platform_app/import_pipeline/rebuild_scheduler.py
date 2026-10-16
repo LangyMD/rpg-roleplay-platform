@@ -44,7 +44,7 @@ def estimate_module_rebuild(
     with connect() as db:
         script = script_owned(db, script_id, user_id)
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("You do not have access to this script")
 
         chapter_count = int(script.get("chapter_count") or 0)
         _counts = _gather_module_counts(db, script_id)
@@ -104,13 +104,13 @@ def estimate_module_rebuild(
         if "chunks" in includes and chunks_total == 0:
             prereqs.append({
                 "key": "chunks",
-                "label": "章节切块",
+                "label": "Chapter chunks",
                 "ok": False,
-                "hint": "当前剧本还没有章节切块,请先重做「章节切片」。",
+                "hint": "This script has no chapter chunks yet; redo \"Chapter chunking\" first.",
                 "count": 0,
                 "total": max(chapter_count, 1),
             })
-        note = f"将检查 {target_total} 条向量目标,当前已完成 {target_done} 条。"
+        note = f"Will check {target_total} vector targets; {target_done} already done."
     else:
         affects = {
             "chunks": ["document_chunks"],
@@ -126,9 +126,9 @@ def estimate_module_rebuild(
         if module in {"chapter-facts", "anchors"} and chunks_total == 0:
             prereqs.append({
                 "key": "chunks",
-                "label": "章节切块",
+                "label": "Chapter chunks",
                 "ok": False,
-                "hint": "当前剧本还没有章节切块,请先重做「章节切片」。",
+                "hint": "This script has no chapter chunks yet; redo \"Chapter chunking\" first.",
                 "count": chunks_total,
                 "total": max(chapter_count, 1),
             })
@@ -139,10 +139,10 @@ def estimate_module_rebuild(
         if module == "worldbook" and source_pref != "llm" and canon_total == 0:
             prereqs.append({
                 "key": "canon",
-                "label": "规范实体",
+                "label": "Canon entities",
                 "ok": False,
-                "hint": "当前没有规范实体(知识库人物为空),请先重做「知识库人物」,"
-                        "或将世界书来源改为 LLM 生成。",
+                "hint": "There are no canon entities yet (the knowledge-base characters are empty); redo \"Knowledge-base characters\" first, "
+                        "or switch the worldbook source to LLM generation.",
             })
         # facts_refine 精炼的是已有 chapter_facts 行(UPDATE,不新增),facts 为空则无可精炼。
         if module == "facts_refine":
@@ -151,9 +151,9 @@ def estimate_module_rebuild(
             if facts_total == 0:
                 prereqs.append({
                     "key": "chapter_facts",
-                    "label": "章节事实",
+                    "label": "Chapter facts",
                     "ok": False,
-                    "hint": "当前剧本还没有章节事实,请先重做「章节事实」。",
+                    "hint": "This script has no chapter facts yet; redo \"Chapter facts\" first.",
                     "count": 0,
                     "total": max(chapter_count, 1),
                 })
@@ -161,9 +161,9 @@ def estimate_module_rebuild(
         if module == "worldbook_enrich" and wb_total == 0:
             prereqs.append({
                 "key": "worldbook",
-                "label": "世界书条目",
+                "label": "Worldbook entries",
                 "ok": False,
-                "hint": "当前剧本还没有世界书条目,请先重做「世界书」。",
+                "hint": "This script has no worldbook entries yet; redo \"Worldbook\" first.",
                 "count": 0,
             })
         if needs_llm:
@@ -174,7 +174,7 @@ def estimate_module_rebuild(
                     "key": "llm_credentials",
                     "label": "LLM API Key",
                     "ok": False,
-                    "hint": "请先在「设置 → API 设置」配置知识提取模型的 API Key。",
+                    "hint": "Configure an API key for the knowledge-extraction model in \"Settings -> API settings\" first.",
                     "api_id": api_id,
                     "model": llm_model,
                     "credential_api_id": _credential_api_id_for(api_id),
@@ -206,7 +206,7 @@ def estimate_module_rebuild(
                     cost_est = round((est_in * _ip + est_out * _op) / 1_000_000, 4)
                 except Exception:
                     cost_est = 0.0
-        note = "该模块将作为后台任务运行,可关闭页面后回来查看进度。"
+        note = "This module runs as a background job; you can close the page and come back to check progress."
 
     return {
         "ok": True,
@@ -256,7 +256,7 @@ def schedule_module_rebuild(
         require_user_llm_credential(user_id)
     with connect() as db:
         if not script_owned(db, script_id, user_id):
-            raise ValueError("无权访问该剧本")
+            raise ValueError("You do not have access to this script")
 
     if module == "embeddings":
         _embedding_preflight_or_raise(user_id)
@@ -416,7 +416,7 @@ def _estimate_tokens_facts_refine(body, chapter_count) -> tuple[int, int]:
 def _estimate_tokens_worldbook_enrich(script_id, body) -> tuple[int, int]:
     # 命中 pattern 的世界书条目数(与 enrich_script_worldbook 同一 `title ~ pattern`
     # 查询口径,不调 LLM,只查一次 DB)× ~2k tokens/条目。
-    _pattern = str(body.get("pattern") or "力量|概念|势力|体系")
+    _pattern = str(body.get("pattern") or "力量|概念|势力|体系|Power|Concept|Faction")
     try:
         with connect() as db:
             _wb_hit_row = db.execute(

@@ -55,7 +55,7 @@ def resolve_path(storage_key: str) -> Path:
     # 必须是 root 的严格子路径（不允许恰好等于 root）
     if root_resolved not in candidate.parents:
         raise ValueError(
-            f"storage_key 路径越界（穿越防护）：{storage_key!r}"
+            f"storage_key path is out of bounds (traversal protection): {storage_key!r}"
         )
     return candidate
 

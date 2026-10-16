@@ -153,7 +153,7 @@ async def api_mcp_tool_call(
     body_dict = body.model_dump(exclude_none=True)
     timeout = int(body_dict.get("timeout", 30))
     if timeout < 1 or timeout > 120:
-        return json_response({"ok": False, "error": "timeout 必须在 1-120 秒之间"}, status_code=400)
+        return json_response({"ok": False, "error": "timeout must be between 1 and 120 seconds"}, status_code=400)
     import mcp_broker
     return json_response(mcp_broker.call_tool(
         body_dict.get("server_id", ""),

@@ -6,6 +6,7 @@
 import { StateField, StateEffect } from '@codemirror/state';
 import { EditorView, Decoration, WidgetType, showPanel } from '@codemirror/view';
 import { setPanelVisible } from './md-panel.js';
+import i18n from '../i18n/index.js';
 
 // LCS 表是 n×m 的 Uint32:一章 2 万行 × 2 万行 = 1.6 GB,浏览器标签页当场死。
 // 原注释写着「超大文本退化由调用方控」—— 而调用方从来没控(路线图 P2 记在案)。
@@ -112,7 +113,7 @@ class HunkBarWidget extends WidgetType {
     bar.className = 'mde-diff-hunkbar';
     const label = document.createElement('span');
     label.className = 'mde-diff-hunk-label';
-    label.textContent = `本段 +${this.nAdd} / -${this.nDel}`;
+    label.textContent = i18n.t('md_ai.hunk_label', { add: this.nAdd, del: this.nDel });
     const mk = (cls, txt, decision) => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = cls; b.textContent = txt;
@@ -120,7 +121,7 @@ class HunkBarWidget extends WidgetType {
       b.onclick = (e) => { e.preventDefault(); const root = b.closest('.cm-editor'); const view = root && EditorView.findFromDOM(root); if (view) setHunkDecision(view, idx, decision); };
       return b;
     };
-    bar.append(label, mk('mde-diff-hunk-acc', '接受', 'accept'), mk('mde-diff-hunk-rej', '拒绝', 'reject'));
+    bar.append(label, mk('mde-diff-hunk-acc', i18n.t('md_ai.accept'), 'accept'), mk('mde-diff-hunk-rej', i18n.t('md_ai.reject'), 'reject'));
     return bar;
   }
   ignoreEvent() { return false; }
@@ -271,12 +272,12 @@ function diffPanel(view) {
     }
     const label = document.createElement('span');
     label.className = 'mde-diff-panel-label';
-    label.textContent = pending > 0 ? `AI 改动 · ${pending} 段待审 · +${nAdd} / -${nDel} 行` : 'AI 改动 · 全部已处理';
+    label.textContent = pending > 0 ? i18n.t('md_ai.panel_pending', { pending, add: nAdd, del: nDel }) : i18n.t('md_ai.panel_done');
     const ok = document.createElement('button');
-    ok.className = 'mde-diff-accept'; ok.type = 'button'; ok.textContent = '全部批准';
+    ok.className = 'mde-diff-accept'; ok.type = 'button'; ok.textContent = i18n.t('md_ai.accept_all');
     ok.onclick = () => acceptChapterDiff(vw);
     const no = document.createElement('button');
-    no.className = 'mde-diff-reject'; no.type = 'button'; no.textContent = '全部拒绝';
+    no.className = 'mde-diff-reject'; no.type = 'button'; no.textContent = i18n.t('md_ai.reject_all');
     no.onclick = () => rejectChapterDiff(vw);
     dom.append(label, ok, no);
   };

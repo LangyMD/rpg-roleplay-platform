@@ -15,6 +15,7 @@ import CSButton from '@cloudscape-design/components/button';
 import CSContainer from '@cloudscape-design/components/container';
 import CSHeader from '@cloudscape-design/components/header';
 import CSSpaceBetween from '@cloudscape-design/components/space-between';
+import i18n from '../../i18n/index.js';
 
 /* ---------------------------- PLUGINS / MCP / SKILLS / API ----- */
 // task 50：原本 decks 是 5 项 plugins / 5 项 mcp / 4 项 skills 全部硬编码示例
@@ -43,8 +44,8 @@ function CapPage({ kind }) {
         let list = [];
         if (kind === "plugins") {
           list = (t.plugins || []).map(p => ({
-            id: p.id || p.name, name: p.name || p.id, desc: p.description || "平台内置插件",
-            tag: p.kind || "plugin", on: p.enabled !== false, status: p.enabled === false ? "未启用" : "已启用",
+            id: p.id || p.name, name: p.name || p.id, desc: p.description || i18n.t('cap.builtin_plugin'),
+            tag: p.kind || "plugin", on: p.enabled !== false, status: p.enabled === false ? i18n.t('cap.status_off') : i18n.t('cap.status_on'),
             _raw: p,
           }));
         } else if (kind === "mcp") {
@@ -62,21 +63,21 @@ function CapPage({ kind }) {
               desc: s.description || (s.transport === "http" ? `HTTP · ${s.url || s.endpoint || "—"}` : `stdio · ${s.command || "—"}`),
               tag: s.transport || (s.url || s.endpoint ? "http" : "stdio"),
               on: isOn,
-              status: isRunning ? "已连接" : (isOn ? "未连接" : "未启用"),
+              status: isRunning ? i18n.t('cap.status_connected') : (isOn ? i18n.t('cap.status_disconnected') : i18n.t('cap.status_off')),
               _raw: s,
             };
           });
         } else if (kind === "skills") {
           list = (t.skills || []).map(s => ({
             id: s.id || s.slug || s.name, name: s.name || s.id, desc: s.description || s.summary || "",
-            tag: s.version || s.kind || "v1", on: s.enabled !== false, status: s.enabled !== false ? "已部署" : "未启用",
+            tag: s.version || s.kind || "v1", on: s.enabled !== false, status: s.enabled !== false ? i18n.t('cap.status_deployed') : i18n.t('cap.status_off'),
             _raw: s,
           }));
         }
         if (cancelled) return;
         setItems(list);
       } catch (e) {
-        if (!cancelled) setErr(e?.message || "拉取失败");
+        if (!cancelled) setErr(e?.message || i18n.t('cap.fetch_failed'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,24 +99,24 @@ function CapPage({ kind }) {
       // ok = 真能启动(ready_to_launch),不是「请求没报错」:命令在服务器上找不到也会回 200。
       const ok = results.filter(mcpLaunchable).length;
       const fail = results.length - ok;
-      window.__apiToast?.(`校验完成 · ${ok} ok / ${fail} fail`, { kind: fail ? "warn" : "ok", duration: 2400 });
+      window.__apiToast?.(i18n.t('cap.validate_done', { ok, fail }), { kind: fail ? "warn" : "ok", duration: 2400 });
     }
     setReloadTick(t => t + 1);
   };
 
   const emptyMsg = kind === "mcp"
-    ? "尚未配置 MCP 服务器。点击「新增服务器」添加。"
+    ? i18n.t('cap.empty_mcp')
     : kind === "skills"
-    ? "尚未导入 Skill 包。点击「导入 Skill」上传。"
-    : "暂无插件。";
+    ? i18n.t('cap.empty_skills')
+    : i18n.t('cap.empty_plugins');
 
   return (
     <CSSpaceBetween size="l">
-      {err && <CSAlert type="error" dismissible={false}>加载失败：{err}</CSAlert>}
+      {err && <CSAlert type="error" dismissible={false}>{i18n.t('cap.load_failed', { err })}</CSAlert>}
       <CSContainer header={
         <CSHeader
           variant="h2"
-          counter={loading ? undefined : `(${items.length} 项 · ${items.filter(i => i.on).length} 已启用)`}
+          counter={loading ? undefined : i18n.t('cap.counter', { total: items.length, on: items.filter(i => i.on).length })}
           actions={
             <CSSpaceBetween size="xs" direction="horizontal">
               <CSButton
@@ -123,23 +124,23 @@ function CapPage({ kind }) {
                 onClick={onValidateAll}
                 loading={loading}
               >
-                校验
+                {i18n.t('cap.validate')}
               </CSButton>
               <CSButton
                 variant="primary"
                 iconName="add-plus"
                 onClick={() => setAddOpen(true)}
               >
-                {kind === "mcp" ? "新增服务器" : kind === "skills" ? "导入 Skill" : "新增插件"}
+                {kind === "mcp" ? i18n.t('cap.add_server') : kind === "skills" ? i18n.t('cap.import_skill') : i18n.t('cap.add_plugin')}
               </CSButton>
             </CSSpaceBetween>
           }
         >
-          {kind === "plugins" ? "插件" : kind === "mcp" ? "MCP 服务器" : "Skill 包"}
+          {kind === "plugins" ? i18n.t('cap.plugins') : kind === "mcp" ? i18n.t('cap.mcp_servers') : i18n.t('cap.skill_packs')}
         </CSHeader>
       }>
         {loading && items.length === 0 ? (
-          <CSBox textAlign="center" color="text-body-secondary" padding="l">加载中…</CSBox>
+          <CSBox textAlign="center" color="text-body-secondary" padding="l">{i18n.t('cap.loading')}</CSBox>
         ) : items.length === 0 ? (
           <CSBox textAlign="center" color="text-body-secondary" padding="l">{emptyMsg}</CSBox>
         ) : (
@@ -150,28 +151,28 @@ function CapPage({ kind }) {
       </CSContainer>
       <PromptModal
         open={addOpen}
-        eyebrow={kind === "mcp" ? "新增 MCP 服务器" : kind === "skills" ? "导入 Skill" : "新增插件"}
-        title={kind === "mcp" ? "配置一个 MCP 端点" : kind === "skills" ? "选择 Skill 包" : "添加一个平台插件"}
+        eyebrow={kind === "mcp" ? i18n.t('cap.add_mcp_server') : kind === "skills" ? i18n.t('cap.import_skill') : i18n.t('cap.add_plugin')}
+        title={kind === "mcp" ? i18n.t('cap.configure_mcp') : kind === "skills" ? i18n.t('cap.choose_skill') : i18n.t('cap.add_platform_plugin')}
         hint={kind === "mcp" ? "POST /api/v1/mcp/server" : kind === "skills" ? "POST /api/v1/skills/import" : "POST /api/v1/plugins"}
         fields={
           kind === "mcp" ? [
-            { key: "name", label: "名称", required: true, placeholder: "例：filesystem · 本地" },
-            { key: "transport", label: "传输", type: "select", default: "stdio",
-              options: [{ value: "stdio", label: "stdio · 本地命令" }, { value: "http", label: "http · 远程 HTTP" }] },
-            { key: "command", label: "命令 / URL", required: true, mono: true,
+            { key: "name", label: i18n.t('cap.f_name'), required: true, placeholder: i18n.t('cap.ph_mcp_name') },
+            { key: "transport", label: i18n.t('cap.f_transport'), type: "select", default: "stdio",
+              options: [{ value: "stdio", label: i18n.t('cap.opt_stdio') }, { value: "http", label: i18n.t('cap.opt_http') }] },
+            { key: "command", label: i18n.t('cap.f_command_url'), required: true, mono: true,
               placeholder: "stdio: npx @modelcontextprotocol/server-filesystem /data\nhttp: https://host:port" },
-            { key: "env", label: "环境变量 / Headers", type: "textarea",
-              placeholder: "每行一个：KEY=VALUE", rows: 3 },
+            { key: "env", label: i18n.t('cap.f_env_headers'), type: "textarea",
+              placeholder: i18n.t('cap.ph_env'), rows: 3 },
           ] : kind === "skills" ? [
-            { key: "repo_url", label: "GitHub 链接", mono: true, placeholder: "https://github.com/owner/repo（人格 skill → 角色卡 + 人设图）" },
-            { key: "file", label: "本地文件", type: "file", hint: ".md → 角色卡 / .zip · .tar.gz → 可执行 Skill 包(管理员)" },
+            { key: "repo_url", label: i18n.t('cap.f_github'), mono: true, placeholder: i18n.t('cap.ph_github') },
+            { key: "file", label: i18n.t('cap.f_local_file'), type: "file", hint: i18n.t('cap.hint_local_file') },
           ] : [
-            { key: "id", label: "插件 ID", required: true, mono: true, placeholder: "例：timeline-viz" },
-            { key: "name", label: "显示名", required: true, placeholder: "例：时间线可视化" },
-            { key: "desc", label: "说明", type: "textarea", placeholder: "做什么，何时触发" },
+            { key: "id", label: i18n.t('cap.f_plugin_id'), required: true, mono: true, placeholder: i18n.t('cap.ph_plugin_id') },
+            { key: "name", label: i18n.t('cap.f_display_name'), required: true, placeholder: i18n.t('cap.ph_display_name') },
+            { key: "desc", label: i18n.t('cap.f_desc'), type: "textarea", placeholder: i18n.t('cap.ph_desc') },
           ]
         }
-        submitLabel={kind === "mcp" ? "校验并启用" : kind === "skills" ? "导入并部署" : "添加"}
+        submitLabel={kind === "mcp" ? i18n.t('cap.submit_mcp') : kind === "skills" ? i18n.t('cap.submit_skill') : i18n.t('cap.submit_add')}
         onClose={() => setAddOpen(false)}
         onConfirm={async (vals) => {
           // task 50：原 onConfirm = () => setAddOpen(false)，纯关闭。
@@ -196,30 +197,30 @@ function CapPage({ kind }) {
               const repo = String(vals.repo_url || "").trim();
               const f = vals.file;
               const isMd = f && /\.md$/i.test(f.name || "");
-              if (!repo && !f) throw new Error("请填 GitHub 链接或选择文件");
+              if (!repo && !f) throw new Error(i18n.t('cap.need_repo_or_file'));
               if (repo || isMd) {
                 // 人格 skill → 蒸馏成角色卡 + 人设图(纯数据,每用户隔离)
                 const body = repo
                   ? { source: "github", repo_url: repo }
                   : { source: "upload", files: [{ name: f.name, content: await f.text() }] };
                 const r = await window.api.personaSkills.import(body);
-                if (!r || !r.ok) throw new Error((r && r.error) || "导入失败");
-                const nm = (r.card && r.card.name) || "角色卡";
-                const img = r.image_status === "queued" ? "(人设图生成中)" : "";
-                window.__apiToast?.(`已生成角色卡「${nm}」${img}`, { kind: "ok", duration: 2600 });
+                if (!r || !r.ok) throw new Error((r && r.error) || i18n.t('cap.import_failed'));
+                const nm = (r.card && r.card.name) || i18n.t('cap.card');
+                const img = r.image_status === "queued" ? i18n.t('cap.persona_img_queued') : "";
+                window.__apiToast?.(i18n.t('cap.card_generated', { name: nm, img }), { kind: "ok", duration: 2600 });
               } else {
                 // .zip/.tar.gz 可执行 Skill 包(管理员)
                 await window.api.skills.importPack(f);
-                window.__apiToast?.("Skill 已导入", { kind: "ok", duration: 1800 });
+                window.__apiToast?.(i18n.t('cap.skill_imported'), { kind: "ok", duration: 1800 });
               }
             } else {
               // plugins 没有专用 POST，只能在前端打 toast 解释
-              window.__apiToast?.("插件由平台预置 · 暂不支持自定义新增", { kind: "warn", duration: 2400 });
+              window.__apiToast?.(i18n.t('cap.plugins_preset'), { kind: "warn", duration: 2400 });
             }
             setAddOpen(false);
             setReloadTick(t => t + 1);
           } catch (e) {
-            window.__apiToast?.("添加失败", { kind: "danger", detail: e?.message || String(e) });
+            window.__apiToast?.(i18n.t('cap.add_failed'), { kind: "danger", detail: e?.message || String(e) });
           }
         }}
       />
@@ -244,7 +245,7 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
     if (kind === "mcp") {
       try {
         await window.api.mcp.enabled({ id, server_id: id, enabled: !!next });
-        window.__apiToast?.(next ? "已启用" : "已停用", { kind: "ok", duration: 1500 });
+        window.__apiToast?.(next ? i18n.t('cap.status_on') : i18n.t('cap.disabled_toast'), { kind: "ok", duration: 1500 });
         if (next) {
           try { await window.api.mcp.start({ id, server_id: id }); } catch (_) {}
         } else {
@@ -253,32 +254,32 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
         onChanged && onChanged();
       } catch (e) {
         setV(!next);
-        window.__apiToast?.("切换失败", { kind: "danger", detail: e?.message });
+        window.__apiToast?.(i18n.t('cap.toggle_failed'), { kind: "danger", detail: e?.message });
       }
     } else if (kind === "skills") {
       // 后端目前无 skill enable toggle；不假装成功
-      window.__apiToast?.("Skill 默认全部启用 · 暂不支持单独停用", { kind: "warn", duration: 2400 });
+      window.__apiToast?.(i18n.t('cap.skills_always_on'), { kind: "warn", duration: 2400 });
       setV(true);
     } else if (kind === "plugins") {
-      window.__apiToast?.("插件状态由平台管理 · 暂不支持手动切换", { kind: "warn", duration: 2400 });
+      window.__apiToast?.(i18n.t('cap.plugins_managed'), { kind: "warn", duration: 2400 });
       setV(true);
     }
   };
   // 删除 MCP 服务器
   const handleDelete = async () => {
     if (kind !== "mcp") {
-      window.__apiToast?.("暂不支持删除该类型", { kind: "warn", duration: 2000 });
+      window.__apiToast?.(i18n.t('cap.delete_unsupported'), { kind: "warn", duration: 2000 });
       setConfirmDel(false);
       return;
     }
     setDelBusy(true);
     try {
       await window.api.mcp.remove({ id, server_id: id });
-      window.__apiToast?.(`已删除 ${name}`, { kind: "ok", duration: 1500 });
+      window.__apiToast?.(i18n.t('cap.deleted_name', { name }), { kind: "ok", duration: 1500 });
       setConfirmDel(false);
       onChanged && onChanged();
     } catch (e) {
-      window.__apiToast?.("删除失败", { kind: "danger", detail: e?.message });
+      window.__apiToast?.(i18n.t('cap.delete_failed'), { kind: "danger", detail: e?.message });
     }
     setDelBusy(false);
   };
@@ -293,15 +294,15 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
         if (me) {
           const stderr = me.stderr || me.last_stderr || "";
           const meta = `pid: ${me.pid || "-"} · status: ${me.status || (me.alive ? "alive" : "—")}\nlast_seen: ${me.last_seen_at || me.last_heartbeat_at || "—"}\n`;
-          setLogText(meta + (stderr ? "\n--- stderr (recent) ---\n" + stderr : "\n（无 stderr 输出，可能 admin 权限不足 / 日志为空）"));
+          setLogText(meta + (stderr ? "\n--- stderr (recent) ---\n" + stderr : "\n" + i18n.t('cap.log_no_stderr')));
         } else {
-          setLogText("（运行时未发现该服务器实例 · 可能未启用 / 未启动）");
+          setLogText(i18n.t('cap.log_no_instance'));
         }
       } else {
-        setLogText("（该类型暂不支持运行时日志查询，仅 MCP 走 /api/mcp/runtime）");
+        setLogText(i18n.t('cap.log_unsupported'));
       }
     } catch (e) {
-      setLogText("读取日志失败：" + (e?.message || String(e)));
+      setLogText(i18n.t('cap.log_read_failed', { err: e?.message || String(e) }));
     }
     setLogBusy(false);
   }, [kind, id, name]);
@@ -314,23 +315,23 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
     const rawUrl = (_raw || {}).url || "";
     const rawHeaders = (() => { const h = (_raw || {}).headers || {}; return Object.keys(h).length ? JSON.stringify(h, null, 2) : ""; })();
     return [
-      { key: "name", label: "名称", required: true, default: name },
-      { key: "transport", label: "传输", type: "select", default: rawTransport,
-        options: [{ value: "stdio", label: "stdio · 本地命令" }, { value: "http", label: "http · 远程 HTTP" }] },
+      { key: "name", label: i18n.t('cap.f_name'), required: true, default: name },
+      { key: "transport", label: i18n.t('cap.f_transport'), type: "select", default: rawTransport,
+        options: [{ value: "stdio", label: i18n.t('cap.opt_stdio') }, { value: "http", label: i18n.t('cap.opt_http') }] },
       { key: "url", label: "URL", mono: true, default: rawUrl, placeholder: "https://example.com/mcp" },
-      { key: "command", label: "命令", mono: true, default: rawCommand, placeholder: "uvx my-mcp" },
+      { key: "command", label: i18n.t('cap.f_command'), mono: true, default: rawCommand, placeholder: "uvx my-mcp" },
       { key: "headers", label: "Headers (JSON)", type: "textarea", rows: 3, default: rawHeaders, placeholder: '{"Authorization":"Bearer xxx"}' },
-      { key: "env", label: "环境变量", type: "textarea", placeholder: "KEY=VALUE", rows: 3, default: rawEnv },
+      { key: "env", label: i18n.t('cap.f_env'), type: "textarea", placeholder: "KEY=VALUE", rows: 3, default: rawEnv },
     ];
   })() : kind === "skills" ? [
-    { key: "name", label: "显示名", required: true, default: name },
-    { key: "version", label: "版本", default: tag },
-    { key: "manifest", label: "manifest 配置", type: "textarea", rows: 4,
+    { key: "name", label: i18n.t('cap.f_display_name'), required: true, default: name },
+    { key: "version", label: i18n.t('cap.f_version'), default: tag },
+    { key: "manifest", label: i18n.t('cap.f_manifest'), type: "textarea", rows: 4,
       placeholder: '{"hooks": ["before_turn", "after_state_write"]}' },
   ] : [
-    { key: "id", label: "插件 ID", required: true, mono: true, default: tag },
-    { key: "name", label: "显示名", required: true, default: name },
-    { key: "desc", label: "说明", type: "textarea", default: desc, rows: 3 },
+    { key: "id", label: i18n.t('cap.f_plugin_id'), required: true, mono: true, default: tag },
+    { key: "name", label: i18n.t('cap.f_display_name'), required: true, default: name },
+    { key: "desc", label: i18n.t('cap.f_desc'), type: "textarea", default: desc, rows: 3 },
   ];
   return (
     <div className="pl-cap">
@@ -347,21 +348,21 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
       <p className="pl-cap-desc">{desc}</p>
       <div className="pl-cap-foot">
         <span className={`pill ${v ? "ok" : ""}`}>
-          <span className={`dot ${v ? "ok" : ""}`} /> {v ? status : "未启用"}
+          <span className={`dot ${v ? "ok" : ""}`} /> {v ? status : i18n.t('cap.status_off')}
         </span>
         <div style={{display: "flex", gap: 4}}>
-          <button className="iconbtn" data-tip="编辑" onClick={() => setEditOpen(true)}><Icon name="edit" size={12} /></button>
-          <button className="iconbtn" data-tip="查看日志" onClick={() => setLogOpen(true)}><Icon name="debug" size={12} /></button>
-          {kind === "mcp" && <button className="iconbtn" data-tip="删除" onClick={() => setConfirmDel(true)}><Icon name="trash" size={12} /></button>}
+          <button className="iconbtn" data-tip={i18n.t('cap.edit')} onClick={() => setEditOpen(true)}><Icon name="edit" size={12} /></button>
+          <button className="iconbtn" data-tip={i18n.t('cap.view_log')} onClick={() => setLogOpen(true)}><Icon name="debug" size={12} /></button>
+          {kind === "mcp" && <button className="iconbtn" data-tip={i18n.t('cap.delete')} onClick={() => setConfirmDel(true)}><Icon name="trash" size={12} /></button>}
         </div>
       </div>
       <PromptModal
         open={editOpen}
-        eyebrow={`编辑 ${kind === "mcp" ? "MCP 服务器" : kind === "skills" ? "Skill" : "插件"}`}
+        eyebrow={kind === "mcp" ? i18n.t('cap.edit_mcp') : kind === "skills" ? i18n.t('cap.edit_skill') : i18n.t('cap.edit_plugin')}
         title={name}
-        hint={kind === "mcp" ? "POST /api/mcp/server" : kind === "skills" ? "暂未提供编辑接口" : "暂未提供编辑接口"}
+        hint={kind === "mcp" ? "POST /api/mcp/server" : kind === "skills" ? i18n.t('cap.no_edit_api') : i18n.t('cap.no_edit_api')}
         fields={editFields}
-        submitLabel="保存"
+        submitLabel={i18n.t('cap.save')}
         onClose={() => setEditOpen(false)}
         onConfirm={async (vals) => {
           // task 50：之前是 () => setEditOpen(false) 纯关闭，没保存任何东西。
@@ -384,14 +385,14 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
               }
               if (Object.keys(envObj).length) body.env = envObj;
               await window.api.mcp.upsert(body);
-              window.__apiToast?.("已保存", { kind: "ok", duration: 1500 });
+              window.__apiToast?.(i18n.t('cap.saved'), { kind: "ok", duration: 1500 });
               setEditOpen(false);
               onChanged && onChanged();
             } catch (e) {
-              window.__apiToast?.("保存失败", { kind: "danger", detail: e?.message });
+              window.__apiToast?.(i18n.t('cap.save_failed'), { kind: "danger", detail: e?.message });
             }
           } else {
-            window.__apiToast?.("该类型暂不支持后端编辑", { kind: "warn", duration: 2400 });
+            window.__apiToast?.(i18n.t('cap.edit_unsupported'), { kind: "warn", duration: 2400 });
             setEditOpen(false);
           }
         }}
@@ -399,17 +400,17 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
       {logOpen && (
         <Modal
           open
-          eyebrow={`日志 · ${name}`}
-          title="最近 50 条"
+          eyebrow={i18n.t('cap.log_eyebrow', { name })}
+          title={i18n.t('cap.recent_50')}
           width={640}
           onClose={() => setLogOpen(false)}
           footer={<>
             <span className="muted-2" style={{fontSize: 11.5}}>
-              <Icon name="info" size={11} /> {kind === "mcp" ? "GET /api/mcp/runtime · admin 可见 stderr" : "本类型暂无运行时日志"}
+              <Icon name="info" size={11} /> {kind === "mcp" ? i18n.t('cap.log_hint_mcp') : i18n.t('cap.log_hint_none')}
             </span>
             <div style={{display: "flex", gap: 8}}>
-              <button className="btn ghost" onClick={loadLog} disabled={logBusy}><Icon name="refresh" size={12} /> 刷新</button>
-              <button className="btn ghost" onClick={() => setLogOpen(false)}>关闭</button>
+              <button className="btn ghost" onClick={loadLog} disabled={logBusy}><Icon name="refresh" size={12} /> {i18n.t('common.refresh')}</button>
+              <button className="btn ghost" onClick={() => setLogOpen(false)}>{i18n.t('cap.close')}</button>
               <button className="btn primary" disabled={!logText} onClick={() => {
                 // task 50：之前是 dead button。下载日志文本为 .log 文件。
                 try {
@@ -421,8 +422,8 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
                   document.body.appendChild(a); a.click();
                   document.body.removeChild(a);
                   setTimeout(() => URL.revokeObjectURL(url), 1000);
-                } catch (e) { window.__apiToast?.("导出失败", { kind: "danger", detail: e?.message }); }
-              }}><Icon name="download" size={12} /> 导出</button>
+                } catch (e) { window.__apiToast?.(i18n.t('cap.export_failed'), { kind: "danger", detail: e?.message }); }
+              }}><Icon name="download" size={12} /> {i18n.t('cap.export')}</button>
             </div>
           </>}
         >
@@ -430,88 +431,88 @@ function CapCard({ id, name, desc, tag, on, status, kind, onChanged, _raw }) {
               maxHeight: 320, overflow: "auto", margin: 0, padding: "12px 14px",
               background: "var(--bg-deep)", border: "1px solid var(--line-soft)",
               borderRadius: "var(--r-2)", fontSize: 11.5, lineHeight: 1.7, color: "var(--text-quiet)"
-            }}>{logBusy ? "加载中…" : logText || "（暂无内容）"}</pre>
+            }}>{logBusy ? i18n.t('common.loading') : logText || i18n.t('cap.log_empty')}</pre>
         </Modal>
       )}
       {confirmDel && (
-        <Modal eyebrow="删除确认" title="删除 MCP 服务器" width={420}
+        <Modal eyebrow={i18n.t('cap.confirm_delete_eyebrow')} title={i18n.t('cap.delete_mcp_title')} width={420}
           onClose={() => setConfirmDel(false)} closeDisabled={delBusy}
           footer={<>
             <span />
             <div style={{display: "flex", gap: 8}}>
-              <button className="btn ghost" onClick={() => setConfirmDel(false)} disabled={delBusy}>取消</button>
+              <button className="btn ghost" onClick={() => setConfirmDel(false)} disabled={delBusy}>{i18n.t('cap.cancel')}</button>
               <button className="btn danger" onClick={handleDelete} disabled={delBusy}>
-                {delBusy ? "删除中…" : <><Icon name="trash" size={12} /> 删除</>}
+                {delBusy ? i18n.t('cap.deleting') : <><Icon name="trash" size={12} /> {i18n.t('common.delete')}</>}
               </button>
             </div>
           </>}>
           <div style={{padding: "0 16px 16px", fontSize: 13.5, lineHeight: 1.7}}>
-            确定要删除 <strong>{name}</strong> 吗？此操作不可撤销。
+            {i18n.t('cap.confirm_delete_pre')}<strong>{name}</strong>{i18n.t('cap.confirm_delete_post')}
           </div>
         </Modal>
       )}
     </div>
   );
 }
-const API_ROWS = [
-  { m: "GET",  p: "/",                              d: "文字 RPG 主游戏界面",                       group: "主页" },
-  { m: "GET",  p: "/app",                           d: "多用户平台 / 创作平台界面",                   group: "主页" },
-  { m: "GET",  p: "/api/v1/state",                     d: "读取当前可玩存档状态",                       group: "存档" },
-  { m: "POST", p: "/api/v1/new",                       d: "创建新游戏并保留旧档备份",                   group: "存档" },
-  { m: "POST", p: "/api/v1/chat",                      d: "发送玩家行动，返回 SSE 流",                  group: "存档" },
-  { m: "POST", p: "/api/v1/stop",                      d: "打断当前生成",                               group: "存档" },
-  { m: "POST", p: "/api/v1/save",                      d: "手动保存当前游戏",                           group: "存档" },
-  { m: "POST", p: "/api/v1/permissions",               d: "设置 LLM 写入权限",                          group: "权限" },
-  { m: "POST", p: "/api/v1/memory/add",                d: "新增长期记忆条目",                           group: "记忆" },
-  { m: "POST", p: "/api/v1/memory/remove",             d: "移除长期记忆条目",                           group: "记忆" },
-  { m: "GET",  p: "/api/v1/models",                    d: "读取 API / 模型清单",                        group: "模型" },
-  { m: "POST", p: "/api/v1/models/select",             d: "选择当前前端模型",                           group: "模型" },
-  { m: "GET",  p: "/api/v1/scripts",                   d: "剧本列表",                                   group: "剧本" },
-  { m: "POST", p: "/api/v1/scripts/import",            d: "导入 TXT / MD 剧本并自动识别章节",           group: "剧本" },
-  { m: "GET",  p: "/api/v1/scripts/{id}/chapters",     d: "读取剧本章节目录与预览",                     group: "剧本" },
-  { m: "GET",  p: "/api/v1/saves",                     d: "游戏存档目录",                               group: "平台" },
-  { m: "POST", p: "/api/v1/saves",                     d: "基于剧本创建新存档",                         group: "平台" },
-  { m: "GET",  p: "/api/v1/branches/{save_id}",        d: "读取分支树",                                 group: "分支" },
-  { m: "POST", p: "/api/v1/branches/continue",         d: "从节点继续并创建新分支",                     group: "分支" },
-  { m: "POST", p: "/api/v1/branches/delete",           d: "删除某条连线下的整条分支",                   group: "分支" },
-  { m: "GET",  p: "/api/v1/library",                   d: "库文件列表",                                 group: "库" },
-  { m: "POST", p: "/api/v1/library/upload",            d: "上传文件",                                   group: "库" },
-  { m: "POST", p: "/api/v1/library/mkdir",             d: "创建文件夹",                                 group: "库" },
-  { m: "GET",  p: "/api/v1/library/asset/{id}/download", d: "下载文件",                                group: "库" },
-  { m: "POST", p: "/api/v1/mcp/server",                d: "新增 / 更新 MCP 服务器配置",                 group: "能力" },
-  { m: "POST", p: "/api/v1/skills/import",             d: "本地部署导入 Skill 包",                       group: "能力" },
+const apiRows = () => [
+  { m: "GET",  p: "/",                              d: i18n.t('cap.api.d_home'),                       group: i18n.t('cap.api.g_home') },
+  { m: "GET",  p: "/app",                           d: i18n.t('cap.api.d_app'),                   group: i18n.t('cap.api.g_home') },
+  { m: "GET",  p: "/api/v1/state",                     d: i18n.t('cap.api.d_state'),                       group: i18n.t('cap.api.g_saves') },
+  { m: "POST", p: "/api/v1/new",                       d: i18n.t('cap.api.d_new'),                   group: i18n.t('cap.api.g_saves') },
+  { m: "POST", p: "/api/v1/chat",                      d: i18n.t('cap.api.d_chat'),                  group: i18n.t('cap.api.g_saves') },
+  { m: "POST", p: "/api/v1/stop",                      d: i18n.t('cap.api.d_stop'),                               group: i18n.t('cap.api.g_saves') },
+  { m: "POST", p: "/api/v1/save",                      d: i18n.t('cap.api.d_save'),                           group: i18n.t('cap.api.g_saves') },
+  { m: "POST", p: "/api/v1/permissions",               d: i18n.t('cap.api.d_permissions'),                          group: i18n.t('cap.api.g_permissions') },
+  { m: "POST", p: "/api/v1/memory/add",                d: i18n.t('cap.api.d_mem_add'),                           group: i18n.t('cap.api.g_memory') },
+  { m: "POST", p: "/api/v1/memory/remove",             d: i18n.t('cap.api.d_mem_remove'),                           group: i18n.t('cap.api.g_memory') },
+  { m: "GET",  p: "/api/v1/models",                    d: i18n.t('cap.api.d_models'),                        group: i18n.t('cap.api.g_models') },
+  { m: "POST", p: "/api/v1/models/select",             d: i18n.t('cap.api.d_models_select'),                           group: i18n.t('cap.api.g_models') },
+  { m: "GET",  p: "/api/v1/scripts",                   d: i18n.t('cap.api.d_scripts'),                                   group: i18n.t('cap.api.g_scripts') },
+  { m: "POST", p: "/api/v1/scripts/import",            d: i18n.t('cap.api.d_scripts_import'),           group: i18n.t('cap.api.g_scripts') },
+  { m: "GET",  p: "/api/v1/scripts/{id}/chapters",     d: i18n.t('cap.api.d_chapters'),                     group: i18n.t('cap.api.g_scripts') },
+  { m: "GET",  p: "/api/v1/saves",                     d: i18n.t('cap.api.d_saves'),                               group: i18n.t('cap.api.g_platform') },
+  { m: "POST", p: "/api/v1/saves",                     d: i18n.t('cap.api.d_saves_create'),                         group: i18n.t('cap.api.g_platform') },
+  { m: "GET",  p: "/api/v1/branches/{save_id}",        d: i18n.t('cap.api.d_branches'),                                 group: i18n.t('cap.api.g_branches') },
+  { m: "POST", p: "/api/v1/branches/continue",         d: i18n.t('cap.api.d_branches_continue'),                     group: i18n.t('cap.api.g_branches') },
+  { m: "POST", p: "/api/v1/branches/delete",           d: i18n.t('cap.api.d_branches_delete'),                   group: i18n.t('cap.api.g_branches') },
+  { m: "GET",  p: "/api/v1/library",                   d: i18n.t('cap.api.d_library'),                                 group: i18n.t('cap.api.g_library') },
+  { m: "POST", p: "/api/v1/library/upload",            d: i18n.t('cap.api.d_upload'),                                   group: i18n.t('cap.api.g_library') },
+  { m: "POST", p: "/api/v1/library/mkdir",             d: i18n.t('cap.api.d_mkdir'),                                 group: i18n.t('cap.api.g_library') },
+  { m: "GET",  p: "/api/v1/library/asset/{id}/download", d: i18n.t('cap.api.d_download'),                                group: i18n.t('cap.api.g_library') },
+  { m: "POST", p: "/api/v1/mcp/server",                d: i18n.t('cap.api.d_mcp'),                 group: i18n.t('cap.api.g_caps') },
+  { m: "POST", p: "/api/v1/skills/import",             d: i18n.t('cap.api.d_skills'),                       group: i18n.t('cap.api.g_caps') },
 ];
 
 function ApiList() {
   const [q, setQ] = useStatePL("");
-  const filtered = API_ROWS.filter(r => !q || r.p.includes(q) || r.d.includes(q));
+  const filtered = apiRows().filter(r => !q || r.p.includes(q) || r.d.includes(q));
   const groups = {};
   filtered.forEach(r => { (groups[r.group] = groups[r.group] || []).push(r); });
   return (
     <div className="pl-stack">
       <section className="pl-sec">
         <div className="pl-sec-head">
-          <h2>稳定接口 <span className="muted-2">v1 · {filtered.length} 条 · {Object.keys(groups).length} 组</span></h2>
+          <h2>{i18n.t('cap.api.title')} <span className="muted-2">{i18n.t('cap.api.count', { n: filtered.length, g: Object.keys(groups).length })}</span></h2>
           <div className="pl-sec-tools" style={{flex: 1, maxWidth: 320}}>
-            <input style={{height: 28, fontSize: 12}} placeholder="搜索路径或描述..." aria-label="搜索路径或描述" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input style={{height: 28, fontSize: 12}} placeholder={i18n.t('cap.api.search_ph')} aria-label={i18n.t('cap.api.search_aria')} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
         </div>
         {Object.entries(groups).map(([group, items]) => (
           <div key={group} style={{display: "grid", gap: 8}}>
             <div className="pl-stat-label" style={{padding: "8px 4px 0"}}>{group}</div>
             <div className="pl-api">
-              <div className="pl-api-row head"><div>METHOD</div><div>路径</div><div>说明</div><div></div></div>
+              <div className="pl-api-row head"><div>METHOD</div><div>{i18n.t('cap.api.col_path')}</div><div>{i18n.t('cap.api.col_desc')}</div><div></div></div>
               {items.map((r, i) => (
                 <div key={i} className="pl-api-row">
                   <div><span className={`pl-api-method ${r.m}`}>{r.m}</span></div>
                   <div className="pl-api-path">{r.p}</div>
                   <div className="pl-api-desc">{r.d}</div>
                   <div className="pl-table-actions">
-                    <button className="iconbtn" data-tip="复制路径" onClick={async () => {
+                    <button className="iconbtn" data-tip={i18n.t('cap.api.copy_path')} onClick={async () => {
                       // task 50：之前是 dead button
                       const ok = await copyText(r.p);
-                      if (ok) window.__apiToast?.("已复制 " + r.p, { kind: "ok", duration: 1500 });
-                      else window.__apiToast?.("复制失败", { kind: "danger", detail: "浏览器拒绝访问剪贴板" });
+                      if (ok) window.__apiToast?.(i18n.t('cap.api.copied', { path: r.p }), { kind: "ok", duration: 1500 });
+                      else window.__apiToast?.(i18n.t('cap.api.copy_failed'), { kind: "danger", detail: i18n.t('cap.api.clipboard_denied') });
                     }}><Icon name="link" size={12} /></button>
                   </div>
                 </div>

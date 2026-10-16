@@ -21,7 +21,7 @@ def persona_card_to_player_fields(card: dict[str, Any]) -> dict[str, str]:
     """卡→state.data['player'] 的投影(与 workspace.create_tavern_save 的
     _persona_to_fields 同口径:四字段,缺省空串;role 兜底 identity)。纯函数。"""
     return {
-        "name": str(card.get("name") or "你"),
+        "name": str(card.get("name") or "You"),
         "role": str(card.get("role") or card.get("identity") or ""),
         "background": str(card.get("background") or ""),
         "appearance": str(card.get("appearance") or ""),

@@ -68,7 +68,7 @@ def test_stage_error_hints_are_per_job_and_first_wins():
 # ── _provider_error_hint ─────────────────────────────────────────────────
 def test_hint_for_retired_model_is_classified_names_the_extractor_and_is_fatal():
     hint, fatal = stages_llm._provider_error_hint(_gone(), api_id="relay", model="gpt-oss-120b")
-    assert "下线" in hint and "提取模型 relay/gpt-oss-120b" in hint
+    assert "retired" in hint and "extraction model relay/gpt-oss-120b" in hint
     assert fatal is True
 
 
@@ -107,9 +107,9 @@ def test_stage_cards_stops_after_fatal_error_and_records_reason():
     assert len(calls) == 1, "模型已下线还在对剩下的候选挨个调用"
     assert ctl.stage_aborted["cards"] == len(names) - 1
     assert stages_llm._stage_cards._last_llm_failures == len(names)
-    assert "下线" in ctl.stage_error_hints["cards"]
+    assert "retired" in ctl.stage_error_hints["cards"]
     warn = [u["warnings"] for u in ctl.updates if "warnings" in u][-1]
-    assert warn["aborted"] == len(names) - 1 and "下线" in warn["reason"]
+    assert warn["aborted"] == len(names) - 1 and "retired" in warn["reason"]
 
 
 def test_stage_cards_keeps_going_after_non_fatal_error():
@@ -138,9 +138,9 @@ def test_stage_worldbook_records_classified_reason():
          mock.patch.object(stages_llm, "_resolve_extractor_llm", return_value=("relay", "gpt-oss-120b")), \
          mock.patch("agents._harness.call_agent_json_guarded", side_effect=_gone()):
         assert stages_llm._stage_worldbook(ctl, 1, 12) == 0
-    assert "下线" in ctl.stage_error_hints["worldbook"]
+    assert "retired" in ctl.stage_error_hints["worldbook"]
     err = [u["error"] for u in ctl.updates if "error" in u][-1]
-    assert "HTTP Error" not in err and "世界书" in err
+    assert "HTTP Error" not in err and "Worldbook" in err
 
 
 def test_stage_worldbook_unparseable_output_gets_a_reason():
@@ -210,12 +210,12 @@ def test_run_pipeline_writes_reasons_into_stage_entries():
               and isinstance(u["stages"][-1], dict) and "count" in u["stages"][-1]][-1]
     by_id = {s["id"]: s for s in stages}
     assert by_id["cards"]["status"] == "error"
-    assert "剩下 3 个候选没有再试" in by_id["cards"]["error"]
-    assert "原因:当前模型不可用" in by_id["cards"]["error"]
+    assert "the remaining 3 candidates were not tried" in by_id["cards"]["error"]
+    assert "Reason: 当前模型不可用" in by_id["cards"]["error"]
     assert by_id["worldbook"]["status"] == "error"
     assert "下线" in by_id["worldbook"]["error"]
     assert "下线" in by_id["canon_extract"]["error"]
-    assert "规范实体提取失败" in by_id["anchors"]["error"]
+    assert "Canon entity extraction failed" in by_id["anchors"]["error"]
 
 
 # ── 审查返修:模型答完之后的本地异常不进服务商分类、不触发提前停 ────────────────
@@ -240,7 +240,7 @@ def test_stage_cards_write_failure_is_not_classified_or_fatal():
     assert len(calls) == len(names), "写库失败不是模型不可用,不该提前停"
     assert ctl.stage_aborted["cards"] == 0
     hint = ctl.stage_error_hints["cards"]
-    assert "写入人物卡时出错" in hint and "不可用" not in hint and "提取模型" not in hint
+    assert "Error while writing the character card" in hint and "不可用" not in hint and "extraction model" not in hint
 
 
 def test_stage_cards_aborted_count_is_per_job():
@@ -284,7 +284,7 @@ def test_stage_worldbook_write_failure_is_not_classified():
                     return_value=('[{"name": "青云门", "content": "门派"}]', {})):
         assert stages_llm._stage_worldbook(ctl, 1, 12) == 0
     hint = ctl.stage_error_hints["worldbook"]
-    assert "写入世界书条目时出错" in hint and "不可用" not in hint
+    assert "Error while writing worldbook entries" in hint and "不可用" not in hint
 
 
 def test_stage_worldbook_entries_returned_but_none_written_gets_a_reason():
@@ -301,7 +301,7 @@ def test_stage_worldbook_entries_returned_but_none_written_gets_a_reason():
          mock.patch("agents._harness.call_agent_json_guarded",
                     return_value=('[{"name": "青云门", "content": "门派"}]', {})):
         assert stages_llm._stage_worldbook(ctl, 1, 12) == 0
-    assert "一条都没有写进去" in ctl.stage_error_hints["worldbook"]
+    assert "none were written" in ctl.stage_error_hints["worldbook"]
 
 
 def test_run_pipeline_anchors_zero_after_canon_ok_is_not_unknown_error():
@@ -337,4 +337,4 @@ def test_run_pipeline_anchors_zero_after_canon_ok_is_not_unknown_error():
               and isinstance(u["stages"][-1], dict) and "count" in u["stages"][-1]][-1]
     by_id = {s["id"]: s for s in stages}
     assert by_id["anchors"]["status"] == "error"
-    assert "规范实体已提取" in by_id["anchors"]["error"]
+    assert "Canon entities were extracted" in by_id["anchors"]["error"]

@@ -51,7 +51,7 @@ def test_recalls_out_of_window_fact(monkeypatch):
     c = _collect("我想起交给菲奥娜的银怀表", _mk_history(), monkeypatch=monkeypatch)
     assert c.applied and c.layers, c.warnings
     text = c.layers[0]["content"]
-    assert "银怀表" in text and "第3回合" in text
+    assert "银怀表" in text and "Turn 3" in text
     assert c.debug["source"] == "history"  # merged 池里只有 history 语料时
 
 

@@ -73,7 +73,7 @@ class TestEveryTransitionWriterRecordsHistory(unittest.TestCase):
         这条测试存在的意义是:哪天有人想给它们接级联,先看见这行理由。
         """
         self.assertIn("死亡", _src("rpg/gm_serving/anchor_reconcile.py"))
-        self.assertIn("自动绕过", _src("rpg/save_phase_manager.py"))
+        self.assertIn("bypassed automatically", _src("rpg/save_phase_manager.py"))
 
 
 class TestCascadeReusesCallerConnection(unittest.TestCase):
@@ -140,7 +140,7 @@ class TestPanelCounters(unittest.TestCase):
 
     def test_injected_line_shows_system_count(self):
         line_src = _src("rpg/retrieval/assemble.py")
-        self.assertIn("系统判定", line_src)
+        self.assertIn("system-detected", line_src)
         self.assertIn("system_count", line_src)
 
 

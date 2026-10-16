@@ -31,7 +31,7 @@ def _resolve_pending(
     """
     decision_norm = (decision or "").strip().lower()
     if decision_norm not in {"approve", "reject"}:
-        return None, None, f"decision 非法: {decision!r} (允许 approve/reject)"
+        return None, None, f"invalid decision: {decision!r} (allowed: approve/reject)"
     with _state._lock:
         user_bucket = _state._conversations.setdefault(user_id, {})
         conv = user_bucket.get(conversation_id)
@@ -48,14 +48,14 @@ def _resolve_pending(
             if conv is not None:
                 user_bucket[conversation_id] = conv
         if not conv:
-            return None, None, f"conversation {conversation_id} 不存在或不属于当前用户"
+            return None, None, f"conversation {conversation_id} does not exist or does not belong to the current user"
         # 原子 pop：第二个 approve 拿到 None 直接返回错误
         pending = conv.get("pending_confirmations", {}).pop(call_id, None)
     # pop 后立刻回写 Redis,缩小跨 worker 双 approve 竞态窗口(worldbook 写本身幂等)
     if pending:
         persist_conversation(user_id, conversation_id, conv)
     if not pending:
-        return conv, None, f"call_id={call_id} 没有 pending 记录或已被消费"
+        return conv, None, f"call_id={call_id} has no pending record or was already consumed"
     return conv, pending, None
 
 
@@ -85,7 +85,7 @@ def apply_confirmation(
         _pop_pending(conv, call_id)
         conv["messages"].append({
             "role": "assistant",
-            "content": f"[确认拒绝] 工具 {pending['tool']} (call_id={call_id}) 已被用户拒绝, 未执行。",
+            "content": f"[Confirmation rejected] The user rejected tool {pending['tool']} (call_id={call_id}); it was not run.",
         })
         _trim_messages(conv)
         return {"ok": True, "decision": "reject", "tool": pending["tool"]}
@@ -151,8 +151,8 @@ def apply_confirmation_stream(
     if decision_norm == "reject":
         _pop_pending(conv, call_id)
         reject_note = (
-            f"[确认拒绝] 工具 {pending['tool']} (call_id={call_id}) "
-            f"已被用户拒绝, 未执行。"
+            f"[Confirmation rejected] The user rejected tool {pending['tool']} (call_id={call_id}); "
+            f"it was not run."
         )
         conv["messages"].append({"role": "assistant", "content": reject_note})
         _trim_messages(conv)
@@ -160,7 +160,7 @@ def apply_confirmation_stream(
             "call_id": call_id,
             "ok": False,
             "result": None,
-            "error": "用户拒绝执行",
+            "error": "The user rejected this call",
             "decision": "reject",
             "tool": pending["tool"],
         })

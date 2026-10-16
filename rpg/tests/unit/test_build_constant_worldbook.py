@@ -93,7 +93,7 @@ class BuildConstantWorldbookBehavior(unittest.TestCase):
 
     def test_contaminated_concept_dropped(self):
         # "和服" summary 含"穿着" → 场景污染,不得入库
-        self.assertNotIn("概念·和服", self.titles)
+        self.assertNotIn("Concept·和服", self.titles)
         self.assertFalse(any("和服" in t for t in self.titles))
 
     def test_low_importance_dropped(self):
@@ -105,23 +105,23 @@ class BuildConstantWorldbookBehavior(unittest.TestCase):
 
     def test_index_entry_shape(self):
         # 同 subtype ≥2 成员 → 一条索引条,priority 88
-        self.assertIn("势力索引·军队", self.by_title)
-        content, priority = self.by_title["势力索引·军队"]
+        self.assertIn("Faction index·军队", self.by_title)
+        content, priority = self.by_title["Faction index·军队"]
         self.assertEqual(priority, 88)
-        self.assertEqual(content, "【军队类 faction】德军、美军")
+        self.assertEqual(content, "[军队 (faction)] 德军, 美军")
 
     def test_detail_entry_shape(self):
         # faction detail:标题 势力·<name>,content = 干净 summary,priority 78
-        self.assertIn("势力·德军", self.by_title)
-        content, priority = self.by_title["势力·德军"]
+        self.assertIn("Faction·德军", self.by_title)
+        content, priority = self.by_title["Faction·德军"]
         self.assertEqual(priority, 78)
         self.assertEqual(content, "德意志国防军,二战主要军事力量。")
-        self.assertIn("势力·美军", self.by_title)
-        self.assertEqual(self.by_title["势力·美军"][1], 78)
+        self.assertIn("Faction·美军", self.by_title)
+        self.assertEqual(self.by_title["Faction·美军"][1], 78)
 
     def test_concept_detail_present(self):
-        self.assertIn("概念·以太体系", self.by_title)
-        content, priority = self.by_title["概念·以太体系"]
+        self.assertIn("Concept·以太体系", self.by_title)
+        content, priority = self.by_title["Concept·以太体系"]
         self.assertEqual(priority, 70)
         self.assertEqual(content, "以太是本作驱动超凡能力的基础能量。")
 
@@ -129,20 +129,20 @@ class BuildConstantWorldbookBehavior(unittest.TestCase):
 
     def test_index_entry_is_constant_no_keys(self):
         # 索引条 priority 88 ≥ 80 → 每轮常驻,不需要触发词
-        meta = self.db.insert_meta["势力索引·军队"]
+        meta = self.db.insert_meta["Faction index·军队"]
         self.assertEqual(meta["insertion_position"], "constant")
         self.assertEqual(meta["keys"], [])
 
     def test_detail_entry_is_worldbook_with_keys(self):
         # faction detail priority 78 < 80 → 'worldbook'(关键词触发),keys 非空且含实体名
-        meta = self.db.insert_meta["势力·德军"]
+        meta = self.db.insert_meta["Faction·德军"]
         self.assertEqual(meta["insertion_position"], "worldbook")
         self.assertTrue(meta["keys"])  # 非空 —— 否则永不命中 retrieval 的 <80 触发池
         self.assertIn("德军", meta["keys"])
 
     def test_detail_keys_include_aliases(self):
         # 触发词 = 实体名 + 别名(去重保序)
-        keys = self.db.insert_meta["势力·德军"]["keys"]
+        keys = self.db.insert_meta["Faction·德军"]["keys"]
         self.assertIn("德军", keys)
         self.assertIn("国防军", keys)
         self.assertIn("德意志国防军", keys)
@@ -150,7 +150,7 @@ class BuildConstantWorldbookBehavior(unittest.TestCase):
 
     def test_concept_detail_is_worldbook(self):
         # concept detail priority 70 < 80 → 'worldbook' + keys
-        meta = self.db.insert_meta["概念·以太体系"]
+        meta = self.db.insert_meta["Concept·以太体系"]
         self.assertEqual(meta["insertion_position"], "worldbook")
         self.assertIn("以太体系", meta["keys"])
 

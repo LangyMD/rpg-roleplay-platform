@@ -209,7 +209,7 @@ def _run_fire(monkeypatch, result):
 
 
 def test_fire_and_forget_empty_range_does_not_flag_rebuild(monkeypatch):
-    writes = _run_fire(monkeypatch, {"error": "这一段没有可摘要的回合(turn 1-0)",
+    writes = _run_fire(monkeypatch, {"error": "This stretch has no turns to summarize (turn 1-0)",
                                      "code": "empty_range"})
     assert writes == [], "空段重试也不会成功,别再置 needs_rebuild 让 cron 空转"
 

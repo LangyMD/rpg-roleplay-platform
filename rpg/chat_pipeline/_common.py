@@ -82,6 +82,17 @@ def _is_content_filter_reason(fr: Any) -> bool:
     return _norm_finish_reason(fr) in _CONTENT_FILTER_FINISH_REASONS
 
 
+def _content_policy_advice() -> str:
+    """内容策略被拦时给玩家的「下一步」建议 —— 单一真相源在 agents.provider_errors._CONTENT_POLICY_ADVICE,
+    空回合分诊 / 流末提示 / 报错分类三处逐字一致(结构保证,不靠复制粘贴)。"""
+    try:
+        from agents.provider_errors import _CONTENT_POLICY_ADVICE
+        return _CONTENT_POLICY_ADVICE
+    except Exception:
+        return ("You can rephrase, or switch to a model that is more permissive for this kind of content "
+                "on the Models page in Settings.")
+
+
 def _last_usage_of(ctx: Any) -> dict[str, Any]:
     """ctx.gm._backend.last_usage 的安全快照;任何一环拿不到都返回 {}(提示/分诊绝不能把回合弄挂)。
 

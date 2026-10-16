@@ -52,7 +52,7 @@ class ScheduleConsequenceToolGate(unittest.TestCase):
         pw = _pending(g)
         self.assertTrue(any(p.get("path") == "consequence" for p in pw),
                         f"后果应入 pending;实际={pw}")
-        self.assertIn("待审", res, res)
+        self.assertIn("pending approval", res, res)
 
     def test_default_mode_gm_consequence_also_pends(self):
         g = GameState.new()
@@ -71,7 +71,7 @@ class ScheduleConsequenceToolGate(unittest.TestCase):
         )
         pid = _pending(g)[0]["id"]
         res = g.approve_pending_write(id=pid)
-        self.assertIn("状态写入", res, res)
+        self.assertIn("State write", res, res)
         ledger = _ledger(g)
         self.assertEqual(len(ledger), 1, "审批后应落地后果账本")
         self.assertEqual(ledger[0]["text"], "答应雷纳德带证据回村")
@@ -85,7 +85,7 @@ class ScheduleConsequenceToolGate(unittest.TestCase):
         )
         self.assertEqual(len(_ledger(g)), 1, "full_access 应直写")
         self.assertEqual(_pending(g), [], "full_access 不应产生 pending")
-        self.assertIn("已登记", res, res)
+        self.assertIn("Consequence recorded", res, res)
 
     def test_player_origin_bypasses_gate_even_read_only(self):
         """玩家主动 origin(ui_button)属玩家意志 → 即便 read_only 也直写,不入 pending。"""
@@ -108,7 +108,7 @@ class AddHypothesisToolGate(unittest.TestCase):
         self.assertEqual(g.list_active_hypotheses(), [],
                          "read_only 下 GM 工具推测不得绕闸直写")
         self.assertTrue(any(p.get("path") == "hypothesis" for p in _pending(g)))
-        self.assertIn("待审", res, res)
+        self.assertIn("pending approval", res, res)
 
     def test_default_mode_gm_hypothesis_also_pends(self):
         g = GameState.new()

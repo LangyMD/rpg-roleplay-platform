@@ -25,7 +25,7 @@ LOAD_TOOLS_PARAMS: dict[str, Any] = {
         "names": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "要加载的工具完整 name(取自目录里列出的 name)",
+            "description": "Full names of the tools to load (as listed in the catalog)",
         },
     },
     "required": ["names"],
@@ -109,8 +109,8 @@ def split_window(
 def load_tools_description(catalog_lines: list[str]) -> str:
     """生成 load_tools 元工具的描述(内嵌目录)。"""
     return (
-        "本对话还有以下工具未加载。需要用到时,先用本工具按 name 加载"
-        "(加载后下一步才能调用)。可加载工具:\n" + "\n".join(catalog_lines)
+        "The following tools are not loaded yet in this conversation. When you need one, load it by name with this tool first "
+        "(it becomes callable on the next step). Loadable tools:\n" + "\n".join(catalog_lines)
     )
 
 
@@ -146,7 +146,7 @@ def resolve_load(
             newly.append(t)
             already_loaded.add(nm)
         loaded.append(nm)
-    ack = ("已加载: " + ", ".join(loaded) + "。下一步可直接调用它们。") if loaded else "没有匹配到可加载的工具。"
+    ack = ("Loaded: " + ", ".join(loaded) + ". You can call them directly on the next step.") if loaded else "No loadable tools matched."
     if missing:
-        ack += " 未找到: " + ", ".join(missing) + "。"
+        ack += " Not found: " + ", ".join(missing) + "."
     return newly, ack

@@ -6499,7 +6499,7 @@
               }
             ],
             "title": "Name",
-            "default": "无名者"
+            "default": "Nameless"
           },
           "background": {
             "anyOf": [

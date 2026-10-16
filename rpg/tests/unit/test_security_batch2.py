@@ -47,7 +47,7 @@ class AttachmentPreviewFence(unittest.TestCase):
         out = app._message_with_attachments("你好", items)
         self.assertNotIn("/Users/secret", out)            # M-14: 不泄露服务器绝对路径
         self.assertIn("<untrusted_attachment>", out)       # M-4: 围栏标记
-        self.assertIn("不可信用户数据", out)
+        self.assertIn("untrusted user data", out)
         self.assertIn("evil.txt", out)                     # 文件名仍保留
 
 

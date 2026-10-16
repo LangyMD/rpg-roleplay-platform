@@ -39,6 +39,8 @@ def _extract_location_override(text: str) -> str:
         r"(?:当前位置|地点|位置)\s*(?:改为|设为|设置为|切到|跳到|在|位于|=|：|:)\s*([^，。！？\n；;]{1,48})",
         r"(?:现在|当前)\s*(?:在|位于)\s*([^，。！？\n；;]{1,48})",
         r"(?:不在|不是)\s*[^，。！？\n；;]{1,32}[，,；; ]+(?:而是|现在在|应在|改在)\s*([^，。！？\n；;]{1,48})",
+        # English: "location = X" / "current location: X" / "location to X" / "location is now X"
+        r"(?i)\b(?:current\s+location|location)\s*(?:=|:|\bis\s+now\b|\bto\b)\s*([^,.;!?\n]{1,48})",
     ]
     for pattern in patterns:
         match = re.search(pattern, text or "")
@@ -75,6 +77,8 @@ def _extract_set_time_targets(text: str) -> list[str]:
         r"(?:设置|设定|设|锁定|改|更改|更新|切换|切换到|跳转到|切到)\s*"
         r"(?:当前时间线|时间线|当前时间|时间|时点)\s*"
         r"(?:为|到|至|改为|设为|=|：|:)\s*([^，,。！？\n；;]{2,80})",
+        # English: "time = X" / "timeline: X" / "set the time to X" / "current time is now X"
+        r"(?i)\b(?:current\s+timeline|current\s+time|timeline|time)\s*(?:=|:|\bis\s+now\b|\bto\b)\s*([^,;!?\n]{2,80})",
     ]
     for pattern in patterns:
         for match in re.findall(pattern, text or ""):

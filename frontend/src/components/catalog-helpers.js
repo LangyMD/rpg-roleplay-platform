@@ -15,35 +15,36 @@
  * 见: rust/crates/model_catalog/src/schema.rs::{ModelCapabilities, ProviderId}
  */
 
-/** capability key → 中文显示标签 (typed + 兼容旧字符串 cap) */
+/** capability key → 英文兜底显示标签 (typed + 兼容旧字符串 cap)。
+ *  界面显示走 i18n settings.capabilities.<key>,此表只是缺键时的 defaultValue。 */
 export const CAP_LABEL = {
-  streaming:          "流式输出",
-  tools:              "工具调用",
-  tool_use:           "工具调用",
-  vision:             "视觉",
-  audio:              "音频",
-  structured_output:  "结构化输出",
-  extended_thinking:  "深度思考",
-  embedding:          "向量嵌入",
-  function_calling:   "函数调用",
-  prompt_caching:     "提示词缓存",
-  web_search:         "联网搜索",
-  pdf_input:          "PDF 输入",
-  image_input:        "图像输入",
-  file_input:         "文件输入",
-  json_mode:          "JSON 模式",
-  computer_use:       "电脑操作",
-  code_exec:          "代码执行",
-  audio_input:        "音频输入",
-  video_input:        "视频输入",
+  streaming:          "Streaming",
+  tools:              "Tool use",
+  tool_use:           "Tool use",
+  vision:             "Vision",
+  audio:              "Audio",
+  structured_output:  "Structured output",
+  extended_thinking:  "Extended thinking",
+  embedding:          "Embedding",
+  function_calling:   "Function calling",
+  prompt_caching:     "Prompt caching",
+  web_search:         "Web search",
+  pdf_input:          "PDF input",
+  image_input:        "Image input",
+  file_input:         "File input",
+  json_mode:          "JSON mode",
+  computer_use:       "Computer use",
+  code_exec:          "Code execution",
+  audio_input:        "Audio input",
+  video_input:        "Video input",
   // 兼容旧字符串 capability (catalog 迁移前旧条目)
-  text:               "文本",
-  "tool-use":         "工具",
-  reasoning:          "推理",
-  fast:               "快",
-  long:               "长上下文",
-  cn:                 "中文",
-  rpg:                "RPG 调优",
+  text:               "Text",
+  "tool-use":         "Tool use",
+  reasoning:          "Reasoning",
+  fast:               "Fast",
+  long:               "Long context",
+  cn:                 "Chinese",
+  rpg:                "RPG tuned",
 };
 
 /**

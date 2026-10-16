@@ -2,6 +2,7 @@
 import React from 'react';
 import { useState as useStatePL } from 'react';
 import { Icon } from '../../game-icons.jsx';
+import i18n from '../../i18n/index.js';
 
 /* ---------------------------- AUTH ----------------------------- */
 function AuthPage() {
@@ -49,7 +50,7 @@ function AuthPage() {
     if (busy) return;
     setErr("");
     if (!username.trim() || !password.trim()) {
-      setErr("请填写用户名和密码");
+      setErr(i18n.t('auth_page.need_credentials'));
       return;
     }
     setBusy(true);
@@ -63,10 +64,10 @@ function AuthPage() {
       } else {
         await window.api.auth.login({ username: username.trim(), password });
       }
-      window.__apiToast?.(mode === "register" ? "注册成功" : "登录成功", { kind: "ok", duration: 1400 });
+      window.__apiToast?.(mode === "register" ? i18n.t('auth_page.register_ok') : i18n.t('auth_page.login_ok'), { kind: "ok", duration: 1400 });
       location.replace(__nextOrDefault());
     } catch (e) {
-      setErr(e?.message || "请求失败");
+      setErr(e?.message || i18n.t('auth_page.request_failed'));
     } finally {
       setBusy(false);
     }
@@ -79,29 +80,29 @@ function AuthPage() {
           <div className="pl-auth-mark"><Icon name="logo" size={16} /></div>
           <div>
             <h1>RPG Roleplay</h1>
-            <div className="pl-auth-sub">长篇小说拆书 · RPG 续写 · 多用户创作平台</div>
+            <div className="pl-auth-sub">{i18n.t('auth_page.subtitle')}</div>
           </div>
         </div>
         <div className="pl-auth-tabs">
-          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>登录</button>
-          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>注册</button>
+          <button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>{i18n.t('auth_page.login')}</button>
+          <button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>{i18n.t('auth_page.register')}</button>
         </div>
         <form className="pl-auth-form" onSubmit={submit}>
           <div className="pl-field">
-            <label>用户名</label>
-            <input autoComplete="username" placeholder="字母 / 数字 / 下划线"
+            <label>{i18n.t('auth_page.username')}</label>
+            <input autoComplete="username" placeholder={i18n.t('auth_page.username_ph')}
               value={username} onChange={(e) => setUsername(e.target.value)} />
           </div>
           <div className="pl-field">
-            <label>密码</label>
+            <label>{i18n.t('auth_page.password')}</label>
             <input type="password" autoComplete={mode === "register" ? "new-password" : "current-password"}
-              placeholder="至少 8 位"
+              placeholder={i18n.t('auth_page.password_ph')}
               value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           {mode === "register" && (
             <div className="pl-field">
-              <label>显示名</label>
-              <input placeholder="例：用户名"
+              <label>{i18n.t('auth_page.display_name')}</label>
+              <input placeholder={i18n.t('auth_page.display_name_ph')}
                 value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
           )}
@@ -119,20 +120,20 @@ function AuthPage() {
           )}
           <button type="submit" className="btn primary" disabled={busy}
             style={{justifyContent: "center", height: 34, opacity: busy ? 0.7 : 1}}>
-            {busy ? "正在提交…" : (mode === "login" ? "登录" : "创建账号")}
+            {busy ? i18n.t('auth_page.submitting') : (mode === "login" ? i18n.t('auth_page.login') : i18n.t('auth_page.create_account'))}
           </button>
           <div className="pl-auth-foot">
-            <span>首个注册用户会成为管理员。</span>
+            <span>{i18n.t('auth_page.first_admin')}</span>
             <a href="#"
               onClick={(e) => {
                 e.preventDefault();
                 // 主反馈：内联 notice（Login 页没有 PlatformShell 注入的 toast，
                 // 之前直接 optional-chain 全局 toast，匿名用户点了完全没反应）
-                setNotice("请联系管理员重置密码（暂未提供自助找回流程）");
+                setNotice(i18n.t('auth_page.forgot_notice'));
                 // 次要：如果恰好在 PlatformShell 里也跑了一遍 AuthPage，全局 toast 也带上
-                window.__apiToast?.("请联系管理员重置密码", { kind: "info", duration: 2400 });
+                window.__apiToast?.(i18n.t('auth_page.forgot_toast'), { kind: "info", duration: 2400 });
               }}
-              style={{borderBottom: 0}}>忘记密码</a>
+              style={{borderBottom: 0}}>{i18n.t('auth_page.forgot')}</a>
           </div>
         </form>
       </div>

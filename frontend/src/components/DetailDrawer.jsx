@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import CSButton from '@cloudscape-design/components/button';
+import i18n from '../i18n/index.js';
 
 /* DetailDrawer — 右侧覆盖抽屉。
    替代 Cloudscape SplitPanel(那个自带「伸缩手柄」、单独用在 div 里会挤压主内容、外观诡异的组件)。
@@ -13,7 +14,8 @@ import CSButton from '@cloudscape-design/components/button';
      width      : 抽屉宽度(px,默认 460;实际取 min(width, 94vw))
      closeLabel : ✕ 的 aria-label(默认「关闭」)
 */
-export default function DetailDrawer({ open, title, onClose, width = 460, closeLabel = '关闭', children }) {
+export default function DetailDrawer({ open, title, onClose, width = 460, closeLabel: closeLabelProp, children }) {
+  const closeLabel = closeLabelProp || i18n.t('common.close');
   const drawerRef = useRef(null);
   const prevFocusRef = useRef(null);
 

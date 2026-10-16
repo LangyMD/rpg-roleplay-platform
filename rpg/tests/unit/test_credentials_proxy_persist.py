@@ -81,7 +81,7 @@ def test_keep_key_forwards_proxy_to_meta_update(no_db):
 
 def test_keep_key_validates_proxy_format(no_db):
     from platform_app import user_credentials as uc
-    with pytest.raises(ValueError, match="代理地址格式不对"):
+    with pytest.raises(ValueError, match="Invalid proxy address format"):
         uc.set_credential(19, "openai", "", preserve_key_if_empty=True, allow_base_url=True,
                           proxy="127.0.0.1:7890")
     assert no_db == []
@@ -91,7 +91,7 @@ def test_keep_key_rejects_internal_proxy_in_server_mode(no_db, monkeypatch):
     import core.config
     from platform_app import user_credentials as uc
     monkeypatch.setattr(core.config, "require_auth", lambda: True)
-    with pytest.raises(ValueError, match="服务器模式下代理不允许"):
+    with pytest.raises(ValueError, match="In server mode the proxy cannot"):
         uc.set_credential(19, "openai", "", preserve_key_if_empty=True, allow_base_url=True,
                           proxy="http://127.0.0.1:7890")
     assert no_db == []

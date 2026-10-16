@@ -44,7 +44,7 @@ def test_recorder_prompt_consequence_parity_with_schema():
     # 开:prompt 与 schema 都有;关:都没有 —— 两处不允许各说各话
     p_on = _build_system_prompt(_OPS_TASKS, consequence_enabled=True)
     s_on = _build_tool_schema(_OPS_TASKS, None, consequence_enabled=True)
-    assert "consequence" in p_on and "后果登记" in p_on
+    assert "consequence" in p_on and "consequence registration" in p_on
     assert "consequence" in _schema_op_enum(s_on)
 
     p_off = _build_system_prompt(_OPS_TASKS, consequence_enabled=False)
@@ -56,7 +56,7 @@ def test_recorder_prompt_consequence_parity_with_schema():
 def test_recorder_prompt_no_ops_task_no_consequence():
     # 未启用 ops 任务时,即便 flag 开也不该出现 consequence 段
     p = _build_system_prompt(frozenset({"anchors"}), consequence_enabled=True)
-    assert "后果登记" not in p
+    assert "consequence registration" not in p
 
 
 def test_gm_guide_block_follows_flag(monkeypatch):
@@ -65,7 +65,7 @@ def test_gm_guide_block_follows_flag(monkeypatch):
 
     monkeypatch.setattr(ff, "feature_enabled", lambda key, uid=None: True)
     block_on = master._consequence_guide_block(1)
-    assert "后果账本" in block_on and "consequence" in block_on
+    assert "Consequence ledger" in block_on and "consequence" in block_on
 
     monkeypatch.setattr(ff, "feature_enabled", lambda key, uid=None: False)
     assert master._consequence_guide_block(1) == ""
@@ -88,7 +88,7 @@ def test_fingerprint_dedup_survives_punctuation_drift():
     sd = {"turn": 8}
     ok1, _ = register_consequence(sd, text="两日期限约定——后天正午前若不撤离，将再次对峙", due_turns=4)
     ok2, msg2 = register_consequence(sd, text="两日期限约定——后天正午前若不撤离,将再次对峙", due_turns=4)
-    assert ok1 and not ok2 and "重复" in msg2
+    assert ok1 and not ok2 and "duplicate" in msg2
 
 
 def test_recorder_user_prompt_lists_pending_ledger():
@@ -101,9 +101,9 @@ def test_recorder_user_prompt_lists_pending_ledger():
         ],
     }
     p_on = _build_user_prompt("正文", sd, frozenset({"ops"}), None, None, None, consequence_enabled=True)
-    assert "严禁重复登记" in p_on and "答应雷纳德查兽伤" in p_on and "已兑现的旧事" not in p_on
+    assert "NEVER register these again" in p_on and "答应雷纳德查兽伤" in p_on and "已兑现的旧事" not in p_on
     p_off = _build_user_prompt("正文", sd, frozenset({"ops"}), None, None, None, consequence_enabled=False)
-    assert "严禁重复登记" not in p_off
+    assert "NEVER register these again" not in p_off
 
 
 # ── NPC 议程 parity 守卫(柱子3,consequence 同款铁律)────────────────────
@@ -114,12 +114,12 @@ def test_recorder_agenda_parity():
     assert "agenda" in _schema_op_enum(s_on)
     props_on = _schema_item_props(s_on)
     assert "goal" in props_on and "stance" in props_on and "name" in props_on
-    assert "NPC 议程" in p_on
+    assert "NPC agenda" in p_on
 
     p_off = _build_system_prompt(_OPS_TASKS, agenda_enabled=False)
     s_off = _build_tool_schema(_OPS_TASKS, None, agenda_enabled=False)
     assert "agenda" not in _schema_op_enum(s_off)
-    assert "NPC 议程更新" not in p_off
+    assert "NPC agenda update" not in p_off
 
 
 def test_recorder_user_prompt_lists_current_agendas():
@@ -129,9 +129,9 @@ def test_recorder_user_prompt_lists_current_agendas():
         "npc_agendas": {"雷纳德": {"goal": "查兽伤", "stance": "信任", "updated_turn": 5}},
     }
     p_on = _build_user_prompt("正文", sd, frozenset({"ops"}), None, None, None, agenda_enabled=True)
-    assert "NPC 议程·当前值" in p_on and "雷纳德" in p_on
+    assert "NPC agendas - current values" in p_on and "雷纳德" in p_on
     p_off = _build_user_prompt("正文", sd, frozenset({"ops"}), None, None, None, agenda_enabled=False)
-    assert "NPC 议程·当前值" not in p_off
+    assert "NPC agendas - current values" not in p_off
 
 
 def test_gm_agenda_guide_follows_flag(monkeypatch):

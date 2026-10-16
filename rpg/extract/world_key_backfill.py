@@ -38,6 +38,10 @@ _NEW_WORLD_KEYWORDS = (
 # 「第X世」(X 可以是中文数字或阿拉伯数字)
 _NEW_WORLD_RE = re.compile(
     r"第[一二三四五六七八九十0-9]+世"
+    # English equivalents (whole phrase, case-insensitive; 同样宁漏勿误,不收裸 "world")
+    r"|(?i:\b(?:another|parallel|other|new)\s+world\b|\botherworld\b|\bisekai\b|\bdungeon\b|"
+    r"\brealm\b|\bplane\s+of\b|\breincarnat(?:ed|ion)\b|\bpast\s+life\b|\bdreamscape\b|"
+    r"\bdream\s+world\b|\bflashback\b|\bwhat\s+if\b)"
 )
 # 【】括号编号(如「【第一副本】」「【位面3】」)——编号变化也是候选信号,
 # 但只要词表已命中同一标题就不用重复判定,这里只处理"仅括号编号、无其它关键词"的情况。
@@ -50,8 +54,11 @@ _OVERCUT_RATIO = 0.8  # §3 第三层:world 数 / 段数 达到此比例即判�
 def _clean_norm_label(text: str) -> str:
     """归一化去标点，供 world_label 与过切判定使用。"""
     s = (text or "").strip()
-    s = re.sub(r"[\s　]+", "", s)
     s = re.sub(r"[，。！？、；：,.!?;:\"'“”‘’()（）\[\]]+", "", s)
+    if re.search(r"[\u4e00-\u9fff]", s):
+        s = re.sub(r"[\s　]+", "", s)
+    else:
+        s = " ".join(s.split())  # 拉丁文字:空格是词界,只压缩
     return s
 
 
@@ -276,30 +283,31 @@ def _segment_summary_text(seg: dict, chapter_summaries: dict[int, str]) -> str:
     for ci in range(seg["ch_min"], ch_max + 1):
         s = (chapter_summaries.get(ci) or "").strip()
         if s:
-            parts.append(f"第{ci}章:{s}")
+            parts.append(f"Ch.{ci}: {s}")
     return "\n".join(parts)
 
 
 def _build_confirm_prompt(prev_seg: dict, cur_seg: dict, chapter_summaries: dict[int, str]) -> tuple[str, str]:
     """构造 (system_prompt, user_prompt),供 call_fn 调用。"""
     system_prompt = (
-        "你是小说时间线世界边界判定助手。给你上一段和本段的章节摘要,"
-        "判断本段相对上一段是 continuous(延续同一世界)、time_skip(仅时间跳跃,"
-        "世界未变)还是 new_world(进入了不同的世界/副本/位面/穿越目的地)。"
-        "new_world 判定必须给出证据——引用摘要中的原话说明世界确实变了"
-        "(例如场景/规则/身份的根本性转变);找不到这样的原话就不要判 new_world,"
-        "宁可判 continuous。只输出严格 JSON,不要输出任何其它文字,格式:\n"
+        "You decide world boundaries on a novel's timeline. Given the chapter summaries of the previous "
+        "segment and this segment, decide whether this segment is continuous with the previous one (the same "
+        "world continues), a time_skip (only time jumped; the world is unchanged), or new_world (it enters a "
+        "different world / dungeon / plane / transmigration destination). A new_world verdict needs evidence: "
+        "quote words from the summaries that show the world really changed (e.g. a fundamental change of "
+        "setting, rules or identity). If you cannot find such words, do not answer new_world; prefer "
+        "continuous. Output strict JSON only, with no other text, in this format:\n"
         '{"verdict": "continuous|time_skip|new_world", "world_label": "...", "evidence": "..."}'
     )
     prev_text = _segment_summary_text(prev_seg, chapter_summaries)
     cur_text = _segment_summary_text(cur_seg, chapter_summaries)
     user_prompt = (
-        f"## 上一段(第{prev_seg['ch_min']}-{prev_seg['ch_max']}章,"
-        f"当前世界标签={prev_seg.get('world_label') or '(主世界)'})\n"
-        f"{prev_text or '(无摘要)'}\n\n"
-        f"## 本段(第{cur_seg['ch_min']}-{cur_seg['ch_max']}章)\n"
-        f"{cur_text or '(无摘要)'}\n\n"
-        "请判定本段相对上一段的关系,输出严格 JSON。"
+        f"## Previous segment (chapters {prev_seg['ch_min']}-{prev_seg['ch_max']}, "
+        f"current world label={prev_seg.get('world_label') or '(main world)'})\n"
+        f"{prev_text or '(no summary)'}\n\n"
+        f"## This segment (chapters {cur_seg['ch_min']}-{cur_seg['ch_max']})\n"
+        f"{cur_text or '(no summary)'}\n\n"
+        "Decide how this segment relates to the previous one and output strict JSON."
     )
     return system_prompt, user_prompt
 
@@ -413,7 +421,7 @@ def confirm_segments_llm(
         elif parsed["verdict"] == "new_world" and parsed["evidence"]:
             label = _normalize_world_label(parsed["world_label"] or seg.get("world_label") or parsed["evidence"])
             out = {
-                "world_label": label or "(LLM确认世界)",
+                "world_label": label or "(LLM-confirmed world)",
                 "verdict": "new_world",
                 "ch_min": ch_min,
                 "ch_max": ch_max,

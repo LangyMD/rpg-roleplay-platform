@@ -35,11 +35,11 @@ def decode_upload(item: dict) -> bytes:
     if "," in data_url:
         encoded = data_url.split(",", 1)[1]
     if not encoded:
-        raise ValueError("上传内容为空")
+        raise ValueError("Upload is empty")
     try:
         return base64.b64decode(encoded, validate=True)
     except (binascii.Error, ValueError) as exc:
-        raise ValueError("上传内容不是有效 base64") from exc
+        raise ValueError("Upload is not valid base64") from exc
 
 
 def safe_filename(name: str) -> str:
@@ -59,7 +59,7 @@ def unique_path(path: Path) -> Path:
         candidate = path.with_name(f"{path.stem}-{index}{path.suffix}")
         if not candidate.exists():
             return candidate
-    raise ValueError("无法分配文件名")
+    raise ValueError("Could not allocate a file name")
 
 
 # ---------------------------------------------------------------------------

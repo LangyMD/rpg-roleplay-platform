@@ -3,6 +3,8 @@ RecentChatProvider — 通用最近对话注入。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -26,11 +28,11 @@ class RecentChatProvider(ContextProvider):
             content = (msg.get("content") or "").strip()
             if not content:
                 continue
-            prefix = "玩家" if role == "user" else "GM"
-            formatted_lines.append(f"{prefix}：{content[:600]}")
-        text = "\n\n".join(formatted_lines) or "（暂无对话）"
+            prefix = "Player" if role == "user" else "GM"
+            formatted_lines.append(f"{prefix}: {content[:600]}")
+        text = "\n\n".join(formatted_lines) or "(no conversation yet)"
         layer = self.make_layer(
-            "recent_chat", "最近对话", text,
+            "recent_chat", "Recent Conversation", text,
             sticky=False, priority=20,  # 低 priority：放在 prompt 末尾
         )
         return ContextContribution(
@@ -38,7 +40,7 @@ class RecentChatProvider(ContextProvider):
             kind="recent_chat",
             priority=20,
             layers=[layer],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"turns": len(history)},
         )
 

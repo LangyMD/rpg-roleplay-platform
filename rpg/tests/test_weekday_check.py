@@ -75,7 +75,8 @@ def test_unified_into_narrative_guards():
     kinds = [name for name, _ in evs]
     assert "weekday_notice" in kinds
     wd = next(p for name, p in evs if name == "weekday_notice")
-    assert any(e["expected"] == "周一" for e in wd["errors"])
+    assert any(e["expected"] == "Monday" and e["rel"] == "tomorrow" for e in wd["errors"])
+    assert wd["base"] == "Sunday"
     # 无日历剧本:统一入口也零副作用
     assert run_narrative_guards("他御剑飞行三日,明日便是论剑之期。", "", {"turn": 1}) == []
 

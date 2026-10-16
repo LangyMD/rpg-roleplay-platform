@@ -25,6 +25,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './game-icons.jsx';
+import i18n from './i18n/index.js';
 
 const __channels = (typeof window !== 'undefined')
   ? (window.__rpgToastChannels || (window.__rpgToastChannels = {}))
@@ -114,7 +115,7 @@ export function createToastChannel(opts = {}) {
                 {t.action.label}
               </button>
             )}
-            <button className="iconbtn pl-toast-close" onClick={() => dismiss(t.id)} data-tip="关闭" aria-label="关闭">
+            <button className="iconbtn pl-toast-close" onClick={() => dismiss(t.id)} data-tip={i18n.t('common.close')} aria-label={i18n.t('common.close')}>
               <Icon name="close" size={11} />
             </button>
           </div>

@@ -32,7 +32,7 @@ DEFAULT_CHARACTER: dict = {
         {"id": "healing_draught", "name": "Healing Draught", "qty": 1, "kind": "consumable"},
     ],
     "conditions": [],   # 简易状态：e.g. ["poisoned", "prone"]
-    "features": ["熟练：潜行 / 调查 / 察觉"],
+    "features": ["Proficient: Stealth / Investigation / Perception"],
     "weapons": {
         "shortsword": {"attack_bonus": 4, "damage": "1d6+2", "kind": "melee", "name": "Shortsword"},
         "shortbow": {"attack_bonus": 4, "damage": "1d6+2", "kind": "ranged", "name": "Shortbow"},
@@ -214,11 +214,11 @@ def grant_inventory_item(character: dict, item_id: str, name: str | None = None,
     """
     qty = int(qty or 0)
     if qty <= 0:
-        return {"ok": False, "error": "qty 必须 > 0", "item_id": item_id or "",
+        return {"ok": False, "error": "qty must be > 0", "item_id": item_id or "",
                 "qty_before": 0, "qty_after": 0, "granted": 0, "created": False}
     item_id = str(item_id or "").strip()
     if not item_id:
-        return {"ok": False, "error": "缺少 item_id",
+        return {"ok": False, "error": "missing item_id",
                 "item_id": "", "qty_before": 0, "qty_after": 0, "granted": 0, "created": False}
     inventory = character.setdefault("inventory", [])
     id_low = item_id.lower()
@@ -251,14 +251,14 @@ def consume_inventory_item(character: dict, alias: str, qty: int = 1) -> dict:
     """
     qty = max(0, int(qty or 0))
     if qty == 0:
-        return {"ok": False, "error": "qty 必须 > 0"}
+        return {"ok": False, "error": "qty must be > 0"}
     item = find_inventory_item(character, alias)
     if item is None:
-        return {"ok": False, "error": f"背包内没有 {alias!r}",
+        return {"ok": False, "error": f"no {alias!r} in the inventory",
                 "item_id": "", "qty_before": 0, "qty_after": 0, "consumed": 0}
     qty_before = int(item.get("qty", 0) or 0)
     if qty_before <= 0:
-        return {"ok": False, "error": f"{item.get('name')} 已耗尽",
+        return {"ok": False, "error": f"{item.get('name')} is used up",
                 "item_id": item.get("id"), "qty_before": 0, "qty_after": 0, "consumed": 0}
     consumed = min(qty, qty_before)
     qty_after = qty_before - consumed

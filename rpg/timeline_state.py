@@ -33,12 +33,21 @@ def is_recall_framing(text: str) -> bool:
 _JUMP_VERB = re.compile(
     r"跳到|跳转到|快进到|切到|来到|推进到|过渡到|直接到|直接进入|进入|等到|等至|直到"
     r"|跳过到|略过到|越过到|/time\b|/timeline\b"
+    r"|(?i:\b(?:skip|jump|fast[- ]forward|time[- ]skip|advance|cut)\s+(?:ahead\s+|forward\s+)?to\b)"
+)
+# English explicit jump phrasing ("skip to the next morning", "fast-forward to Chapter 30").
+# Deliberately excludes ordinary movement verbs ("go to", "enter") — 宁漏勿误.
+_EN_JUMP_PATTERN = (
+    r"(?i:\b(?:skip|jump|fast[- ]forward|time[- ]skip|advance|cut)\s+(?:ahead\s+|forward\s+)?to\s+"
+    r"([^,.!?;\n]{2,48}))"
 )
 # 「整条输入就是一个时点」——玩家只打了「第30章」「1968年」「第30章 中秋夜」。
 # 这是**唯一**允许省略跳跃动词的形态,见 detect_time_directives 的说明。
 _BARE_TARGET = re.compile(
     r"(?:第\s*\d{1,5}\s*章[^，。！？\n]{0,24}"
-    r"|(?:公元)?\d{3,5}\s*年[^，。！？\n]{0,24})"
+    r"|(?:公元)?\d{3,5}\s*年[^，。！？\n]{0,24}"
+    r"|(?i:chapter\s+\d{1,5}(?:[ :][^,.!?\n]{0,24})?)"
+    r"|(?i:(?:the\s+)?year\s+\d{3,5}(?:\s+(?:AD|BC|CE|BCE))?))"
 )
 _STRIP_EDGE = " \n\t：:。.，,！!？?、;；"
 
@@ -81,6 +90,7 @@ def detect_time_directives(text: str) -> list[TimeDirective]:
     patterns = [
         r"(?:时间线|时间|剧情|镜头|场景)?\s*(?:跳到|跳转到|快进到|切到|来到|推进到|过渡到|直接到|直接进入|进入|等到|等至|直到|跳过到|略过到|越过到)\s*([^，。！？\n]{2,48})",
         r"(?:/time|/timeline)\s+([^\n]{2,80})",
+        _EN_JUMP_PATTERN,
     ]
     out: list[TimeDirective] = []
     for pattern in patterns:
@@ -120,7 +130,17 @@ _TIME_TOKEN = re.compile(
     r"|(?:数|多)(?:日|天|月|年)(?:之|以)?后"
     r"|片刻(?:之|以)?后|不久(?:之|以)?后|须臾"
     r"|柏林|图卢兹|基地"  # 本书(MuMu)时间线标签是地名制,保留既有行为
+    # English time-shaped tokens (same "shape, not single word" rule): Chapter 3 / Day 2 /
+    # three days later / 3 hours ago / the next morning / 1453 AD / at dawn.
+    r"|(?i:\b(?:chapter|ch\.)\s*\d{1,5}\b|\b(?:day|night|week|month|year)\s+\d{1,5}\b"
+    r"|\b(?:\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|a few|several)\s+"
+    r"(?:seconds?|minutes?|hours?|days?|nights?|weeks?|months?|years?)\s+(?:later|after|ago|before|on)\b"
+    r"|\b(?:the\s+)?(?:next|following)\s+(?:day|morning|evening|night|week|month|year)\b"
+    r"|\b(?:tomorrow|tonight|yesterday|dawn|daybreak|sunrise|sunset|dusk|noon|midday|midnight|nightfall)\b"
+    r"|\b\d{3,4}\s*(?:AD|BC|CE|BCE)\b|\bin\s+\d{3,4}\b)"
 )
+# 英文值里的人称从句(与上面中文人称否决同口径)
+_EN_PERSON_RE = re.compile(r"\b(?:I|me|my|mine|you|your|he|him|his|she|her|we|us|our|they|them|their)\b", re.I)
 
 
 def looks_like_time_value(value: str) -> bool:
@@ -128,7 +148,7 @@ def looks_like_time_value(value: str) -> bool:
         return False
     # 时间锚点描述「何时」,不含人称主语。含「我/你/他/她/它/我的…」基本是被贪婪捕获的叙事从句
     # (如「主神空间前我的母亲独自拉扯我长大」——『前』命中但其实是回忆从句),否决,避免误判跳跃。
-    if re.search(r"[我你他她它咱您俺]", value):
+    if re.search(r"[我你他她它咱您俺]", value) or _EN_PERSON_RE.search(value):
         return False
     return bool(_TIME_TOKEN.search(value))
 

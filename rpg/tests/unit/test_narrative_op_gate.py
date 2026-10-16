@@ -55,7 +55,7 @@ class ConsequenceOpGate(unittest.TestCase):
         pw = _pending(g)
         self.assertTrue(any(p.get("path") == "consequence" for p in pw),
                         f"后果应入 pending;实际={pw}")
-        self.assertTrue(any("待审" in u for u in updates), updates)
+        self.assertTrue(any("pending approval" in u for u in updates), updates)
 
     def test_approve_consequence_pending_lands_in_ledger(self):
         g = GameState.new()
@@ -65,7 +65,7 @@ class ConsequenceOpGate(unittest.TestCase):
         )
         pid = _pending(g)[0]["id"]
         res = g.approve_pending_write(id=pid)
-        self.assertIn("状态写入", res, res)
+        self.assertIn("State write", res, res)
         ledger = g.data.get("consequence_ledger", [])
         self.assertEqual(len(ledger), 1, "审批后应落地后果账本")
         self.assertEqual(ledger[0]["text"], "答应雷纳德带证据回村")
@@ -205,7 +205,7 @@ class ConfirmRejectHypothesisOpGate(unittest.TestCase):
             _fence('{"op":"confirm_hypothesis"}')
         )
         self.assertEqual(_pending(g), [], "缺 id 不应入 pending")
-        self.assertTrue(any("失败" in u for u in updates), updates)
+        self.assertTrue(any("Failed" in u for u in updates), updates)
 
     def test_full_access_confirm_hypothesis_promotes_directly(self):
         g = GameState.new()  # full_access

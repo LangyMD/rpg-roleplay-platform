@@ -148,8 +148,8 @@ class _VertexBackend:
             self.client = None
             self._genai = genai
             self._unavailable_message = (
-                "未找到 Vertex AI Service Account。"
-                "请在「设置 → API & 模型 → Agent Platform」上传自己的 SA JSON 文件。"
+                "Vertex AI Service Account not found. "
+                "Upload your own SA JSON file under Settings -> API & Models -> Agent Platform."
             )
             log.info(f"[GM] Vertex AI unavailable for user={user_id}: missing service account (expected if user has no SA)")
             return
@@ -260,11 +260,11 @@ class _VertexBackend:
                 msg = str(exc)
                 if "403" in msg or "PERMISSION_DENIED" in msg or "forbidden" in msg.lower():
                     _friendly = RuntimeError(
-                        "Vertex AI 调用被拒(403)。请在 Google Cloud Console 检查你的 Service Account:\n"
-                        "  1. 该 SA 在此 project 下有「Vertex AI User」角色 (roles/aiplatform.user)\n"
-                        "  2. 该 project 已启用 Vertex AI API:\n"
+                        "Vertex AI call was rejected (403). Check your Service Account in the Google Cloud Console:\n"
+                        "  1. The SA has the \"Vertex AI User\" role in this project (roles/aiplatform.user)\n"
+                        "  2. The Vertex AI API is enabled for the project:\n"
                         "     https://console.cloud.google.com/apis/library/aiplatform.googleapis.com\n"
-                        "  3. project 已开 billing(免费试用 / 付费账号都需要绑定 billing)"
+                        "  3. Billing is enabled for the project (both free-trial and paid accounts need billing attached)"
                     )
                     # 附 status_code=403 让 classify_provider_error(_http_status)归类为 auth。
                     # 裸 RuntimeError 无状态码,友好中文文案又不含英文 "forbidden"/"http error 403" 标记
@@ -585,7 +585,7 @@ class _VertexBackend:
                 try:
                     result = mcp_call(pc["server_id"], pc["tool_name"], pc["arguments"])
                 except Exception as exc:
-                    result = {"ok": False, "error": f"call_tool 异常: {exc}"}
+                    result = {"ok": False, "error": f"call_tool error: {exc}"}
                 yield {
                     "type": "tool_result", "ok": bool(result.get("ok")),
                     "result": result.get("result"), "error": result.get("error"),
@@ -601,7 +601,7 @@ class _VertexBackend:
                     name=pc["name"], response=response_dict,
                 ))
             contents.append(types.Content(role="user", parts=result_parts))
-        yield {"type": "text", "text": "\n\n【已达本轮工具调用上限 (限制为本次回复内的调用次数,下一条消息自动重置),本轮终止】"}
+        yield {"type": "text", "text": "\n\n[Tool-call limit reached for this reply (the limit counts calls within this one reply and resets with your next message); this turn has ended]"}
 
     @staticmethod
     def _to_contents(messages: list[dict], types):

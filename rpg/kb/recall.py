@@ -28,8 +28,8 @@ W_VEC = float(os.environ.get("RPG_RECALL_W_VEC", "0.45"))
 W_KW = float(os.environ.get("RPG_RECALL_W_KW", "0.25"))
 W_RECENCY = float(os.environ.get("RPG_RECALL_W_RECENCY", "0.10"))
 
-_KB_BODY_MARKER = "=== 知识库召回(统一层) ==="
-_ANCHOR_MARKER = "=== 世界线收束·接下来的锚点 ==="  # 契约护栏:必须出现在渲染串里供 _split_anchor_pending
+_KB_BODY_MARKER = "=== Knowledge Base Recall (unified layer) ==="
+from kb.section_markers import ANCHOR_PENDING_MARKER as _ANCHOR_MARKER  # noqa: E402  # 契约护栏:必须出现在渲染串里供 _split_anchor_pending
 
 
 # ── flag 闸(仿 kb.reveal,独立 env) ─────────────────────────────────────────
@@ -255,18 +255,18 @@ def _render_kb_body(result: RecallResult) -> str:
     parts: list[str] = []
     if result.candidates:
         lines = [_KB_BODY_MARKER,
-                 f"(按当前进度 ch≤{result.ceil_chap} 的揭示集合召回,已防剧透)"]
+                 f"(recalled from what has been revealed up to the current progress, ch<={result.ceil_chap}; spoiler-safe)"]
         for c in result.candidates[:12]:
             body = (str(c.get("body") or "")).strip().replace("\n", " ")[:220]
-            kind = {"canon_entity": "词条", "character": "角色", "worldbook": "世界书"}.get(
+            kind = {"canon_entity": "entry", "character": "character", "worldbook": "worldbook"}.get(
                 c.get("node_kind"), c.get("node_kind") or "")
-            lines.append(f"· [{kind}] {c.get('name')}（相关度 {c.get('score', 0):.2f}）"
-                         + (f"：{body}" if body else ""))
+            lines.append(f"· [{kind}] {c.get('name')} (relevance {c.get('score', 0):.2f})"
+                         + (f": {body}" if body else ""))
         parts.append("\n".join(lines))
     if result.chunks:
-        clines = ["=== Postgres 原文片段 ==="]
+        clines = ["=== Postgres Source Excerpts ==="]
         for r in result.chunks:
-            clines.append(f"[第{r.get('chapter_index')}章片段]\n{str(r.get('content') or '')[:360].strip()}")
+            clines.append(f"[Chapter {r.get('chapter_index')} excerpt]\n{str(r.get('content') or '')[:360].strip()}")
         parts.append("\n\n".join(clines))
     return "\n\n".join(parts)
 

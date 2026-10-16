@@ -33,6 +33,11 @@ DIGEST_PREFIX_MAX_PHASES = 6
 DIGEST_PREFIX_MAX_CHARS = 4000
 DIGEST_SUMMARY_MAX_CHARS = 400
 
+# 前情提要后补的 assistant ack(保持 user/assistant 交替)。英文为当前写法;旧存档/导出
+# 历史里可能还是中文,消费方(如酒馆导出跳过 ack)两种都认。
+DIGEST_ACK = "[Story so far received; continuing the narration from here]"
+DIGEST_ACKS = (DIGEST_ACK, "[已收到前情提要,继续在此基础上叙事]")
+
 
 def is_empty_range(phase: dict) -> bool:
     """turn_end < turn_start 的倒挂行:一个回合都不含,永远不会有摘要。

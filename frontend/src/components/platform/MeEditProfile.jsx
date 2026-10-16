@@ -32,8 +32,8 @@ function MeEditProfile() {
     website: user._raw?.website || "",
     bio: user.bio || "",
     pronouns: user._raw?.pronouns || "",
-    language: user._raw?.language || "zh-CN",
-    timezone: user._raw?.timezone || "Asia/Shanghai",
+    language: user._raw?.language || "en",
+    timezone: user._raw?.timezone || "UTC",
   });
   // task 57: 表单输入标记 dirty,保存/重置后清掉。
   const u = (k, v) => {
@@ -61,7 +61,7 @@ function MeEditProfile() {
         for (const k of _FORM_KEYS) if (src[k] != null) picked[k] = src[k];
         if (Object.keys(picked).length) setForm(f => ({ ...f, ...picked }));
       } catch (e) {
-        if (!cancelled) window.__apiToast?.("加载资料失败,请检查网络后重试", { kind: "danger", detail: e?.message, duration: 3000 });
+        if (!cancelled) window.__apiToast?.(t('platform.me.edit.load_failed'), { kind: "danger", detail: e?.message, duration: 3000 });
       }
     })();
     return () => { cancelled = true; };
@@ -192,8 +192,8 @@ function MeEditProfile() {
             </Field>
             <Field label={t('platform.me.edit.field_pronouns', '代词')}>
               <CSSelect
-                selectedOption={[{value:"她/她",label:"她/她"},{value:"他/他",label:"他/他"},{value:"TA/TA",label:"TA/TA"},{value:"不公开",label:t('platform.me.edit.pronouns_private','不公开')}].find(o => o.value === form.pronouns) || null}
-                options={[{value:"她/她",label:"她/她"},{value:"他/他",label:"他/他"},{value:"TA/TA",label:"TA/TA"},{value:"不公开",label:t('platform.me.edit.pronouns_private','不公开')}]}
+                selectedOption={[{value:"她/她",label:t('platform.me.edit.pronoun_she')},{value:"他/他",label:t('platform.me.edit.pronoun_he')},{value:"TA/TA",label:"TA/TA"},{value:"不公开",label:t('platform.me.edit.pronouns_private','不公开')}].find(o => o.value === form.pronouns) || null}
+                options={[{value:"她/她",label:t('platform.me.edit.pronoun_she')},{value:"他/他",label:t('platform.me.edit.pronoun_he')},{value:"TA/TA",label:"TA/TA"},{value:"不公开",label:t('platform.me.edit.pronouns_private','不公开')}]}
                 onChange={({ detail }) => u("pronouns", detail.selectedOption.value)}
               />
             </Field>
@@ -248,15 +248,15 @@ function MeEditProfile() {
         <div className="pl-form-grid-2">
           <Field label={t('platform.me.edit.field_language', '界面语言')}>
             <CSSelect
-              selectedOption={[{value:"zh-CN",label:"简体中文"},{value:"zh-TW",label:"繁體中文"},{value:"en",label:"English (Beta)"},{value:"ja",label:"日本語"}].find(o => o.value === form.language) || null}
-              options={[{value:"zh-CN",label:"简体中文"},{value:"zh-TW",label:"繁體中文"},{value:"en",label:"English (Beta)"},{value:"ja",label:"日本語"}]}
+              selectedOption={[{value:"zh-CN",label:"简体中文"},{value:"zh-TW",label:"繁體中文"},{value:"en",label:"English"},{value:"ja",label:"日本語"}].find(o => o.value === form.language) || null}
+              options={[{value:"zh-CN",label:"简体中文"},{value:"zh-TW",label:"繁體中文"},{value:"en",label:"English"},{value:"ja",label:"日本語"}]}
               onChange={({ detail }) => u("language", detail.selectedOption.value)}
             />
           </Field>
           <Field label={t('platform.me.edit.field_timezone', '时区')}>
             <CSSelect
-              selectedOption={[{value:"Asia/Shanghai",label:"UTC+8 · 上海"},{value:"Asia/Tokyo",label:"UTC+9 · 东京"},{value:"UTC",label:"UTC"},{value:"America/Los_Angeles",label:"UTC-8 · 洛杉矶"}].find(o => o.value === form.timezone) || null}
-              options={[{value:"Asia/Shanghai",label:"UTC+8 · 上海"},{value:"Asia/Tokyo",label:"UTC+9 · 东京"},{value:"UTC",label:"UTC"},{value:"America/Los_Angeles",label:"UTC-8 · 洛杉矶"}]}
+              selectedOption={[{value:"Asia/Shanghai",label:t('platform.me.edit.tz_shanghai')},{value:"Asia/Tokyo",label:t('platform.me.edit.tz_tokyo')},{value:"UTC",label:"UTC"},{value:"America/Los_Angeles",label:t('platform.me.edit.tz_la')}].find(o => o.value === form.timezone) || null}
+              options={[{value:"Asia/Shanghai",label:t('platform.me.edit.tz_shanghai')},{value:"Asia/Tokyo",label:t('platform.me.edit.tz_tokyo')},{value:"UTC",label:"UTC"},{value:"America/Los_Angeles",label:t('platform.me.edit.tz_la')}]}
               onChange={({ detail }) => u("timezone", detail.selectedOption.value)}
             />
           </Field>

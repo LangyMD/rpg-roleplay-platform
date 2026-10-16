@@ -15,6 +15,8 @@ memory 60，高于历史摘要 48），novel + freeform 双 manifest 都挂。
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -79,7 +81,7 @@ class WorldPulseProvider(ContextProvider):
         text = _render(to_surface)
         layer = self.make_layer(
             "world_pulse",
-            "世界脉动",
+            "World Pulse",
             text,
             sticky=False,
             priority=PRIORITY,
@@ -89,16 +91,16 @@ class WorldPulseProvider(ContextProvider):
             kind="world_pulse",
             priority=PRIORITY,
             layers=[layer],
-            facts=[f"世界脉动（第{e.get('created_turn')}回合发生）：{e.get('text', '')}" for e in to_surface],
-            tokens_estimate=len(text) // 2,
+            facts=[f"World pulse (happened on turn {e.get('created_turn')}): {e.get('text', '')}" for e in to_surface],
+            tokens_estimate=estimate_tokens(text),
             debug={"surfaced_count": len(to_surface)},
         )
 
 
 def _render(entries: list[dict]) -> str:
     lines = [
-        "【世界脉动·你不在场时】以下是世界里同期发生的小事,可择其一以传闻/路人交谈/"
-        "环境痕迹的方式自然浮现(不强求本回合全用,禁止生硬播报):",
+        "[World pulse · while you were elsewhere] Small things that happened in the world meanwhile. Pick one and let it surface naturally "
+        "as a rumor / passers-by talking / traces in the surroundings (no need to use them all this turn; never announce them flatly):",
     ]
     for e in entries:
         lines.append(f"- {e.get('text', '')}")

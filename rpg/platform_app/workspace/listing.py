@@ -325,5 +325,5 @@ def save_detail(user_id: int, save_id: int) -> dict[str, Any]:
             (save_id, user_id),
         ).fetchone()
     if not row:
-        raise ValueError(f"无权访问该存档: {save_id}")
+        raise ValueError(f"No access to this save: {save_id}")
     return expose(row) or {}

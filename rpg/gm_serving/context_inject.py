@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import time
 
-# 粗略 token 估算:中文 ~1.5 char/token,英文 ~4 char/token。保守按 1.6 char/token。
-_CHARS_PER_TOKEN = 1.6
 _BUDGET_MIN = 800
 _BUDGET_MAX = 3000
 
@@ -30,7 +28,9 @@ def invalidate_constant_cache(script_id: int | None = None) -> None:
 
 
 def _est_tokens(text: str) -> int:
-    return int(len(text) / _CHARS_PER_TOKEN)
+    # 语言感知(中文 ~1.6 / 英文 ~4 char/token),权威在 core.token_estimate。
+    from core.token_estimate import estimate_tokens
+    return estimate_tokens(text)
 
 
 def compute_budget(db, script_id: int) -> int:
@@ -71,7 +71,7 @@ def build_constant_layer(db, script_id: int, *, budget_tokens: int | None = None
     # SEC(C-2/H-12): constant 世界书内容会逐字进所有订阅者的 GM 最高优先级层。中和 【】 状态写入
     # 标签,切断「订阅恶意公开剧本 → 注入伪指令 → apply_structured_updates 落库」链路。
     from context_engine.helpers import _neutralize_state_write_tags as _neu
-    parts = ["【世界观铁律 · 每轮常驻】"]
+    parts = ["【World rules - always in effect】"]
     used = _est_tokens(parts[0])
     for r in rows:
         block = f"· {_neu(r['title'])}:{_neu(r['content'])}"
@@ -100,11 +100,11 @@ def build_injection(db, *, script_id: int, scene_summary: str = "", steering_hin
     constant = build_constant_layer(db, script_id, budget_tokens=budget)
     blocks = [constant]
     if scene_summary:
-        blocks.append(f"【当前场景】{scene_summary}")
+        blocks.append(f"【Current scene】{scene_summary}")
     if steering_hint:
         if steering_strength == "rail":
-            blocks.append(f"【世界线收束 · 强制下一拍(必须推进)】{steering_hint}")
+            blocks.append(f"【Worldline convergence - forced next beat (must advance)】{steering_hint}")
         else:
-            blocks.append(f"【剧情软目标(引导非铁轨)】{steering_hint}")
+            blocks.append(f"【Story soft goal (guidance, not rails)】{steering_hint}")
     text = "\n\n".join(b for b in blocks if b)
     return {"text": text, "tokens": _est_tokens(text), "budget": budget}

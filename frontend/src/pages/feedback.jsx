@@ -184,7 +184,7 @@ export function FeedbackPage() {
         >{t('feedback_page.header_title')}</CSHeader>
 
         <CSAlert type="warning" header={t('feedback_page.content_limit.title')}>
-          {t('feedback_page.content_limit.body')} <a href={AUP_LINK} target="_blank" rel="noopener noreferrer">AUP §2.J</a>。
+          {t('feedback_page.content_limit.body')} <a href={AUP_LINK} target="_blank" rel="noopener noreferrer">AUP §2.J</a>{t('common.period')}
         </CSAlert>
 
         {/* ── 提交反馈 ── */}

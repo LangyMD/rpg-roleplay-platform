@@ -62,3 +62,15 @@ def test_non_scaffold_divider_untouched():
 def test_empty_and_no_marker():
     assert strip_leaked_scaffold("") == ""
     assert strip_leaked_scaffold("普通正文没有任何标记。") == "普通正文没有任何标记。"
+
+
+def test_strips_english_worldbook_agent_headers():
+    from agents.worldbook_agent import WorldbookResult
+    leak = WorldbookResult(
+        timeline_anchor={"phase": "Opening", "chapter_min": 1, "chapter_max": 3},
+        progress_note="jumped ahead",
+    ).to_context_text()
+    text = "She walked into the ruins.\n\n" + leak + "\n\nShe picked up a rusty blade."
+    out = strip_leaked_scaffold(text)
+    assert "Script Timeline Anchor" not in out and "jumped ahead" not in out
+    assert "She picked up a rusty blade." in out

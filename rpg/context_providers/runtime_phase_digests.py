@@ -13,6 +13,8 @@ Save 级 runtime phase digest provider — 把当前 save 已经摘要好的历�
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -55,7 +57,7 @@ class RuntimePhaseDigestProvider(ContextProvider):
         text = _render_phases(phases)
         layer = self.make_layer(
             "runtime_phase_digests",
-            "已发生历史摘要(本存档)",
+            "History So Far (this save)",
             text,
             sticky=False,
             priority=48,  # 仅次于 fact_groups (50), 高于 hypotheses (32)
@@ -67,10 +69,10 @@ class RuntimePhaseDigestProvider(ContextProvider):
             layers=[layer],
             facts=[
                 f"phase {p['phase_index']}: turn {p['turn_start']}-{p['turn_end']} "
-                f"({p.get('phase_label') or '无标题'})"
+                f"({p.get('phase_label') or 'untitled'})"
                 for p in phases
             ],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"phase_count": len(phases), "save_id": save_id},
         )
 
@@ -107,7 +109,7 @@ def _render_phases(phases: list[dict]) -> str:
     parts: list[str] = []
     for i, p in enumerate(phases):
         last = (i == len(phases) - 1)
-        status_tag = "进行中" if p.get("status") == "open" else "已结束"
+        status_tag = "in progress" if p.get("status") == "open" else "finished"
         head = f"# Phase {p['phase_index']} (turn {p['turn_start']}-{p['turn_end']} · {status_tag})"
         label = (p.get("phase_label") or "").strip()
         story_time = (p.get("story_time_label") or "").strip()
@@ -132,7 +134,7 @@ def _render_phases(phases: list[dict]) -> str:
                     if s:
                         evt_lines.append(f"  · t{t}: {s[:100]}")
             if evt_lines:
-                block.append("关键事件:")
+                block.append("Key events:")
                 block.extend(evt_lines)
         if npcs and last:  # 最后一个 phase 时附带 NPC 状态
             npc_lines = []
@@ -143,7 +145,7 @@ def _render_phases(phases: list[dict]) -> str:
                     if nm:
                         npc_lines.append(f"  · {nm}" + (f" ({role})" if role else ""))
             if npc_lines:
-                block.append("活跃 NPC:")
+                block.append("Active NPCs:")
                 block.extend(npc_lines)
         if decisions and last:
             dec_lines = []
@@ -153,10 +155,10 @@ def _render_phases(phases: list[dict]) -> str:
                     if ch:
                         dec_lines.append(f"  · {ch[:60]}")
             if dec_lines:
-                block.append("关键决定:")
+                block.append("Key decisions:")
                 block.extend(dec_lines)
         if emotion and last:
-            block.append(f"情感弧线: {emotion[:80]}")
+            block.append(f"Emotional arc: {emotion[:80]}")
 
         chunk = "\n".join(block)
         # 单 phase 预算 cap

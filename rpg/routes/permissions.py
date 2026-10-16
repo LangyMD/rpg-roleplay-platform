@@ -86,7 +86,7 @@ async def api_pending_write(
     elif decision == "reject":
         tool_name = "reject_pending_write"
     else:
-        return json_response({"ok": False, "error": "缺少 action/decision（approve|reject）"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing action/decision (approve|reject)"}, status_code=400)
     if not item_id and index is not None:
         # 旧契约 index → 在 pending_writes 里找 id 兜底
         pws = (state.data.get("permissions") or {}).get("pending_writes") or []
@@ -108,7 +108,8 @@ async def api_pending_write(
             result = state.reject_pending_write(index=index, id=item_id)
     else:
         result = d_result.result
-    if isinstance(result, str) and result.startswith(("失败", "ERROR", "待审", "拒绝")):
+    from tools_dsl.command_dispatcher import is_failure_result_text
+    if is_failure_result_text(result) or (isinstance(result, str) and result.startswith("待审")):
         return json_response({"ok": False, "error": result}, status_code=400)
     state.data["memory"]["last_structured_updates"] = [result] + state.data["memory"].get("last_structured_updates", [])[:11]
     state.save()
@@ -167,12 +168,15 @@ async def api_debug_pending_question(
     body_dict = body.model_dump(exclude_none=True)
     state = _ensure_loaded(api_user)
     # 把老 text+| 分隔 options 拆成 question + options 列表
-    raw_text = body_dict.get("text") or "下一步怎么做？｜选项：继续调查、返回基地、询问同伴"
+    raw_text = body_dict.get("text") or "What do you do next? | Options: Keep investigating, Return to base, Ask a companion"
     if len(raw_text) > 500:
-        raise HTTPException(status_code=400, detail="text 过长")
-    if "｜选项：" in raw_text:
-        question, _, opt_str = raw_text.partition("｜选项：")
-        options = [s.strip() for s in opt_str.split("、") if s.strip()]
+        raise HTTPException(status_code=400, detail="text is too long")
+    # 两种分隔都认:老中文「｜选项：」(顿号分隔)与英文「| Options:」(逗号分隔)
+    _sep = "｜选项：" if "｜选项：" in raw_text else ("| Options:" if "| Options:" in raw_text else "")
+    if _sep:
+        question, _, opt_str = raw_text.partition(_sep)
+        question = question.strip()
+        options = [s.strip() for s in opt_str.replace("、", ",").split(",") if s.strip()]
         if len(options) > 8:
             options = options[:8]
     else:

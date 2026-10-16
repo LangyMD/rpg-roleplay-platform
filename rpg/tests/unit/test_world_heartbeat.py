@@ -149,6 +149,15 @@ class ValidateItemsTests(unittest.TestCase):
         out = _validate_items([text_120], state_data=data)
         self.assertEqual(out, [text_120])
 
+    def test_english_item_length_and_second_person(self):
+        data = copy.deepcopy(DEFAULT_STATE)
+        ok = ("The east-village miller's donkey slipped its halter last night and trampled "
+              "half a row of wheat before anyone in the village noticed")
+        self.assertGreater(len(ok), 120)  # longer than the CJK char cap, still one short event
+        self.assertEqual(_validate_items([ok], state_data=data), [ok])
+        self.assertEqual(_validate_items(["Everyone in the village knows what you did"], state_data=data), [])
+        self.assertEqual(_validate_items(["word " * 80], state_data=data), [])
+
     def test_contains_ni_rejected(self):
         data = copy.deepcopy(DEFAULT_STATE)
         out = _validate_items(["你昨晚做的事全村都知道了"], state_data=data)
@@ -469,8 +478,8 @@ class WorldPulseProviderTests(unittest.TestCase):
         self.assertEqual(len(contrib.layers), 1)
         content = contrib.layers[0]["content"]
         self.assertIn("村东磨坊主的驴跑了", content)
-        self.assertIn("世界脉动", content)
-        self.assertIn("不强求", content)
+        self.assertIn("World pulse", content)
+        self.assertIn("no need to use them all", content)
         self.assertEqual(s.data["background_events"][0]["surfaced_turn"], 12)
 
     def test_at_most_two_per_collect(self):
@@ -563,8 +572,8 @@ class PromptConstructionTests(unittest.TestCase):
         data["memory"]["facts"] = ["事实一"]
         materials = _build_materials(data, None)
         system_prompt, user_prompt = _build_prompts(materials)
-        self.assertIn("你", system_prompt)  # 约束文本本身会提到"你"这个字用于说明禁止规则
-        self.assertIn("禁止提到玩家本人", system_prompt)
+        self.assertIn("you", system_prompt)  # 约束文本本身会提到"你"这个字用于说明禁止规则
+        self.assertIn("Never mention the player", system_prompt)
         self.assertIn("JSON", system_prompt)
 
     def test_prompts_include_materials_content(self):
@@ -630,5 +639,5 @@ def test_prompt_has_locality_rule():
     """心跳 prompt 必须含地理铁律(测玩实证:远方人物被写成本地实时传闻)。"""
     from agents.world_heartbeat import _build_prompts
     sysp, userp = _build_prompts({"current_location": "布耶纳村", "time": "晨", "facts_recent": [], "relationship_names": [], "active_entities": [], "recent_background_events": [], "pending_anchor_hints": []})
-    assert "地理铁律" in sysp
-    assert "当前地点" in userp or "当前所在地" in sysp
+    assert "Geography rule" in sysp
+    assert "current location" in userp or "current location" in sysp

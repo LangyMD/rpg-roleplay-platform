@@ -26,7 +26,7 @@ def _require_script(db, user_id: int, script_id: int) -> dict[str, Any]:
     from platform_app.perms import script_readable
     row = script_readable(db, script_id, user_id)
     if not row:
-        raise ValueError("无权访问该剧本")
+        raise ValueError("No access to this script")
     return row
 
 
@@ -42,7 +42,7 @@ def _require_script_owner(db, user_id: int, script_id: int) -> dict[str, Any]:
     from platform_app.perms import script_owned
     row = script_owned(db, script_id, user_id)
     if not row:
-        raise ValueError("仅原作者可编辑该剧本。订阅剧本只读;如需改动请先「另存为可编辑副本」(fork)。")
+        raise ValueError("Only the original author can edit this script. Subscribed scripts are read-only; to make changes, first use \"Save as editable copy\" (fork).")
     return row
 
 
@@ -170,7 +170,7 @@ def _worldbook_seed_entries(world: dict[str, Any]) -> list[dict[str, Any]]:
     # 路径 1: 新格式 (worldbook_entries 已经存在的剧本)
     if isinstance(world.get("entries"), list):
         for i, ent in enumerate(world["entries"]):
-            title = (ent.get("title") or "").strip() or f"设定条目 {i+1}"
+            title = (ent.get("title") or "").strip() or f"Entry {i+1}"
             content = (ent.get("content") or "").strip()
             if not content:
                 continue
@@ -180,10 +180,10 @@ def _worldbook_seed_entries(world: dict[str, Any]) -> list[dict[str, Any]]:
         return entries
     # 路径 2: 老格式 兼容 (柏林 indexes/world.json)
     if world.get("setting"):
-        entries.append(_wb("世界基础设定", _auto_extract_keys("世界基础设定", world["setting"]),
+        entries.append(_wb("World setting", _auto_extract_keys("World setting", world["setting"]),
                            100, world["setting"]))
     if world.get("current_situation"):
-        entries.append(_wb("当前局势", _auto_extract_keys("当前局势", world["current_situation"]),
+        entries.append(_wb("Current situation", _auto_extract_keys("Current situation", world["current_situation"]),
                            96, world["current_situation"]))
     for title, content in (world.get("key_factions") or {}).items():
         entries.append(_wb(title, _keys_for(title, content), 82, content))

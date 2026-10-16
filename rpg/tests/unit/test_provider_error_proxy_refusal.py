@@ -36,8 +36,8 @@ def _tunnel(code_line: str) -> urllib.error.URLError:
 def test_proxy_refusal_is_network_and_names_proxy(exc):
     cat, msg = classify_provider_error(exc)
     assert cat == "network"
-    assert "代理拒绝了" in msg
-    assert "换一个模型" not in msg and "提供商拒绝" not in msg
+    assert "proxy refused" in msg
+    assert "Try another model" not in msg and "provider refused" not in msg
 
 
 def test_sdk_wrapped_proxy_error_names_proxy():
@@ -49,7 +49,7 @@ def test_sdk_wrapped_proxy_error_names_proxy():
             raise openai.APIConnectionError(request=_REQ) from inner
     except openai.APIConnectionError as exc:
         cat, msg = classify_provider_error(exc)
-    assert cat == "network" and "代理拒绝了" in msg
+    assert cat == "network" and "proxy refused" in msg
 
 
 def test_real_provider_403_still_auth():
@@ -62,4 +62,4 @@ def test_real_provider_403_still_auth():
 def test_plain_connection_refused_keeps_generic_network_copy():
     exc = urllib.error.URLError(ConnectionRefusedError(61, "Connection refused"))
     cat, msg = classify_provider_error(exc)
-    assert cat == "network" and "代理拒绝了" not in msg
+    assert cat == "network" and "proxy refused" not in msg

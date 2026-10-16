@@ -59,7 +59,7 @@ def resolve_steering_target(db, *, save_id: int, script_id: int,
     pending = []
     if next_node:
         must = next_node.get("must_preserve") or []
-        must_str = f" 须保留:{'、'.join(must)}。" if must else ""
+        must_str = f" Must keep: {', '.join(must)}." if must else ""
         if steering_strength == "free":
             # 自由模式:不注入软目标,让 GM 自由发挥
             soft = ""
@@ -67,33 +67,33 @@ def resolve_steering_target(db, *, save_id: int, script_id: int,
             # 贴原著:强措辞「下一拍」收束。带 top-2 后续节点提示往哪推。
             nxt2 = nodes[passed_idx + 2] if passed_idx + 2 < len(nodes) else None
             after = (
-                f" 其后将推进到「{nxt2['label']}」({nxt2.get('summary', '')})。" if nxt2 else ""
+                f" After that it moves on to \"{nxt2['label']}\" ({nxt2.get('summary', '')})." if nxt2 else ""
             )
             soft = _rail_directive(
-                target=f"节点「{next_node['label']}」:{next_node.get('summary', '')}",
+                target=f"node \"{next_node['label']}\": {next_node.get('summary', '')}",
                 must_str=must_str,
                 after=after,
             )
         else:
             # guided(默认):软目标,温和引导
             soft = (
-                f"下一关键节点「{next_node['label']}」:{next_node.get('summary', '')}"
+                f"Next key node \"{next_node['label']}\": {next_node.get('summary', '')}"
                 + must_str
-                + " ——朝这个方向自然推进即可,具体怎么发生交给玩家选择;不要生硬照搬原著。"
+                + " — just let the story move naturally in this direction; how it happens is up to the player's choices. Do not copy the source mechanically."
             )
         pending = next_node.get("anchor_keys") or []
     else:
         if steering_strength == "rail":
             soft = (
-                "已抵达/超出当前规范世界线末节点。保持世界自洽,围绕已确立的原著走向收尾,"
-                "不要凭空另起一条与原著无关的新主线。"
+                "The story has reached / passed the last node of the current canonical worldline. Keep the world consistent and wrap up around the established course of the source; "
+                "do not invent a new main storyline unrelated to the source."
             )
         elif steering_strength == "free":
             # free 档:不注入任何软目标(与有 next_node 时 line 63-65 对称)。
             # 原缺这一分支 → free 档走到末节点仍收到"自由发挥"文本约束,违背"free=不注入引导"契约。
             soft = ""
         else:
-            soft = "已抵达/超出当前规范世界线末节点,自由发挥并尽量保持世界自洽。"
+            soft = "The story has reached / passed the last node of the current canonical worldline; improvise freely while keeping the world as consistent as possible."
 
     return {
         "worldline": wl["wl_key"],
@@ -113,15 +113,15 @@ def _rail_directive(*, target: str, must_str: str = "", after: str = "") -> str:
     措辞定位:强力引导朝锚点 + 偏离尽快拉回,而非逐字复述原文(产品=活世界+收束)。
     """
     return (
-        "【贴原著 · 强制收束】接下来必须主动推进到的下一拍 = "
+        "[Follow the source - forced convergence] The next beat you must actively drive toward = "
         + target
         + must_str
         + after
-        + " ——这不是可选的软目标,而是本回合/接下来你必须主动朝其收束的剧本节点。"
-        " 玩家可以自由行动,但若偏离该下一拍,你须在 1-3 轮内用命运式手段(巧合 / 误会 /"
-        " 他人介入 / 环境压力)把剧情自然拉回,让玩家感觉不到生硬却仍抵达锚点。"
-        " 允许合理变体(地点 / 时机 / 旁观者不同,即 drift),但事件的【须保留】维度必须发生,"
-        " 不可另起炉灶长期跑偏到与原著无关的世界线。pending_questions 选项中至少 1 个要通往该下一拍。"
+        + " — this is not an optional soft goal but a script node you must actively converge on this turn / in the turns ahead."
+        " The player may act freely, but if they stray from this next beat you must pull the story back naturally within 1-3 turns"
+        " using fate-like devices (coincidence / misunderstanding / intervention by others / environmental pressure), so it never feels forced yet the anchor is still reached."
+        " Reasonable variants are allowed (different place / timing / witnesses, i.e. drift), but the event's must-keep dimensions must happen;"
+        " never start over and drift for long onto a worldline unrelated to the source. At least 1 of the pending_questions options must lead to this next beat."
     )
 
 
@@ -178,21 +178,21 @@ def _fallback_soft_goal(save_id: int, *, wl_key: str | None,
     a = pend[0]
     summary = (a.get("summary") or "").strip()
     must = a.get("must_preserve") or []
-    must_str = f" 须保留:{'、'.join(must)}。" if must else ""
+    must_str = f" Must keep: {', '.join(must)}." if must else ""
     if steering_strength == "rail":
         after = ""
         if len(pend) > 1 and (pend[1].get("summary") or "").strip():
-            after = f" 其后将推进到:{(pend[1].get('summary') or '').strip()}。"
+            after = f" After that it moves on to: {(pend[1].get('summary') or '').strip()}."
         soft = _rail_directive(
-            target=f"原著关键事件「{summary}」",
+            target=f"key source event \"{summary}\"",
             must_str=must_str,
             after=after,
         )
     else:  # guided(默认)
         soft = (
-            f"下一关键原著事件:{summary}"
+            f"Next key source event: {summary}"
             + must_str
-            + " ——朝这个方向自然推进即可,具体怎么发生交给玩家选择;不要生硬照搬原著。"
+            + " — just let the story move naturally in this direction; how it happens is up to the player's choices. Do not copy the source mechanically."
         )
     base["soft_goal"] = soft
     base["pending_anchors"] = [a.get("anchor_key")] if a.get("anchor_key") else []

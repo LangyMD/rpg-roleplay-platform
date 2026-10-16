@@ -43,6 +43,19 @@ class TestClassifyEventFatal(unittest.TestCase):
         """不含关键词的普通文本不应误报。"""
         self.assertFalse(self._fn("国王宣布和平协议,民众欢庆"))
 
+    def test_english_fatal_keywords(self):
+        self.assertTrue(self._fn("The general was killed at the river crossing"))
+        self.assertTrue(self._fn("The garrison surrendered at dawn"))
+        self.assertTrue(self._fn("The spy was unmasked in front of the court"))
+        # whole words only: "diesel" / "skilled" must not count as deaths
+        self.assertFalse(self._fn("The skilled mechanic refilled the diesel tank"))
+
+    def test_english_critical_keyword_bonus(self):
+        from agents.anchor_seed_agent import _compute_importance
+        base = _compute_importance({"importance": "medium"}, "The duke rode north")
+        crit = _compute_importance({"importance": "medium"}, "The duke declared war on the north")
+        self.assertEqual(crit - base, 15)
+
 
 class TestComputeImportance(unittest.TestCase):
     """_compute_importance: 0-100 综合重要性得分。"""
@@ -119,17 +132,17 @@ class TestDeriveMustPreserve(unittest.TestCase):
 
     def test_string_participants_included(self):
         result = self._fn("普通事件", ["蕾穆丽娜", "穆蕾莉娅"])
-        self.assertIn("蕾穆丽娜 参与", result)
-        self.assertIn("穆蕾莉娅 参与", result)
+        self.assertIn("蕾穆丽娜 takes part", result)
+        self.assertIn("穆蕾莉娅 takes part", result)
 
     def test_dict_participants_included(self):
         result = self._fn("普通事件", [{"name": "蕾穆丽娜"}, {"name": "穆蕾莉娅"}])
-        self.assertIn("蕾穆丽娜 参与", result)
+        self.assertIn("蕾穆丽娜 takes part", result)
 
     def test_participants_capped_at_3(self):
         participants = ["A", "B", "C", "D", "E"]
         result = self._fn("事件", participants)
-        participant_items = [x for x in result if "参与" in x]
+        participant_items = [x for x in result if "takes part" in x]
         self.assertLessEqual(len(participant_items), 3)
 
     def test_fatal_keyword_appended(self):

@@ -97,23 +97,23 @@ class SummarizeJobResult(unittest.TestCase):
             {"id": "worldbook", "label": "世界书", "status": "skipped"},
         ]}
         s = ip.summarize_job_result(res, "测试")
-        self.assertIn("完成", s)
+        self.assertIn("finished", s)
         self.assertIn("角色卡:12", s)
         self.assertNotIn("世界书", s)  # skipped 不展示
 
     def test_done_with_errors(self):
         s = ip.summarize_job_result({"status": "done_with_errors", "warnings": "X"}, "测试")
-        self.assertIn("部分", s)
+        self.assertIn("some stages", s)
 
     def test_failed(self):
         s = ip.summarize_job_result({"status": "failed", "error": "boom"}, "测试")
-        self.assertIn("失败", s)
+        self.assertIn("failed", s)
         self.assertIn("boom", s)
 
     def test_cancelled_and_timeout_and_notfound(self):
-        self.assertIn("取消", ip.summarize_job_result({"status": "cancelled"}, "X"))
-        self.assertIn("后台", ip.summarize_job_result({"status": "running", "timed_out": True}, "X"))
-        self.assertIn("未找到", ip.summarize_job_result({"status": "not_found"}, "X"))
+        self.assertIn("cancelled", ip.summarize_job_result({"status": "cancelled"}, "X"))
+        self.assertIn("background", ip.summarize_job_result({"status": "running", "timed_out": True}, "X"))
+        self.assertIn("not found", ip.summarize_job_result({"status": "not_found"}, "X"))
 
 
 # ════════════════════════════════════════════════════════════
@@ -141,12 +141,12 @@ class RebuildScriptModule(unittest.TestCase):
     def test_validates_script_id(self):
         r = self._call({"script_id": "xyz", "module": "cards"})
         self.assertFalse(r.ok)
-        self.assertIn("整数", r.result or "")
+        self.assertIn("integer", r.result or "")
 
     def test_unknown_module(self):
         r = self._call({"script_id": 1, "module": "不存在的模块"})
         self.assertFalse(r.ok)
-        self.assertIn("未知模块", r.result or "")
+        self.assertIn("unknown module", r.result or "")
 
     def test_blocked_from_llm_chat(self):
         # destructive + origins=_USER_DEST(无 llm_chat)→ dispatcher origin_forbidden
@@ -217,7 +217,7 @@ class AttachmentTools(unittest.TestCase):
     def test_read_no_attachment(self):
         r = self._call("read_attached_text", {})
         self.assertFalse(r.ok)
-        self.assertIn("没有可读的文本附件", r.result or "")
+        self.assertIn("no readable text attachment", r.result or "")
 
     def test_read_success_and_offset(self):
         with patch("tools_dsl.command_tools_tavern._resolve_user_id", return_value=1):
@@ -252,7 +252,7 @@ class AttachmentTools(unittest.TestCase):
         with patch("tools_dsl.command_tools_tavern._resolve_user_id", return_value=1):
             r = self._call("import_attached_script", {})
             self.assertFalse(r.ok)
-            self.assertIn("没有可导入的文本附件", r.result or "")
+            self.assertIn("no importable text attachment", r.result or "")
 
     def test_import_chapters_cancels_pipeline(self):
         with patch("tools_dsl.command_tools_tavern._resolve_user_id", return_value=1), \
@@ -266,8 +266,8 @@ class AttachmentTools(unittest.TestCase):
             r = self._call("import_attached_script", {"scope": "chapters"})
             self.assertTrue(r.ok, r.error or r.result)
             self.assertIn("script_id=77", r.result)
-            self.assertIn("25 章", r.result)
-            self.assertIn("仅章节拆分", r.result)
+            self.assertIn("25 chapters", r.result)
+            self.assertIn("chapter split only", r.result)
             cancel.assert_called_once()  # chapters → 取消自动起的流水线
             # 用掉上传
             self.assertNotIn("_uploaded_files", self.state.data)
@@ -301,7 +301,7 @@ class AttachmentTools(unittest.TestCase):
             self._attach_text("剧本3.txt", "正文")
             r = self._call("import_attached_script", {"scope": "full"})
             self.assertTrue(r.ok, r.error or r.result)
-            self.assertIn("零 LLM 回退", r.result)
+            self.assertIn("zero-LLM fallback", r.result)
             wait.assert_not_called()
 
 

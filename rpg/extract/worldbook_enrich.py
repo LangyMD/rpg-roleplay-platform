@@ -23,9 +23,9 @@ MAX_MATERIAL_CHARS = 10000
 MIN_CONTENT = 120
 MAX_CONTENT = 500
 
-_SYSTEM = """你是设定集编纂者。根据【原文材料】重写一条世界书条目,输出严格 JSON(不要围栏):
-{"content": "200-400字。写清该设定:是什么、怎么运作、有什么限制/代价/分级/编制。只用材料里出现的信息,禁止脑补材料外的机制。第三人称设定集口吻,不写剧情。"}
-只输出这一个 JSON 对象。"""
+_SYSTEM = """You are a setting-guide compiler. Using the [Source material], rewrite one worldbook entry and output strict JSON (no fences):
+{"content": "About 130-200 words. Explain the setting element: what it is, how it works, its limits / costs / tiers / organization. Use only information found in the material; never invent mechanics beyond it. Third-person setting-guide voice; do not narrate plot."}
+Output only this one JSON object."""
 
 
 def gather_material(db, script_id: int, keyword: str, *, max_chapters: int = 6) -> str:
@@ -49,7 +49,7 @@ def gather_material(db, script_id: int, keyword: str, *, max_chapters: int = 6) 
             if not t:
                 continue
             take = t[: max(0, MAX_MATERIAL_CHARS - used)]
-            parts.append(f"[第{r['chapter_index']}章] {take}")
+            parts.append(f"[Chapter {r['chapter_index']}] {take}")
             used += len(take)
             if used >= MAX_MATERIAL_CHARS:
                 return "\n\n".join(parts)
@@ -71,9 +71,13 @@ def validate_enriched(raw_text: str) -> str | None:
     except Exception:
         return None
     content = re.sub(r"\s+", " ", str((data or {}).get("content") or "").strip())
-    if not (MIN_CONTENT <= len(content) <= MAX_CONTENT + 100):
+    # 字数口径按语种换算:MIN/MAX 按中文字符定,英文同等 token 预算约 2.5x 字符
+    from core.token_estimate import cjk_chars_to_budget
+    lo = cjk_chars_to_budget(content, MIN_CONTENT)
+    hi = cjk_chars_to_budget(content, MAX_CONTENT)
+    if not (lo <= len(content) <= hi + 100):
         return None
-    return content[:MAX_CONTENT]
+    return content[:hi]
 
 
 def enrich_script_worldbook(script_id: int, user_id: int, *, pattern: str,
@@ -92,7 +96,7 @@ def enrich_script_worldbook(script_id: int, user_id: int, *, pattern: str,
     from agents.recorder import _resolve_recorder_api_and_model
     rapi, rmodel = _resolve_recorder_api_and_model(user_id, api_id, model)
     if not rapi or not rmodel:
-        return {"ok": False, "error": "无可用 api/model"}
+        return {"ok": False, "error": "No usable API/model configured"}
     with connect() as db:
         entries = db.execute(
             "select id, title, content from worldbook_entries "
@@ -121,15 +125,15 @@ def enrich_script_worldbook(script_id: int, user_id: int, *, pattern: str,
                 pass
         title = str(ent.get("title") or "")
         # 关键词=标题去分类前缀(「力量·战姬」→「战姬」)
-        keyword = title.split("·")[-1].split(" ")[-1].strip() or title
+        keyword = (title.split("·")[-1].strip() if "·" in title else title.split(" ")[-1].strip()) or title
         try:
             with connect() as db:
                 material = gather_material(db, script_id, keyword)
             if len(material) < 200:
-                out.append({"id": ent["id"], "title": title, "status": "skip(材料不足)"})
+                out.append({"id": ent["id"], "title": title, "status": "skip(not enough material)"})
                 continue
-            user_p = (f"【条目名】{title}\n【现有内容(过于简略,需充实)】{ent.get('content') or '(空)'}\n"
-                      f"【原文材料】\n{material}")
+            user_p = (f"[Entry name] {title}\n[Current content (too brief, needs fleshing out)] {ent.get('content') or '(empty)'}\n"
+                      f"[Source material]\n{material}")
             content = None
             for _attempt in range(3):  # flash 随机性:验收拒最多重试两次
                 # 结构化微任务禁深思(268 实锤族)+空正文护栏
@@ -140,7 +144,7 @@ def enrich_script_worldbook(script_id: int, user_id: int, *, pattern: str,
                 if content:
                     break
             if not content:
-                out.append({"id": ent["id"], "title": title, "status": "reject(验收拒)"})
+                out.append({"id": ent["id"], "title": title, "status": "reject(failed validation)"})
                 continue
             if apply:
                 with connect() as db:

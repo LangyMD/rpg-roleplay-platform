@@ -61,30 +61,30 @@ _CASES = [
     # (id, ctx kwargs, raw_len, 期望 reason, 文案必须包含)
     ("A_thinking_ate_budget", dict(last_usage={"finish_reason": "length", "output_tokens": 4096,
                                                "reasoning_tokens": 4000, "max_tokens": 4096},
-                                   reasoning=["想" * 650]), 0, "reasoning_exhausted", "最大输出 token 数"),
+                                   reasoning=["想" * 650]), 0, "reasoning_exhausted", "maximum output tokens"),
     ("A2_reasoning_stream_only", dict(last_usage={"finish_reason": "length"}, reasoning=["嗯"]),
-     0, "reasoning_exhausted", "思考"),
+     0, "reasoning_exhausted", "thinking"),
     ("A3_length_no_visible_thinking", dict(last_usage={"finish_reason": "length", "max_tokens": 4096}),
-     0, "length", "最大输出 token 数"),
+     0, "length", "maximum output tokens"),
     ("B_reasoning_only_stop", dict(last_usage={"finish_reason": "stop"}, reasoning=["想了想"]),
-     0, "reasoning_only", "重试"),
+     0, "reasoning_only", "retry"),
     ("B2_reasoning_tokens_only", dict(last_usage={"finish_reason": "stop", "reasoning_tokens": 300}),
-     0, "reasoning_only", "重试"),
+     0, "reasoning_only", "retry"),
     ("C_tool_only", dict(last_usage={"finish_reason": "stop"},
-                         tool_ops=[{"tool": "kb_search", "ok": True}]), 0, "tool_only", "重试"),
-    ("D_upstream_empty", dict(last_usage={}), 0, "upstream_empty", "换个渠道"),
+                         tool_ops=[{"tool": "kb_search", "ok": True}]), 0, "tool_only", "retry"),
+    ("D_upstream_empty", dict(last_usage={}), 0, "upstream_empty", "switch providers"),
     ("stripped_to_empty", dict(last_usage={"finish_reason": "length"}, reasoning=["x"]),
-     120, "stripped_to_empty", "重试"),
+     120, "stripped_to_empty", "trying again"),
     ("openai_content_filter", dict(last_usage={"finish_reason": "content_filter"}), 0,
-     "content_filter", "内容策略"),
-    ("vertex_safety", dict(last_usage={"finish_reason": "SAFETY"}), 0, "content_filter", "内容策略"),
+     "content_filter", "content policy"),
+    ("vertex_safety", dict(last_usage={"finish_reason": "SAFETY"}), 0, "content_filter", "content policy"),
     ("vertex_prohibited", dict(last_usage={"finish_reason": "PROHIBITED_CONTENT"}), 0,
-     "content_filter", "内容策略"),
-    ("anthropic_refusal", dict(last_usage={"finish_reason": "refusal"}), 0, "content_filter", "内容策略"),
+     "content_filter", "content policy"),
+    ("anthropic_refusal", dict(last_usage={"finish_reason": "refusal"}), 0, "content_filter", "content policy"),
     ("dsml_unparsed", dict(last_usage={"finish_reason": "stop"}, tool_errors=["模型输出了无法解析的工具调用标记"]),
-     0, "tool_markup_unparsed", "解析不了"),
+     0, "tool_markup_unparsed", "could not be parsed"),
     ("vertex_malformed_call", dict(last_usage={"finish_reason": "MALFORMED_FUNCTION_CALL"}), 0,
-     "tool_markup_unparsed", "解析不了"),
+     "tool_markup_unparsed", "could not be parsed"),
 ]
 
 
@@ -96,7 +96,7 @@ def test_diagnosis_branches(cid, kw, raw_len, reason, must):
     assert not _EMOJI.search(msg), f"文案里有 emoji / 符号图标: {msg!r}"
     assert "→" not in msg
     if reason != "content_filter":
-        assert "安全过滤" not in msg and "内容策略" not in msg, "不是风控就别让玩家以为是风控"
+        assert "安全过滤" not in msg and "content policy" not in msg, "不是风控就别让玩家以为是风控"
     assert facts["api_id"] == "ollama-cloud" and facts["raw_len"] == raw_len
 
 
@@ -253,14 +253,14 @@ def test_notice_silent_when_body_empty():
 @pytest.mark.parametrize("fr", ["SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION", "refusal"])
 def test_notice_recognizes_whole_content_filter_family(fr):
     out = _stop_reason_notice(_NoticeCtx(fr))
-    assert len(out) == 1 and "内容策略" in out[0][1]
+    assert len(out) == 1 and "content policy" in out[0][1]
     assert not _EMOJI.search(out[0][1])
 
 
 def test_output_regex_emptied_is_told_apart():
     """玩家自己的输出正则把正文整段换空:重试没用,得告诉他去看正则,而不是「直接重试」。"""
     reason, msg, _ = _empty_turn_diagnosis(_ctx({"finish_reason": "stop"}), 80, regex_emptied=True)
-    assert reason == "output_regex_emptied" and "正则" in msg
+    assert reason == "output_regex_emptied" and "regex" in msg
     assert not _EMOJI.search(msg)
 
 

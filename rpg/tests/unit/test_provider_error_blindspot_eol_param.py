@@ -57,7 +57,7 @@ def _cat(exc):
 def test_410_end_of_life_is_model_unavailable():
     cat, msg = classify_provider_error(_openai_status_error(410, {"error": {"message": _EOL, "code": 410}}))
     assert cat == "model_unavailable"
-    assert "下线" in msg and "请重试" not in msg
+    assert "retired" in msg and "try again" not in msg
 
 
 def test_eol_wording_without_status_is_model_unavailable():
@@ -83,7 +83,7 @@ def test_client_safe_error_410_is_actionable_and_persisted_as_model_unavailable(
 
     with mock.patch("platform_app.usage.record_provider_failure", side_effect=_rec):
         msg = _client_safe_error(_openai_status_error(410, {"error": {"message": _EOL}}))
-    assert "下线" in msg and "请重试" not in msg
+    assert "retired" in msg and "try again" not in msg
     assert seen.get("category") == "model_unavailable"
 
 
@@ -91,7 +91,7 @@ def test_client_safe_error_410_is_actionable_and_persisted_as_model_unavailable(
 def test_relay_plain_text_unknown_param_is_bad_request_with_original_words():
     cat, msg = classify_provider_error(_openai_status_error(400, "code:400 请求失败:请求中含有未识别参数"))
     assert cat == "bad_request"
-    assert "中转站" in msg and "未识别参数" in msg
+    assert "relay" in msg and "未识别参数" in msg
 
 
 @pytest.mark.parametrize("message", [
@@ -191,7 +191,7 @@ def test_http_error_410_gone_is_model_unavailable():
 def test_http_error_redirect_stays_network_with_base_url_hint(code):
     cat, msg = classify_provider_error(_http_error(code, reason="Moved"))
     assert cat == "network"
-    assert "重定向" in msg and "base_url" in msg
+    assert "redirect" in msg and "base_url" in msg
 
 
 def test_http_error_408_stays_network():
@@ -354,7 +354,7 @@ def test_sdk_redirect_status_gets_redirect_hint():
     """openai SDK 的 307(http 被重定向到 https)以前落空成「请重试」;按状态码统一给 base_url 提示。"""
     cat, msg = classify_provider_error(_openai_status_error(307, "Temporary Redirect"))
     assert cat == "network"
-    assert "重定向" in msg and "base_url" in msg
+    assert "redirect" in msg and "base_url" in msg
 
 
 def test_unrelated_error_raised_while_handling_outbound_blocked_is_not_network():

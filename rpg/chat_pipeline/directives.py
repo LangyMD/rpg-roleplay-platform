@@ -48,7 +48,7 @@ async def apply_player_directives_phase(
         _expired_n = state.expire_stale_gm_questions(reason="new_chat_turn")
         if _expired_n:
             yield ("updates", {
-                "items": [f"自动过期 {_expired_n} 条上轮未回答的 GM 询问"],
+                "items": [f"Expired {_expired_n} unanswered GM question(s) from the previous turn"],
                 "stage": "pre_directive",
             })
     except Exception as _exp_err:
@@ -80,7 +80,7 @@ async def apply_player_directives_phase(
             if not _sid:
                 yield ("agent", {
                     "phase": "compact",
-                    "message": "/compact 失败:当前没有 active save",
+                    "message": "/compact failed: there is no active save",
                     "status": "error", "elapsed_ms": 0,
                 })
                 ctx.early_return = True
@@ -96,7 +96,7 @@ async def apply_player_directives_phase(
             _phase = int((_row or {}).get("pi") or 0)
             yield ("agent", {
                 "phase": "compact",
-                "message": f"开始压缩 Phase {_phase} (LLM 摘要,~10-20s)",
+                "message": f"Compacting phase {_phase} (LLM summary, ~10-20s)",
                 "status": "running", "elapsed_ms": 0,
             })
             from agents.phase_digest_agent import compact_phase
@@ -105,7 +105,7 @@ async def apply_player_directives_phase(
             if _result.get("error"):
                 yield ("agent", {
                     "phase": "compact",
-                    "message": f"/compact 失败:{_result['error']}",
+                    "message": f"/compact failed: {_result['error']}",
                     "status": "error", "elapsed_ms": 0,
                 })
             else:
@@ -124,7 +124,7 @@ async def apply_player_directives_phase(
                 yield ("agent", {
                     "phase": "compact",
                     "message": (
-                        f"压缩完成:Phase {_phase} ({_result.get('commit_count', 0)} 提交) "
+                        f"Compaction done: phase {_phase} ({_result.get('commit_count', 0)} commits) "
                         f"→ {_summary_excerpt}..."
                     ),
                     "status": "done", "elapsed_ms": int(_result.get("elapsed_ms", 0)),
@@ -142,7 +142,7 @@ async def apply_player_directives_phase(
         except Exception as _compact_err:
             yield ("agent", {
                 "phase": "compact",
-                "message": f"/compact 异常:{type(_compact_err).__name__}: {_compact_err}",
+                "message": f"/compact error: {type(_compact_err).__name__}: {_compact_err}",
                 "status": "error", "elapsed_ms": 0,
             })
         ctx.early_return = True
@@ -153,7 +153,15 @@ async def apply_player_directives_phase(
     # 确定性修复:把上一轮整体软回滚(移活跃指针到父 commit + trash 旧回合 + 清本回合 messages/
     # anchors/digests),把内存状态退回到上一轮之前,再让下面的 /set 在这个干净基线上应用,最后
     # 用"上一轮的原始玩家输入"在纠正后的状态下重演本轮(而不是把 /set 文本本身喂给 GM)。
-    _REWRITE_SET_RE = r"重新\s*(rp|演|叙述|描述|生成|回应|回复|来|讲|写|说)|重写|重来|重演|\bredo\b"
+    # 英文等价:只收「rewrite/replay/regenerate + 宾语(it/that/the scene...)」与 redo / do it again,
+    # 不收裸 "rewrite"(/set 正文里描述剧情的 "the king rewrites the law" 不能触发回滚)。
+    _REWRITE_SET_RE = (
+        r"重新\s*(rp|演|叙述|描述|生成|回应|回复|来|讲|写|说)|重写|重来|重演|\bredo\b"
+        r"|\b(?:rewrite|replay|rerun|re-?generate|re-?narrate|re-?roll)\s+"
+        r"(?:it|that|this|the\s+(?:last\s+|previous\s+)?(?:scene|turn|reply|response|round))\b"
+        r"|\b(?:do|play|write)\s+(?:it|that|this|the\s+(?:last\s+)?(?:scene|turn))\s+(?:again|over)\b"
+        r"|\bre-?do\s+(?:it|that|the\s+(?:last\s+)?(?:scene|turn))\b"
+    )
     _set_body_for_rewrite = ""
     if os.getenv("RPG_REWRITE_SET", "1") != "0":
         for _p in ("/set", "/设定", "/设置"):
@@ -178,7 +186,7 @@ async def apply_player_directives_phase(
                 # 下游 context/GM/persist 改用"原始输入"重演本轮;"/set"文本只在本 phase 用于解析指令
                 ctx.message_for_model = _redo
                 directive_updates.append(
-                    f"/set 重写:已回滚上一轮(turn {_rw.get('deleted_turn')})并按修正后的设定重演本轮"
+                    f"/set rewrite: rolled back the previous round (turn {_rw.get('deleted_turn')}) and replayed it with the corrected setting"
                 )
                 yield ("rewind", {
                     "replay_user": _redo,
@@ -230,10 +238,10 @@ async def apply_player_directives_phase(
                     else:
                         # 失败可能来自 DispatchError(error 有值)或工具自身返回的
                         # "X 失败: ..." 结果串(error=None,消息在 result 里)。
-                        _err_txt = str(_res.error or _res.result or "未知原因")
+                        _err_txt = str(_res.error or _res.result or "unknown reason")
                         directive_updates.append(
                             _err_txt if _err_txt.startswith(_env.tool)
-                            else f"{_env.tool} 未生效: {_err_txt}"
+                            else f"{_env.tool} not applied: {_err_txt}"
                         )
                 command_tools_handled = True
         except Exception as _cmd_exc:
@@ -265,7 +273,7 @@ async def apply_player_directives_phase(
                                 time_label=op.get("time_label"),
                                 characters=op.get("characters"),
                             )
-                            directive_updates.append(f"推测登记（/set 解析）：{mid}")
+                            directive_updates.append(f"Hypothesis recorded (/set parse): {mid}")
                     elif kind in ("set", "append", "overwrite"):
                         path = (op.get("path") or "").strip()
                         if path:
@@ -276,7 +284,7 @@ async def apply_player_directives_phase(
                                 append=(kind == "append"),
                                 overwrite=(kind == "overwrite"),
                             )
-                            directive_updates.append(f"/set 解析: {res}")
+                            directive_updates.append(f"/set parse: {res}")
                 except Exception as op_exc:
                     log.warning(f"[set_parser] op apply failed: {op_exc} for {op}")
         except Exception as exc:
@@ -288,7 +296,7 @@ async def apply_player_directives_phase(
                     "ts": _dt.now().isoformat(timespec="seconds"),
                     "kind": "set_parser_error",
                     "source": "set_parser",
-                    "hint": f"/set 自然语言解析失败：{type(exc).__name__}: {str(exc)[:200]}",
+                    "hint": f"/set natural-language parse failed: {type(exc).__name__}: {str(exc)[:200]}",
                     "turn": state.data.get("turn", 0),
                 })
                 if len(audit) > 200:
@@ -340,7 +348,7 @@ async def apply_player_directives_phase(
                     except Exception as _prog_err:
                         log.warning(f"[chat] 世界线跳转进度推进跳过(非致命): {_prog_err}")
                     directive_updates.append(
-                        f"时间线锚点 → 第{_anchor['chapter_min']}-{_anchor['chapter_max']}章 · "
+                        f"Timeline anchor -> chapters {_anchor['chapter_min']}-{_anchor['chapter_max']} · "
                         f"{_anchor['story_phase']}"
                     )
     except Exception as _anchor_err:

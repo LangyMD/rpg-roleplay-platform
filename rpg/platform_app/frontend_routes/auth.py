@@ -29,15 +29,15 @@ async def api_change_password(request: Request):
     cur_pw = body.get("current") or ""
     next_pw = body.get("next") or ""
     if len(next_pw) < _auth.MIN_PASSWORD_LENGTH:
-        return _bad(f"新密码至少 {_auth.MIN_PASSWORD_LENGTH} 位")
+        return _bad(f"The new password must be at least {_auth.MIN_PASSWORD_LENGTH} characters")
     init_db()
     with connect() as db:
         row = db.execute("select password_hash from users where id = %s", (user["id"],)).fetchone()
         if not row:
-            return _bad("用户不存在", status=404)
+            return _bad("User does not exist", status=404)
         has_existing_password = bool(row["password_hash"])
         if has_existing_password and not verify_password(cur_pw, row["password_hash"]):
-            return _bad("当前密码错误")
+            return _bad("Current password is incorrect")
         db.execute(
             "update users set password_hash = %s, row_version = row_version + 1, updated_at = now() where id = %s",
             (hash_password(next_pw), user["id"]),
@@ -51,7 +51,7 @@ async def api_change_password(request: Request):
                 "delete from sessions where user_id = %s and token_hash <> %s",
                 (user["id"], _hash_token(token)),
             )
-    return json_response({"ok": True, "message": "密码已修改" if has_existing_password else "密码已设置"})
+    return json_response({"ok": True, "message": "Password changed" if has_existing_password else "Password set"})
 
 
 @router.get("/api/auth/login-history")
@@ -146,14 +146,14 @@ async def api_revoke_session(request: Request):
     body = await request.json()
     sid = body.get("session_id") or body.get("id") or ""
     if not sid:
-        return _bad("缺少 session_id")
+        return _bad("Missing session_id")
     init_db()
     from ..auth import _hash_token
     cur_token = request.cookies.get(SESSION_COOKIE) or ""
     cur_hash = _hash_token(cur_token) if cur_token else ""
     # P1-2 方案B: sid 已是前 24 位前缀，用 startswith 精确前缀匹配代替后缀 LIKE 碰撞
     if len(sid) != 24 or not all(c in "0123456789abcdef" for c in sid):
-        return _bad("无效的 session_id 格式")
+        return _bad("Invalid session_id format")
     with connect() as db:
         # 用 token_hash 前 24 位前缀精确匹配；当前会话不能被自我吊销
         deleted = db.execute(

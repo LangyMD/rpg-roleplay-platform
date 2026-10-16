@@ -128,7 +128,7 @@ def test_create_explicit_key_conflict_still_409(env):
     r = c.post(f"/api/scripts/{sid}/canon-entities", json={**body, "name": "另一个"})
     assert r.status_code == 409
     err = r.json()["error"]
-    assert "hero_01" in err and "留空" in err  # 可读:告诉用户怎么办
+    assert "hero_01" in err and "leave it blank" in err  # 可读:告诉用户怎么办
     assert _row(env, "hero_01")["name"] == "主角"  # 没被覆盖
 
 
@@ -136,22 +136,22 @@ def test_create_validation_errors_are_readable(env):
     c, sid = env["client"], env["sid"]
     r = c.post(f"/api/scripts/{sid}/canon-entities", json={"type": "concept"})
     assert r.status_code == 400
-    assert "名称" in r.json()["error"]
+    assert "Name" in r.json()["error"]
     assert "logical_key" not in r.json()["error"]  # 不再只甩字段名
 
     r = c.post(f"/api/scripts/{sid}/canon-entities", json={"name": "某物"})
     assert r.status_code == 400
-    assert "类型" in r.json()["error"]
+    assert "type" in r.json()["error"]
 
     r = c.post(f"/api/scripts/{sid}/canon-entities", json={"name": "某物", "type": "weird"})
     assert r.status_code == 400
     err = r.json()["error"]
-    assert "weird" in err and "character" in err and "人物" in err
+    assert "weird" in err and "character" in err and "faction" in err
 
     r = c.post(f"/api/scripts/{sid}/canon-entities",
                json={"name": "某物", "type": "item", "importance": "很高"})
     assert r.status_code == 400
-    assert "整数" in r.json()["error"]
+    assert "integer" in r.json()["error"]
 
 
 # ── 编辑 ─────────────────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ def test_put_renames_and_retypes(env):
     assert row["name"] == "新名" and row["type"] == "faction"
 
     r = c.put(f"/api/scripts/{sid}/canon-entities/{lk}", json={"name": "  "})
-    assert r.status_code == 400 and "名称" in r.json()["error"]
+    assert r.status_code == 400 and "Name" in r.json()["error"]
     r = c.put(f"/api/scripts/{sid}/canon-entities/{lk}", json={"type": "bogus"})
     assert r.status_code == 400 and "bogus" in r.json()["error"]
     assert _row(env, lk)["type"] == "faction"
@@ -191,7 +191,7 @@ def test_put_null_and_blank_values_do_not_corrupt(env):
     assert row["importance"] == 0 and row["first_revealed_chapter"] == 0
 
     r = c.put(f"/api/scripts/{sid}/canon-entities/{lk}", json={"parent_logical_key": lk})
-    assert r.status_code == 400 and "上级" in r.json()["error"]
+    assert r.status_code == 400 and "parent" in r.json()["error"]
 
 
 def test_put_marks_editor_source_and_keeps_it_when_attrs_replaced(env):
@@ -219,7 +219,7 @@ def test_put_missing_entity_404_readable(env):
     c, sid = env["client"], env["sid"]
     r = c.put(f"/api/scripts/{sid}/canon-entities/nope", json={"name": "x"})
     assert r.status_code == 404
-    assert "不存在" in r.json()["error"]
+    assert "does not exist" in r.json()["error"]
 
 
 # ── 删除 ─────────────────────────────────────────────────────────────────────
@@ -278,23 +278,23 @@ def test_editor_agent_tool_creates_without_key_and_validates_type(env):
 
     sid, uid = env["sid"], env["uid"]
     out = _t_upsert_canon_entity(uid, sid, {"name": "灵脉", "type": "concept"}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
     assert "灵脉_concept" in out
     assert _row(env, "灵脉_concept")["attrs"].get("source") == "editor"
 
     # 同名同类型再建:失败并指向已有 key(不静默造 灵脉_concept_2)
     out = _t_upsert_canon_entity(uid, sid, {"name": "灵脉", "type": "concept"}, None)
-    assert out.startswith("失败") and "灵脉_concept" in out and "灵脉_concept_2" not in out
+    assert out.startswith("Failed") and "灵脉_concept" in out and "灵脉_concept_2" not in out
 
     out = _t_upsert_canon_entity(uid, sid, {"name": "某物", "type": "weapon"}, None)
-    assert out.startswith("失败") and "weapon" in out
+    assert out.startswith("Failed") and "weapon" in out
 
     out = _t_upsert_canon_entity(uid, sid, {"logical_key": "灵脉_concept", "type": "bogus"}, None)
-    assert out.startswith("失败") and "bogus" in out
+    assert out.startswith("Failed") and "bogus" in out
     assert _row(env, "灵脉_concept")["type"] == "concept"
 
     out = _t_upsert_canon_entity(uid, sid, {"logical_key": "灵脉_concept", "type": "势力"}, None)
-    assert not out.startswith("失败"), out
+    assert not out.startswith("Failed"), out
     assert _row(env, "灵脉_concept")["type"] == "faction"
 
 
@@ -317,4 +317,4 @@ def test_review_patch_update_marks_editor_source(env):
 
     r = c.patch(f"/api/scripts/{sid}/canon",
                 json={"op": "update_entity", "logical_key": "rv_one", "importance": "高"})
-    assert r.status_code == 400 and "整数" in r.json()["error"]
+    assert r.status_code == 400 and "integer" in r.json()["error"]

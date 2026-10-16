@@ -156,17 +156,17 @@ class TestRecorderSeesTheReminder(unittest.TestCase):
 
     def test_stale_quest_produces_a_reminder(self):
         text = self._prompt(_data(turn=1000, stamped=885))
-        self.assertIn("主线", text)
-        self.assertIn("115 回合", text)
+        self.assertIn("main quest", text)
+        self.assertIn("115 turns", text)
         self.assertIn("memory.main_quest", text)
 
     def test_reminder_offers_a_self_limiting_confirm_path(self):
         """两个出口都要有,且「仍准确」那条必须是**原样重写以确认**而不是「别动」——
         「别动」会让戳永远不更新 → 每回合都催,反而逼出交差式改写。"""
         text = self._prompt(_data(turn=1000, stamped=885))
-        self.assertIn("仍然准确", text)
-        self.assertIn("原样重写", text)
-        self.assertIn("重置计时", text)
+        self.assertIn("still accurate", text)
+        self.assertIn("rewrite the exact same value", text)
+        self.assertIn("resets the timer", text)
 
     def test_confirming_with_the_same_value_resets_the_clock(self):
         """出口 (b) 必须真的有效:重写同一条值也要打戳,否则那条指示是空头支票。"""
@@ -182,7 +182,7 @@ class TestRecorderSeesTheReminder(unittest.TestCase):
 
     def test_fresh_quest_has_no_reminder(self):
         text = self._prompt(_data(turn=100, stamped=99))
-        self.assertNotIn("没有更新过", text)
+        self.assertNotIn("has not been updated", text)
 
     def test_reminder_is_wrapped_so_it_can_never_break_the_recorder(self):
         """史官是每回合热路径 —— 提醒逻辑抛异常绝不能带崩它。"""

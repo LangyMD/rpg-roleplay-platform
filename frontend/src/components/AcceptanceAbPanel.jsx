@@ -3,6 +3,7 @@
 // 首稿(玩家流式读到的)永远是权威版、不被静默替换;这里把两版并排给玩家选择,选择结果回传后端用于
 // (a) 采集数据迭代 acceptance 算法,(b) 选改写才把该轮消息换成服务端存的改写稿。
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const PANEL = {
   margin: '0 0 8px',
@@ -47,42 +48,43 @@ const BTN_PRIMARY = {
 };
 
 export function AcceptanceAbPanel({ alt, original, onChoose, onDismiss, busy }) {
+  const { t } = useTranslation();
   if (!alt) return null;
   const unmet = Array.isArray(alt.unmet) ? alt.unmet : [];
   return (
-    <div className="gc-ab-panel" style={PANEL} role="region" aria-label="改写版本对比">
+    <div className="gc-ab-panel" style={PANEL} role="region" aria-label={t('acceptance_ab.aria')}>
       <div style={HEAD}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-          本轮生成了一个改写版本
+          {t('acceptance_ab.title')}
         </span>
         <span style={{ flex: 1, fontSize: 12, color: 'var(--muted)' }}>
-          依据 {unmet.length} 条未覆盖的剧情要点重写 · 你更想保留哪一版?
+          {t('acceptance_ab.subtitle', { count: unmet.length })}
         </span>
         <button
           type="button"
           onClick={onDismiss}
           disabled={busy}
           style={{ ...BTN, width: 'auto', padding: '4px 10px', fontSize: 12, color: 'var(--muted)' }}
-          title="关掉对比,保留你当前读到的这一版"
-        >保留当前</button>
+          title={t('acceptance_ab.keep_current_tip')}
+        >{t('acceptance_ab.keep_current')}</button>
       </div>
 
       <div style={COL_WRAP}>
         <div style={COL}>
-          <div style={COL_HEAD}>当前版本(你刚读到的)</div>
-          <div style={PROSE}>{original || '(空)'}</div>
+          <div style={COL_HEAD}>{t('acceptance_ab.current_version')}</div>
+          <div style={PROSE}>{original || t('acceptance_ab.empty')}</div>
           <div style={ACT}>
             <button type="button" style={BTN} disabled={busy} onClick={() => onChoose('original')}>
-              保留这一版
+              {t('acceptance_ab.keep_this')}
             </button>
           </div>
         </div>
         <div style={COL}>
-          <div style={{ ...COL_HEAD, color: 'var(--accent)' }}>改写版本</div>
-          <div style={PROSE}>{alt.rewrite || '(空)'}</div>
+          <div style={{ ...COL_HEAD, color: 'var(--accent)' }}>{t('acceptance_ab.rewrite_version')}</div>
+          <div style={PROSE}>{alt.rewrite || t('acceptance_ab.empty')}</div>
           <div style={ACT}>
             <button type="button" style={BTN_PRIMARY} disabled={busy} onClick={() => onChoose('rewrite')}>
-              换成这一版
+              {t('acceptance_ab.use_this')}
             </button>
           </div>
         </div>
@@ -91,7 +93,7 @@ export function AcceptanceAbPanel({ alt, original, onChoose, onDismiss, busy }) 
       {unmet.length > 0 && (
         <details style={{ padding: '6px 12px 9px', borderTop: '1px solid var(--border)' }}>
           <summary style={{ fontSize: 12, color: 'var(--muted)', cursor: 'pointer' }}>
-            为什么会有改写(未覆盖的剧情要点)
+            {t('acceptance_ab.why')}
           </summary>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-quiet, var(--muted))', lineHeight: 1.7 }}>
             {unmet.map((u, i) => (<li key={i}>{String(u)}</li>))}

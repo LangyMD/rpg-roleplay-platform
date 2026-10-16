@@ -22,7 +22,7 @@ async def api_save_delete(save_id: int, request: Request):
     init_db()
     with connect() as db:
         if not owns_save(db, save_id, user["id"]):
-            return _bad("无权操作该存档", 403)
+            return _bad("Not allowed to modify this save", 403)
         db.execute("delete from game_saves where id = %s and user_id = %s", (save_id, user["id"]))
     return json_response({"ok": True})
 
@@ -33,11 +33,11 @@ async def api_save_rename(save_id: int, request: Request):
     body = await request.json()
     title = (body.get("title") or "").strip()
     if not title:
-        return _bad("标题不能为空")
+        return _bad("Title cannot be empty")
     init_db()
     with connect() as db:
         if not owns_save(db, save_id, user["id"]):
-            return _bad("无权操作该存档", 403)
+            return _bad("Not allowed to modify this save", 403)
         db.execute(
             "update game_saves set title = %s, updated_at = now() where id = %s",
             (title, save_id),

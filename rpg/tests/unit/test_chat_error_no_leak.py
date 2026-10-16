@@ -51,8 +51,8 @@ class ChatErrorNoLeak(unittest.TestCase):
         msg = _client_safe_error(exc)
         # 573bbde1b 后 auth 文案扩为「无效、已过期,或该 key 无权访问此模型(401/403)」+
         # 入口改「模型与密钥」;只锁稳定片段,不锁全句。
-        self.assertIn("API Key 无效", msg)
-        self.assertIn("模型与密钥", msg)
+        self.assertIn("API key for the current model is invalid", msg)
+        self.assertIn("Models & Keys", msg)
         self.assertNotIn("123", msg)
         self.assertNotIn("platform.openai.com", msg)
         self.assertNotIn("invalid_request_error", msg)
@@ -65,10 +65,10 @@ class ChatErrorNoLeak(unittest.TestCase):
             "'type': 'unknown_error', 'param': None, 'code': 'invalid_request_error'}}"
         )
         msg = _client_safe_error(exc)
-        self.assertIn("余额不足", msg)
-        self.assertIn("充值", msg)
+        self.assertIn("insufficient balance", msg)
+        self.assertIn("Top up", msg)
         self.assertNotIn("Insufficient", msg)
-        self.assertNotIn("请重试", msg, "余额不足重试无法恢复,不应引导重试")
+        self.assertNotIn("try again", msg, "余额不足重试无法恢复,不应引导重试")
         self.assertTrue(re.search(r"[0-9a-f]{8}", msg), "缺 error_id")
 
     def test_status_code_402_attr_is_actionable(self):
@@ -76,7 +76,7 @@ class ChatErrorNoLeak(unittest.TestCase):
         class _FakeAPIStatusError(Exception):
             status_code = 402
         msg = _client_safe_error(_FakeAPIStatusError("provider says no"))
-        self.assertIn("余额不足", msg)
+        self.assertIn("insufficient balance", msg)
         self.assertNotIn("provider says no", msg)
 
     def test_openai_insufficient_quota_maps_to_balance_not_ratelimit(self):
@@ -88,15 +88,15 @@ class ChatErrorNoLeak(unittest.TestCase):
             "please check your plan and billing details.', 'code': 'insufficient_quota'}}"
         )
         msg = _client_safe_error(exc)
-        self.assertIn("余额不足", msg)
-        self.assertIn("充值", msg)
+        self.assertIn("insufficient balance", msg)
+        self.assertIn("Top up", msg)
 
     def test_rate_limit_429_is_actionable(self):
         class _FakeAPIStatusError(Exception):
             status_code = 429
         msg = _client_safe_error(_FakeAPIStatusError("Too many requests, slow down"))
-        self.assertIn("限流", msg)
-        self.assertIn("重试", msg)
+        self.assertIn("rate limit", msg)
+        self.assertIn("try again", msg)
         self.assertNotIn("slow down", msg)
         self.assertTrue(re.search(r"[0-9a-f]{8}", msg), "缺 error_id")
 
@@ -104,14 +104,14 @@ class ChatErrorNoLeak(unittest.TestCase):
         class _FakeAPIStatusError(Exception):
             status_code = 401
         msg = _client_safe_error(_FakeAPIStatusError("Authentication Fails"))
-        self.assertIn("API Key 无效", msg)
+        self.assertIn("API key for the current model is invalid", msg)
 
     def test_deepseek_auth_fails_message_without_status_attr(self):
         # DeepSeek 401 文案不含既有 marker;靠 "authentication fails" 兜住
         msg = _client_safe_error(RuntimeError(
             "Error code: 401 - {'error': {'message': 'Authentication Fails (no such user)'}}"
         ))
-        self.assertIn("API Key 无效", msg)
+        self.assertIn("API key for the current model is invalid", msg)
 
     def test_vertex_resource_exhausted_maps_to_ratelimit(self):
         # google.genai 的 ClientError 只有 .code 没有 .status_code,靠 message/code 兜住
@@ -122,21 +122,21 @@ class ChatErrorNoLeak(unittest.TestCase):
             "'Quota exceeded for quota metric ...', 'status': 'RESOURCE_EXHAUSTED'}}"
         )
         msg = _client_safe_error(exc)
-        self.assertIn("限流", msg)
+        self.assertIn("rate limit", msg)
         self.assertNotIn("RESOURCE_EXHAUSTED", msg)
 
     def test_openrouter_insufficient_credits_maps_to_balance(self):
         msg = _client_safe_error(RuntimeError(
             "Error code: 402 - {'error': {'message': 'Insufficient credits', 'code': 402}}"
         ))
-        self.assertIn("余额不足", msg)
+        self.assertIn("insufficient balance", msg)
 
     def test_sqlstate_code_attr_not_mistaken_for_http_status(self):
         # psycopg 等异常的字符串 code(sqlstate)不能被当 HTTP 状态码
         class _FakeDBError(Exception):
             code = "23505"
         msg = _client_safe_error(_FakeDBError("duplicate key value violates unique constraint"))
-        self.assertIn("本轮处理出错", msg)
+        self.assertIn("Something went wrong this turn", msg)
 
     def test_source_no_raw_str_exc_to_client_sse(self):
         # 两处 client-facing SSE error 不应再直传 str(exc)

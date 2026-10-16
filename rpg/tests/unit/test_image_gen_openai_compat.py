@@ -117,7 +117,7 @@ class ImagesApiPath(_NoNetworkTestCase):
                 openai_compat.generate("x", {}, api_id="openai", model="dall-e-3",
                                        api_key="k", base_url="https://relay.test/v1")
         msg = str(ctx.exception)
-        self.assertIn("鉴权失败", msg)
+        self.assertIn("authentication failed", msg)
         self.assertIn("Key", msg)
         self.assertIn("401", msg)
 
@@ -159,7 +159,7 @@ class ChatModalityFallback(_NoNetworkTestCase):
                 openai_compat.generate("x", {}, api_id="openrouter", model="google/gemini-3-pro-image-preview",
                                        api_key="k", base_url="https://openrouter.test/api/v1")
         msg = str(ctx.exception)
-        self.assertIn("鉴权失败", msg)
+        self.assertIn("authentication failed", msg)
         self.assertIn("sk-or-v1", msg)  # openrouter 专属提示 key 形如 sk-or-v1-…
 
     def test_chat_no_image_clear_error(self):
@@ -168,7 +168,7 @@ class ChatModalityFallback(_NoNetworkTestCase):
             with self.assertRaises(ImageGenError) as ctx:
                 openai_compat.generate("x", {}, api_id="openrouter", model="some/text-model",
                                        api_key="k", base_url="https://openrouter.test/api/v1")
-        self.assertIn("未返回图像", str(ctx.exception))
+        self.assertIn("returned no image", str(ctx.exception))
 
 
 class BaseUrlResolution(_NoNetworkTestCase):

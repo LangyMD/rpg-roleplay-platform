@@ -31,21 +31,21 @@ class CuratorModeAware(unittest.TestCase):
 
     def test_free_forbids_canon_acceptance(self):
         p = self._prompt("free")
-        self.assertIn("严禁", p)
-        self.assertIn("自由", p)
+        self.assertIn("Never", p)
+        self.assertIn("free", p)
         # 主线仍作背景出现,但明确"勿强推"
         self.assertIn("阴阳易转论", p)
-        self.assertIn("勿强推", p)
+        self.assertIn("do not push it", p)
 
     def test_guided_is_gentle(self):
         p = self._prompt("guided")
-        self.assertIn("温和", p)
-        self.assertNotIn("严禁", p)
+        self.assertIn("gently", p)
+        self.assertNotIn("Never", p)
 
     def test_rail_still_converges(self):
         p = self._prompt("rail")
-        self.assertIn("收束", p)
-        self.assertNotIn("严禁", p)
+        self.assertIn("converge", p)
+        self.assertNotIn("Never", p)
 
     def test_default_is_guided(self):
         # 不传 steering_strength → 默认 guided
@@ -53,7 +53,7 @@ class CuratorModeAware(unittest.TestCase):
         from state.core import GameState
         g = GameState.new()
         p = _curator_task_prompt(g, "test", [])
-        self.assertIn("温和", p)
+        self.assertIn("gently", p)
 
 
 class SteeringFreeGateGuard(unittest.TestCase):

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import modules as module_registry
 from rules_bridge.intent import (
+    _EN_MOVEMENT_RE,
     _direction_to_exit,
     _has_movement_intent,
 )
@@ -36,6 +37,28 @@ INTENT_KEYWORDS: list[tuple[str, dict]] = [
     # Bug 4：移动意图。匹配「沿/往/向 ... 探索/前进/走/去」等，落到当前房间的某个 exit。
     # 真实 exit 由 suggest_rule_actions 内的 _direction_to_exit() 解析；这里只是触发器。
     (r"(沿|往|向|去|前往|走向|前进|探索|进入)", {"kind": "move", "_direction_hint": True}),
+    # English equivalents (case-insensitive, word-boundary). Same templates as above.
+    (r"(?i)\b(sneak\w*|stealth\w*|creep\w*|tiptoe\w*|unseen|unnoticed|quietly|hide|hiding)\b",
+        {"kind": "skill_check", "skill": "stealth", "dc_hint": 13}),
+    (r"(?i)\b(investigat\w*|search\w*|examin\w*|inspect\w*|rummag\w*)\b",
+        {"kind": "skill_check", "skill": "investigation", "dc_hint": 12}),
+    (r"(?i)\b(listen\w*|notice|spot|perceive|keep watch|look around|observe\w*)\b",
+        {"kind": "skill_check", "skill": "perception", "dc_hint": 12}),
+    (r"(?i)\b(climb\w*|jump over|leap|break (?:down|open) the door|force (?:the door|it) open|shove)\b",
+        {"kind": "skill_check", "skill": "athletics", "dc_hint": 12}),
+    (r"(?i)\b(persuad\w*|convinc\w*|negotiat\w*|surrender\w*|beg for mercy|lay down (?:my|our) (?:weapons?|arms)"
+     r"|raise (?:my|our) hands|parley)\b",
+        {"kind": "skill_check", "skill": "persuasion", "dc_hint": 14}),
+    (r"(?i)\b(deceiv\w*|lie to|bluff\w*|pretend\w*|disguise\w*)\b",
+        {"kind": "skill_check", "skill": "deception", "dc_hint": 13}),
+    (r"(?i)\b(break free|struggle free|wriggle free|escape the grapple|shake (?:him|her|them|it) off)\b",
+        {"kind": "skill_check", "skill": "athletics", "dc_hint": 13}),
+    (r"(?i)\b(threaten\w*|intimidat\w*|interrogat\w*)\b",
+        {"kind": "skill_check", "skill": "intimidation", "dc_hint": 13}),
+    (r"(?i)\b(attack\w*|shoot\w*|stab\w*|slash\w*|kill|shortbow|shortsword|ranged attack|melee attack)\b",
+        {"kind": "attack", "weapon_hint": "shortsword"}),
+    (r"(?i)\b(short rest|take a rest|rest for a while|catch (?:my|our) breath)\b", {"kind": "short_rest"}),
+    (_EN_MOVEMENT_RE.pattern.replace("\\b(?:", "(?i)\\b(?:", 1), {"kind": "move", "_direction_hint": True}),
 ]
 
 
@@ -63,7 +86,10 @@ def _triggered_encounter_id(state) -> str:
 
 
 def _weapon_from_text(text: str) -> str:
-    if any(token in text for token in ("短弓", "弓", "远程", "射", "箭")):
+    low = text.lower()
+    if any(token in text for token in ("短弓", "弓", "远程", "射", "箭")) or any(
+        token in low for token in ("bow", "arrow", "shoot", "ranged")
+    ):
         return "shortbow"
     if any(token in text for token in ("短剑", "剑", "近战", "刺", "砍")):
         return "shortsword"
@@ -99,7 +125,7 @@ def suggest_rule_actions(user_input: str, state) -> list[dict]:
         if _re.search(pattern, text):
             action = dict(template)
             action["matched"] = pattern
-            action["reason"] = f"匹配关键词「{pattern}」"
+            action["reason"] = f"matched keyword pattern \"{pattern}\""
             # 如果当前房间有该 skill 的 check，借用 DC
             if action.get("kind") == "skill_check":
                 target_skill = action["skill"]
@@ -128,7 +154,7 @@ def suggest_rule_actions(user_input: str, state) -> list[dict]:
                                 action["move_to"] = room.get("id")
                                 action["sets_flag"] = chk.get("sets_flag")
                                 action["fact"] = chk.get("fact")
-                                action["reason"] = f"{action['reason']}；目标在相邻房间「{room.get('name') or room.get('id')}」"
+                                action["reason"] = f"{action['reason']}; target is in the adjacent room \"{room.get('name') or room.get('id')}\""
                                 matched_check = True
                                 break
                         if matched_check:
@@ -161,7 +187,7 @@ def suggest_rule_actions(user_input: str, state) -> list[dict]:
                 # 给 exit 名作为 reason 让 GM 知道这是规范化后的结果
                 for ex in current_room.get("exits") or []:
                     if ex.get("to") == exit_id:
-                        action["reason"] = f"方向词→出口『{ex.get('label') or exit_id}』"
+                        action["reason"] = f"direction words -> exit \"{ex.get('label') or exit_id}\""
                         break
             out.append(action)
     # 去重（按 kind+skill）

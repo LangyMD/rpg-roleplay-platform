@@ -58,31 +58,31 @@ class TimelineLayerUserSetWarning(unittest.TestCase):
     def test_user_set_same_turn_emits_restrictions(self):
         state = self._state_with(source="user_set", turn=5, last_turn=5)
         text = self._layer_text(state)
-        self.assertIn("覆盖式跳跃", text,
+        self.assertIn("overriding jump", text,
             "user_set 当回合应明示是'覆盖式跳跃'")
         # 禁词清单
-        for kw in ("穿越", "醒来", "再次睁开眼", "拨回时钟", "重启世界",
-                   "重置场景", "刺骨的冷", "失忆", "无意识"):
+        for kw in ("transmigration", "waking up", "opening your eyes again", "clock being turned back",
+                   "world restarting", "being reset", "bone-deep cold", "amnesiac", "unconscious"):
             self.assertIn(kw, text,
                 f"禁词清单必须含 {kw}")
         # 必须含明示"既定事实"指令
-        self.assertIn("既定事实", text)
-        self.assertIn("镜头切到新时间点", text)
+        self.assertIn("established facts", text)
+        self.assertIn("camera cutting to a new point in time", text)
 
     def test_user_set_old_turn_does_not_emit_restrictions(self):
         """user_set 跳跃发生在过去 turn,不再约束当前 GM (玩家已经接受了新时间线)。"""
         state = self._state_with(source="user_set", turn=10, last_turn=5)
         text = self._layer_text(state)
-        self.assertNotIn("覆盖式跳跃", text,
+        self.assertNotIn("overriding jump", text,
             "user_set 不是当回合时,不应再发禁令")
         # 应该走"没有待确认时间跳跃"普通分支
-        self.assertIn("没有待确认时间跳跃", text)
+        self.assertIn("No pending time jump", text)
 
     def test_other_source_does_not_emit_restrictions(self):
         """source!=user_set (system / initial / gm_confirmed) 不触发禁令。"""
         state = self._state_with(source="initial", turn=5, last_turn=5)
         text = self._layer_text(state)
-        self.assertNotIn("覆盖式跳跃", text)
+        self.assertNotIn("overriding jump", text)
 
     def test_pending_jump_still_takes_priority(self):
         """pending_jump 存在时仍走 pending 分支 (不被 user_set 检测覆盖)。"""
@@ -92,7 +92,7 @@ class TimelineLayerUserSetWarning(unittest.TestCase):
         }
         text = self._layer_text(state)
         # pending 分支会输出"pending 状态"
-        self.assertIn("pending 状态", text)
+        self.assertIn("pending status", text)
 
 
 # ────────────────────────────────────────────────────────────
@@ -144,6 +144,20 @@ class DetectViolationsUnit(unittest.TestCase):
             any("刺骨" in v["pattern_label"] for v in violations),
             "应命中'刺骨的冷开场'",
         )
+
+    def test_detects_english_transition_narration(self):
+        from agents.timeline_narrative_guard import detect_time_jump_violations
+        state = self._state_user_set_now()
+        for text in ("You wake up to find the city gone.",
+                     "The clock was turned back to the very beginning.",
+                     "When you open your eyes again, the harbor is silent.",
+                     "Time itself rewound around you."):
+            self.assertTrue(detect_time_jump_violations(text, state), text)
+        # ordinary English prose with the same words must not trip the guard
+        for text in ("She turned back toward the harbor.",
+                     "He woke up early and found the kettle cold.",
+                     "The timeline on the wall listed every king."):
+            self.assertEqual(detect_time_jump_violations(text, state), [], text)
 
     def test_clean_text_no_violation(self):
         from agents.timeline_narrative_guard import detect_time_jump_violations

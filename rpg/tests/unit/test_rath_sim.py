@@ -47,10 +47,10 @@ def test_init_builds_cast_places_threads():
     sim = _sim()
     assert set(sim["cast"]) == {"菲莉丝", "林有德", "薇欧拉"}
     assert sim["cast"]["菲莉丝"]["kind"] == "player"
-    assert sim["cast"]["菲莉丝"]["status"] == "昏迷"
+    assert sim["cast"]["菲莉丝"]["status"] == "unconscious"
     assert "林有德的小屋" in sim["places"] and "毛瑟厂" in sim["places"]
-    assert sim["threads"] and "昏迷" in sim["threads"][0]["desc"]
-    assert any("菲莉丝目前在" in f for f in sim["facts"])
+    assert sim["threads"] and "unconscious" in sim["threads"][0]["desc"]
+    assert any("菲莉丝 is currently at" in f for f in sim["facts"])
 
 
 # ── D2: 地点白名单独立源(canon_locations)──────────────────────────
@@ -106,8 +106,8 @@ def test_player_unconscious_conservation_enforced_in_code():
         "cast_updates": {"菲莉丝": {"location": "毛瑟厂", "activity": "起身与林有德交谈"}},
     })
     assert sim["cast"]["菲莉丝"]["location"] == "林有德的小屋"  # 位置未被改
-    assert sim["cast"]["菲莉丝"]["activity"] == "昏迷沉睡"      # 活动未被改
-    assert any("昏迷" in r for r in out["rejected"])
+    assert sim["cast"]["菲莉丝"]["activity"] == "unconscious, asleep"      # 活动未被改
+    assert any("unconscious" in r for r in out["rejected"])
 
 
 def test_fabricated_place_rejected():
@@ -116,13 +116,13 @@ def test_fabricated_place_rejected():
         "cast_updates": {"薇欧拉": {"location": "黑森研究所"}},
     })
     assert "黑森研究所" not in sim["places"]
-    assert any("新造名词" in r or "新地点" in r for r in out["rejected"])
+    assert any("invented noun" in r or "new place" in r for r in out["rejected"])
 
 
 def test_unknown_cast_rejected():
     sim = _sim()
     out = apply_scheduler_output(sim, {"cast_updates": {"斯大林": {"activity": "视察"}}})
-    assert any("未知角色" in r for r in out["rejected"])
+    assert any("unknown character" in r for r in out["rejected"])
 
 
 # ── 夜律 ─────────────────────────────────────────────────────────────
@@ -132,8 +132,8 @@ def test_enforce_night_sleeps_cast_but_not_unconscious_player():
     sim["clock_min"] = 1440 + 23 * 60 + 30  # 第2日 23:30
     n = enforce_night(sim)
     assert n == 2  # 林有德/薇欧拉入睡
-    assert sim["cast"]["林有德"]["activity"] == "睡眠"
-    assert sim["cast"]["菲莉丝"]["activity"] == "昏迷沉睡"  # 昏迷者不动
+    assert sim["cast"]["林有德"]["activity"] == "asleep"
+    assert sim["cast"]["菲莉丝"]["activity"] == "unconscious, asleep"  # 昏迷者不动
 
 
 def test_enforce_night_spares_high_tension():
@@ -142,8 +142,8 @@ def test_enforce_night_spares_high_tension():
     sim["threads"][0]["tension"] = 9
     sim["threads"][0]["participants"] = ["林有德"]
     n = enforce_night(sim)
-    assert sim["cast"]["林有德"]["activity"] != "睡眠"
-    assert sim["cast"]["薇欧拉"]["activity"] == "睡眠"
+    assert sim["cast"]["林有德"]["activity"] != "asleep"
+    assert sim["cast"]["薇欧拉"]["activity"] == "asleep"
 
 
 # ── 呈现验收 ─────────────────────────────────────────────────────────
@@ -195,9 +195,9 @@ def test_absorb_scene_writes_memory_and_fact():
 def test_prompts_smoke():
     sim = _sim()
     sp, up = build_scheduler_prompts(sim, elapsed_hint="约2小时", directive="让薇欧拉起疑")
-    assert "调度器" in sp and "菲莉丝" in up and "让薇欧拉起疑" in up
+    assert "scheduler" in sp and "菲莉丝" in up and "让薇欧拉起疑" in up
     dp, du = build_director_prompts(sim, _interaction())
-    assert "只负责演绎" in dp and "[昏迷]" in du
+    assert "only perform it" in dp and "[unconscious]" in du
 
 
 def test_parse_scheduler_fenced():
@@ -232,7 +232,7 @@ def test_apparatus_around_player_rejected():
     assert not any("共振" in f for f in sim["facts"])
     # 两条都必须被拒(理由可能是「解释装置」或名词闸先拦「装置」类新词,拦住即胜利)
     assert len(out["rejected"]) >= 2
-    assert any("解释装置" in r for r in out["rejected"])
+    assert any("explanatory device" in r for r in out["rejected"])
 
 
 # ── 原著河道(用户实锤:与原著0%重合,v1.60.0) ─────────────────────────
@@ -247,7 +247,7 @@ def _sim_canon():
 def test_canon_in_view_and_whitelist():
     sim = _sim_canon()
     view = compact_view(sim)
-    assert "原著河道" in view and "留学生会馆" in view
+    assert "Canon river" in view and "留学生会馆" in view
     # 河道文本进入白名单:调度提及「留学生会馆」不再被名词闸拒
     out = apply_scheduler_output(sim, {"new_facts": ["镇上有人议论留学生会馆的那场辩论"]})
     assert any("留学生会馆" in f for f in sim["facts"])
@@ -259,7 +259,7 @@ def test_canon_advance_moves_cursor_into_facts():
     assert out["applied"]["canon_advance"] is True
     assert "留学生会馆" in out["applied"]["canon_text"]  # engine 靠它把动向并入事件流
     assert sim["canon"]["cursor"] == 1
-    assert any("【原著进程】" in f and "留学生会馆" in f for f in sim["facts"])
+    assert any("[Canon progress]" in f and "留学生会馆" in f for f in sim["facts"])
 
 
 def test_canon_stall_forced_advance():
@@ -276,13 +276,13 @@ def test_unconscious_player_location_settles_once():
     """昏迷守恒=不可移动,但「落定未知位置」不是移动(实锤:位置永远卡死未知地点)。"""
     snap = _snapshot(); snap["player"]["current_location"] = ""
     sim = init_sim_state(snap, _cards(), [], clock_min=0)
-    assert sim["cast"]["菲莉丝"]["location"] == "未知地点"
+    assert sim["cast"]["菲莉丝"]["location"] == "unknown location"
     apply_scheduler_output(sim, {"cast_updates": {"菲莉丝": {"location": "林有德的小屋"}}})
     assert sim["cast"]["菲莉丝"]["location"] == "林有德的小屋"
     # 落定后再改=移动 → 拒
     out = apply_scheduler_output(sim, {"cast_updates": {"菲莉丝": {"location": "毛瑟厂"}}})
     assert sim["cast"]["菲莉丝"]["location"] == "林有德的小屋"
-    assert any("昏迷" in r for r in out["rejected"])
+    assert any("unconscious" in r for r in out["rejected"])
 
 
 # ── 河道低水位补给(500k 浸泡前置修:烧穿 12 段后不空转,v1.61.1) ──────────
@@ -341,7 +341,7 @@ def test_alias_resolve_short_name_updates_full_key():
     out = apply_scheduler_output(sim, {"cast_updates": {"菲莉丝": {"stance": "安详"}}})
     assert out["applied"]["cast"] == 1
     assert sim["cast"]["菲莉丝·卡俄斯"]["stance"] == "安详"
-    assert not any("未知角色" in r for r in out["rejected"])
+    assert not any("unknown character" in r for r in out["rejected"])
 
 
 def test_alias_ambiguous_not_guessed():
@@ -365,7 +365,7 @@ def test_apparatus_gate_catches_short_name():
     sim = _sim_fullname_player()
     out = apply_scheduler_output(sim, {"new_facts": ["菲莉丝头顶的能量核心与祭坛产生共振"]})
     assert out["applied"]["facts"] == 0
-    assert any("解释装置" in r for r in out["rejected"])
+    assert any("explanatory device" in r for r in out["rejected"])
 
 
 def test_alias_resolve_strips_view_tags():
@@ -389,7 +389,7 @@ def test_night_curfew_pulls_forced_sleepers_home():
     c["location"] = "水泥厂石灰窑深坑"
     c["activity"] = "监听坑底异响"
     assert enforce_night(sim) >= 1
-    assert c["activity"] == "睡眠" and c["location"] == home
+    assert c["activity"] == "asleep" and c["location"] == home
 
 
 def test_night_curfew_respects_voluntary_lodging_and_legacy_state():
@@ -407,7 +407,7 @@ def test_night_curfew_respects_voluntary_lodging_and_legacy_state():
     enforce_night(sim)
     assert a["location"] == "德绍旅馆"
     if len(names) > 1:
-        assert b["activity"] == "睡眠" and b["location"] == "河岸"
+        assert b["activity"] == "asleep" and b["location"] == "河岸"
 
 
 def test_night_gate_rejects_leaving_home_lowtension():
@@ -417,7 +417,7 @@ def test_night_gate_rejects_leaving_home_lowtension():
     sim.setdefault("places", []).append("水泥厂东边仓库")
     enforce_night(sim)  # 拍首:在家睡眠
     out = apply_scheduler_output(sim, {"cast_updates": {npc: {"location": "水泥厂东边仓库", "activity": "搜查痕迹"}}})
-    assert any("夜间不外出" in r for r in out["rejected"])
+    assert any("does not go out at night" in r for r in out["rejected"])
     assert sim["cast"][npc]["location"] == sim["cast"][npc]["home"]
 
 
@@ -427,7 +427,7 @@ def test_night_gate_spares_hot_thread_and_daytime():
     sim.setdefault("places", []).append("水泥厂东边仓库")
     sim["threads"] = [{"id": "t9", "desc": "追凶", "tension": 9, "participants": [npc]}]
     out = apply_scheduler_output(sim, {"cast_updates": {npc: {"location": "水泥厂东边仓库"}}})
-    assert not any("夜间不外出" in r for r in out["rejected"])
+    assert not any("does not go out at night" in r for r in out["rejected"])
     assert sim["cast"][npc]["location"] == "水泥厂东边仓库"
     sim2 = init_sim_state(_snapshot(), _cards(), [], clock_min=14 * 60)  # 白天
     npc2 = next(n for n, c in sim2["cast"].items() if c.get("kind") != "player")
@@ -446,7 +446,7 @@ def test_canon_anchor_resets_cast_goal_on_advance():
     sim["cast"][npc]["goal"] = "调查水泥厂暗门"  # 自由线绑架中
     out = anchor_cast_to_beat(sim, beat_with_npc)
     assert npc in out
-    assert sim["cast"][npc]["goal"].startswith("(原著行程)")
+    assert sim["cast"][npc]["goal"].startswith("(canon itinerary)")
     assert "水泥厂" not in sim["cast"][npc]["goal"]
 
 
@@ -456,14 +456,14 @@ def test_canon_advance_triggers_anchor():
     if "林有德" in sim["cast"]:
         sim["cast"]["林有德"]["goal"] = "撬开地下车间铁门"
         apply_scheduler_output(sim, {"canon_advance": True})
-        assert sim["cast"]["林有德"]["goal"].startswith("(原著行程)")
+        assert sim["cast"]["林有德"]["goal"].startswith("(canon itinerary)")
 
 
 def test_player_probe_rejected():
     sim = _sim_fullname_player()
     out = apply_scheduler_output(sim, {"new_facts": ["千寻发现灵魂锚点研究或可定位菲莉丝的来历"]})
     assert out["applied"]["facts"] == 0
-    assert any("探究" in r for r in out["rejected"])
+    assert any("probes the player" in r for r in out["rejected"])
     out2 = apply_scheduler_output(sim, {"new_threads": [{"desc": "研究菲莉丝随身物品以鉴定其身世", "tension": 4}]})
     assert not any(("菲莉丝" in (t.get("desc") or "") and "鉴定" in (t.get("desc") or ""))
                    for t in sim["threads"])
@@ -477,7 +477,7 @@ def test_stale_threads_closed_and_recorded():
     closed = close_stale_threads(sim)
     assert closed and "伊萨尔河" in closed[0]
     assert sim["threads"] == []
-    assert any("(已平息)" in f for f in sim["facts"])
+    assert any("(settled)" in f for f in sim["facts"])
     # 高张力/近期触及的线不关
     sim["threads"] = [{"id": "t3", "desc": "活跃线", "tension": 5, "last_touch": 1}]
     assert close_stale_threads(sim) == []
@@ -495,7 +495,7 @@ def test_relation_updates_arbitrated_with_alias_and_gate():
     assert out["applied"].get("relations") == 1
     key = "|".join(sorted(["菲莉丝·卡俄斯", npc]))
     assert sim["relations"][key]["kind"] == "守护"
-    assert any("relation:成员未识别" in r for r in out["rejected"])
+    assert any("relation: member not recognised" in r for r in out["rejected"])
     # 探究措辞照拒(神圣条款贯穿关系层)
     out2 = apply_scheduler_output(sim, {"relation_updates": [
         {"pair": ["菲莉丝", npc], "kind": "研究对象", "note": "想调查她的来历"}]})
@@ -588,7 +588,7 @@ def test_climax_director_note_injected_after_starve():
     t["stage"] = "climax"
     sim["_climax_starve"] = {"t1": 1}
     _, user = build_scheduler_prompts(sim, elapsed_hint="约1小时")
-    assert "导演指令" in user and "高潮" in user
+    assert "Director's instruction" in user and "climax" in user
 
 
 def test_climax_starve_forces_interaction_when_colocated():
@@ -655,8 +655,8 @@ def test_night_gate_rejects_interaction_place_and_downgrades_to_fact():
         "participants": [a, b], "place": "水泥厂东边仓库",
         "reason": "深夜密会", "expected_outcome": "达成默契"}})
     assert out["applied"]["interaction"] is None
-    assert any("夜间外出" in r for r in out["rejected"])
-    assert any("因夜深作罢" in f for f in sim["facts"])
+    assert any("going out at night" in r for r in out["rejected"])
+    assert any("too late at night" in f for f in sim["facts"])
 
 
 def test_night_gate_allows_interaction_at_home():
@@ -684,7 +684,7 @@ def test_gate_whitelist_lazy_not_stale_within_tick():
     })
     assert "兵工厂" in sim["places"]
     assert any("城西兵工厂" in f for f in sim["facts"])
-    assert not any("新造名词" in r for r in out["rejected"])
+    assert not any("invented noun" in r for r in out["rejected"])
 
 
 # ── B8:facts 去重 + canon 里程碑保护 ────────────────────────────────────
@@ -712,7 +712,7 @@ def test_canon_history_survives_facts_fifo_eviction():
     assert not any("留学生会馆" in f for f in sim["facts"])  # facts 确实被挤出了
     assert any("留学生会馆" in h for h in sim["canon"]["history"])  # history 仍保留
     view = compact_view(sim)
-    assert "原著进程" in view and "留学生会馆" in view
+    assert "Canon progress" in view and "留学生会馆" in view
 
 
 # ── B9:探究闸近邻窗口(真阳性仍拦 + 误伤用例现在放行) ───────────────────────
@@ -727,7 +727,7 @@ def test_probe_gate_proximity_window_allows_distant_unrelated_mention():
                 "与此同时窗外雨声渐歇,菲莉丝的呼吸依旧平稳。")
     out = apply_scheduler_output(sim, {"new_facts": [far_text]})
     assert out["applied"]["facts"] == 1
-    assert not any("探究" in r for r in out["rejected"])
+    assert not any("probes the player" in r for r in out["rejected"])
 
 
 # ── B11:决策槽位分配器(只给活跃 cast 全量卡片,省 token 防漂移) ────────────────
@@ -742,7 +742,7 @@ def test_active_cast_slot_allocator_compresses_stable_cast():
     assert sim["threads"] == []
     view0 = compact_view(sim)
     assert "- 林有德" in view0 and "- 薇欧拉" in view0, "冷启动:未知=活跃,全量卡片"
-    assert "(状态稳定:" not in view0
+    assert "(stable:" not in view0
     # 第1拍触及两人(打上 seq 基准),之后连续 4 拍只动林有德 → 薇欧拉应被压缩
     apply_scheduler_output(sim, {"cast_updates": {"林有德": {"goal": "查清房东底细"},
                                                    "薇欧拉": {"goal": "整理账目"}}})
@@ -750,7 +750,7 @@ def test_active_cast_slot_allocator_compresses_stable_cast():
         apply_scheduler_output(sim, {"cast_updates": {"林有德": {"activity": "翻查旧报"}}})
     view1 = compact_view(sim)
     assert "- 林有德" in view1  # 持续变化 → 活跃
-    assert "(状态稳定:" in view1 and "薇欧拉" in view1 and "- 薇欧拉" not in view1
+    assert "(stable:" in view1 and "薇欧拉" in view1 and "- 薇欧拉" not in view1
 
 
 def test_canon_advance_births_thread_when_none_alive():
@@ -766,8 +766,62 @@ def test_canon_advance_births_thread_when_none_alive():
     assert out["applied"].get("thread_born_from_beat") == "t1"
     t = sim["threads"][0]
     assert t["stage"] == "seed" and t["tension"] == 3
-    assert t["desc"].startswith("(原著动向)")
+    assert t["desc"].startswith("(canon development)")
     assert t["participants"], "participants 必须非空(锚定卡司或非玩家卡司兜底)"
     # 已有活跃线时不再重复孵化
     out2 = apply_scheduler_output(sim, {"canon_advance": True})
     assert out2["applied"].get("thread_born_from_beat") is None
+
+
+# ── 旧档兼容:sim_state 里持久化的中文哨兵值仍须被识别(哨兵改英文后的双形态契约) ──
+
+def _legacy_sim():
+    """模拟英文化之前落库的 sim_state:状态/位置/行程标记都是旧中文哨兵。"""
+    sim = _sim()
+    p = sim["cast"]["菲莉丝"]
+    p["status"] = "昏迷"
+    p["activity"] = "昏迷沉睡"
+    p["location"] = "未知地点"
+    return sim
+
+
+def test_legacy_unconscious_status_still_spared_by_night_and_conserved():
+    sim = _legacy_sim()
+    sim["clock_min"] = 23 * 60 + 30
+    enforce_night(sim)
+    assert sim["cast"]["菲莉丝"]["activity"] == "昏迷沉睡"  # 旧「昏迷」仍视为昏迷,不被夜律改写
+    # 旧「未知地点」仍算待落定:第一次落定放行,之后移动被拒
+    apply_scheduler_output(sim, {"cast_updates": {"菲莉丝": {"location": "林有德的小屋"}}})
+    assert sim["cast"]["菲莉丝"]["location"] == "林有德的小屋"
+    out = apply_scheduler_output(sim, {"cast_updates": {"菲莉丝": {"location": "毛瑟厂"}}})
+    assert sim["cast"]["菲莉丝"]["location"] == "林有德的小屋"
+    assert any("unconscious" in r for r in out["rejected"])
+
+
+def test_legacy_canon_itinerary_tag_still_exempt_from_night():
+    for tag in ("(原著行程)", "(canon itinerary) "):
+        sim = _sim()
+        sim["threads"] = []
+        sim["clock_min"] = 23 * 60 + 30
+        sim["cast"]["林有德"]["goal"] = tag + "赶往德绍"
+        sim["cast"]["林有德"]["activity"] = "连夜赶路"
+        enforce_night(sim)
+        assert sim["cast"]["林有德"]["activity"] == "连夜赶路", tag
+        assert sim["cast"]["薇欧拉"]["activity"] == "asleep"
+
+
+def test_english_sleep_activity_not_overwritten():
+    sim = _sim()
+    sim["threads"] = []
+    sim["clock_min"] = 23 * 60 + 30
+    sim["cast"]["林有德"]["activity"] = "Sleeping at the inn"
+    sim["cast"]["薇欧拉"]["activity"] = "睡在阁楼"
+    enforce_night(sim)
+    assert sim["cast"]["林有德"]["activity"] == "Sleeping at the inn"
+    assert sim["cast"]["薇欧拉"]["activity"] == "睡在阁楼"
+
+
+def test_english_world_event_addressing_player_rejected():
+    sim = _sim()
+    out = apply_scheduler_output(sim, {"world_events": ["You hear a bell from 毛瑟厂"]})
+    assert out["applied"]["events"] == []

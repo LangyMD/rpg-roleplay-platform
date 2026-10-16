@@ -44,44 +44,49 @@ log = get_logger(__name__)
 
 
 _SYSTEM_PROMPT = """\
-你是 /set 命令的解析助手。玩家用自然语言写了想强制修改游戏状态的指令,
-你的任务是**调用工具表里的工具**来完成,而不是输出文本。
+You parse /set commands. The player wrote, in natural language, an instruction to force a
+change to the game state. Your job is to **call tools from the tool list** to carry it out,
+not to output text.
 
-关键原则:
-1. **只调工具,不写小说**。即便玩家话语带剧情色彩,你也只负责拆出操作。
-2. **多操作合并**:如果一句话含多项操作(如"设置时间为月球,关系蕾穆丽娜=信任,主线=营救她"),
-   一次性返回多个工具调用。
-3. **工具表里没有的事就不做**。如果玩家想改权限/历史/schema_version 等元数据,
-   工具表里没有对应工具,直接用 clarify 工具问玩家"我不能改这个字段"。
-   **不要**尝试用其他工具绕开,这是安全设计。
-4. **模糊话就 clarify**。如果玩家话语真的不清楚,用 clarify 工具问明白。
-   不要瞎拆。
-5. **保留用户原话**:工具 args 里的 text/target/value 用玩家自己的语言,
-   不要替玩家二次叙述(除非用户写的是"我想让X发生",才剥掉"我想让")。
+Key principles:
+1. **Only call tools; do not write fiction.** Even if the player's words have a story flavor,
+   your only job is to extract the operations.
+2. **Combine multiple operations.** If one sentence holds several operations (e.g. "set the time
+   to the moon landing, relationship Aria=trust, main quest=rescue her"), return several tool
+   calls at once.
+3. **Do nothing that the tool list does not cover.** If the player wants to change permissions,
+   history, schema_version or other metadata, there is no tool for it: use the clarify tool to
+   tell the player "I can't change this field". **Do not** try to get around this with other
+   tools. This is a safety design.
+4. **If the request is vague, clarify.** If the player's words are genuinely unclear, ask with
+   the clarify tool. Do not guess.
+5. **Keep the user's own words.** The text/target/value in tool args should use the player's
+   own language. Do not retell it for them (only strip a lead-in like "I want X to happen" down
+   to the event itself).
 
-工具表选择指南 (常见映射):
+Tool selection guide (common mappings):
 
-  时间相关:
-    "设置时间为X" / "时间线=X" / "切换到X" / "进入X章" → set_world_time(target=X)
-  位置:
-    "位置改为X" / "现在在X" → set_player_location(location=X)
-  玩家档案:
-    "名字=X" → set_player_name
-    "身份/职业/定位=X" → set_player_role
-    "背景=X" → set_player_background
-  关系:
-    "NPC关系=信任" → set_relationship(character=NPC, status=信任)
-  记忆:
-    "主线=X" / "目标=X(长远)" → set_main_quest
-    "当前目标=X" → set_current_objective
-    "事实:X" → add_memory_fact
-    "资源:X" / "我有X" → add_memory_resource
-    "能力:X" → add_memory_ability
-    "重要:X" / "钉住:X" → pin_memory
-    "笔记:X" → add_memory_note
-  推测/约束:
-    "假设/我猜/可能X" → add_hypothesis
-    "硬约束变量X=Y" → set_user_variable
+  Time:
+    "set time to X" / "timeline=X" / "switch to X" / "go to chapter X" → set_world_time(target=X)
+  Location:
+    "location is now X" / "I'm now in X" → set_player_location(location=X)
+  Player profile:
+    "name=X" → set_player_name
+    "identity/occupation/role=X" → set_player_role
+    "background=X" → set_player_background
+  Relationships:
+    "NPC relationship=trust" → set_relationship(character=NPC, status=trust)
+  Memory:
+    "main quest=X" / "goal=X (long-term)" → set_main_quest
+    "current objective=X" → set_current_objective
+    "fact: X" → add_memory_fact
+    "resource: X" / "I have X" → add_memory_resource
+    "ability: X" → add_memory_ability
+    "important: X" / "pin: X" → pin_memory
+    "note: X" → add_memory_note
+  Guesses / constraints:
+    "hypothesis / I guess / maybe X" → add_hypothesis
+    "hard-constraint variable X=Y" → set_user_variable
 """
 
 
@@ -92,17 +97,17 @@ def _build_user_prompt(set_text: str, state_data: dict) -> str:
     m = (state_data.get("memory") or {})
     w = (state_data.get("world") or {})
     snippet = (
-        "## 当前状态快照\n"
-        f"- player.name = {p.get('name', '') or '(空)'}\n"
-        f"- player.role = {p.get('role', '') or '(空)'}\n"
-        f"- player.current_location = {p.get('current_location', '') or '(空)'}\n"
-        f"- world.time = {w.get('time', '') or '(空)'}\n"
-        f"- world.timeline.current_label = {(w.get('timeline') or {}).get('current_label', '') or '(空)'}\n"
-        f"- memory.main_quest = {m.get('main_quest', '') or '(空)'}\n"
-        f"- memory.current_objective = {m.get('current_objective', '') or '(空)'}\n"
-        f"- 已识别关系: {', '.join(list(rels.keys())[:10]) or '(无)'}\n"
+        "## Current state snapshot\n"
+        f"- player.name = {p.get('name', '') or '(empty)'}\n"
+        f"- player.role = {p.get('role', '') or '(empty)'}\n"
+        f"- player.current_location = {p.get('current_location', '') or '(empty)'}\n"
+        f"- world.time = {w.get('time', '') or '(empty)'}\n"
+        f"- world.timeline.current_label = {(w.get('timeline') or {}).get('current_label', '') or '(empty)'}\n"
+        f"- memory.main_quest = {m.get('main_quest', '') or '(empty)'}\n"
+        f"- memory.current_objective = {m.get('current_objective', '') or '(empty)'}\n"
+        f"- known relationships: {', '.join(list(rels.keys())[:10]) or '(none)'}\n"
     )
-    return snippet + "\n\n## 玩家 /set 文本\n" + (set_text or "")[:1500]
+    return snippet + "\n\n## Player /set text\n" + (set_text or "")[:1500]
 
 
 # ────────────────────────────────────────────────────────────
@@ -173,7 +178,7 @@ def _call_anthropic_tools(
     result = resolve_api_key(user_id, "anthropic", env_fallback="ANTHROPIC_API_KEY")
     key = result.get("key")
     if not key:
-        raise RuntimeError("无 Anthropic API Key for command_agent")
+        raise RuntimeError("No Anthropic API key for command_agent")
     # 走统一出站层(不跟随重定向 + 凭据代理),读超时守调用方的 timeout_sec。
     client = micro_task_anthropic_client(result, timeout_sec=timeout_sec)
     resp = client.messages.create(
@@ -200,17 +205,17 @@ def _call_anthropic_tools(
 
 
 _JSON_MODE_INSTRUCTION = """
-**输出格式**:返回 JSON 数组,每项是一个工具调用:
+**Output format**: return a JSON array; each item is one tool call:
 [
   {"name": "set_world_time", "input": {"target": "..."}},
   {"name": "set_relationship", "input": {"character": "...", "status": "..."}}
 ]
-- 不要写任何 markdown / 自然语言解释,只输出 JSON 数组。
-- 一次 /set 命令可以并行多个工具调用,数组依次执行。
-- 工具名必须严格匹配上面列出的工具表。
-- input 参数值必须匹配工具表标注的类型:integer 参数只传纯数字(如 30),
-  不要带「第」「章」等文字或单位(错: "第30章",对: 30)。
-- 如果用户话语真的无法映射,返回 [{"name": "clarify", "input": {"question": "..."}}].
+- No markdown and no natural-language explanation. Output only the JSON array.
+- One /set command can hold several tool calls; the array runs in order.
+- Tool names must exactly match the tool list above.
+- input values must match the types the tool list gives: integer parameters take a bare
+  number only (e.g. 30), with no words or units (wrong: "chapter 30", right: 30).
+- If the user's words truly cannot be mapped, return [{"name": "clarify", "input": {"question": "..."}}].
 """
 
 
@@ -240,7 +245,7 @@ def _call_vertex_tools(model: str, user_prompt: str, user_id: int | None) -> lis
     backend = _VertexBackend(model=model)
     system_prompt = (
         _SYSTEM_PROMPT
-        + "\n\n## 可用工具表\n"
+        + "\n\n## Available tools\n"
         + _build_tool_table_doc()
         + "\n\n"
         + _JSON_MODE_INSTRUCTION
@@ -265,11 +270,11 @@ def _call_openai_compat_tools(
     )
     cred = resolve_api_key(user_id, api_id)
     if not resolved_is_usable(cred):
-        raise RuntimeError(f"无 {api_id} 凭证 for command_agent")
+        raise RuntimeError(f"No {api_id} credential for command_agent")
     key = resolved_auth_token(cred)   # 免鉴权 → 占位 token
     base_url = cred.get("base_url_override") or base_url_for(api_id)
     if not base_url:
-        raise RuntimeError(f"未知 base_url for {api_id}")
+        raise RuntimeError(f"Unknown base_url for {api_id}")
     import urllib.request
 
     # SSRF(不跟随重定向 + use-time 重解析 pin IP)走 core.outbound.safe_urlopen;经 _harness 那层薄包装,
@@ -279,7 +284,7 @@ def _call_openai_compat_tools(
     _proxy = credential_proxy(cred)  # 凭据代理(本地模式才有值;没配时为 None)
     system_prompt = (
         _SYSTEM_PROMPT
-        + "\n\n## 可用工具表\n"
+        + "\n\n## Available tools\n"
         + _build_tool_table_doc()
         + "\n\n"
         + _JSON_MODE_INSTRUCTION
@@ -302,7 +307,7 @@ def _call_openai_compat_tools(
         raw = resp.read().decode("utf-8")
     parsed = json.loads(raw)
     if not parsed.get("choices"):
-        raise RuntimeError(f"provider 响应结构异常: {str(parsed)[:200]}")
+        raise RuntimeError(f"Unexpected provider response shape: {str(parsed)[:200]}")
     content = (parsed.get("choices") or [{}])[0].get("message", {}).get("content") or ""
     return _parse_tool_call_json_array(content)
 

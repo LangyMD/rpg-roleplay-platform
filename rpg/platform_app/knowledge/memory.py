@@ -15,6 +15,6 @@ def list_memories(user_id: int, save_id: int, bucket: str | None = None, limit: 
     before_id = _cursor_int(cursor)
     with connect() as db:
         if not owns_save(db, save_id, user_id):
-            raise ValueError("无权访问该存档")
+            raise ValueError("You do not have access to this save")
         rows = _db_select_memories(db, save_id, bucket, page_limit, before_id)
     return page_payload(rows, page_limit)

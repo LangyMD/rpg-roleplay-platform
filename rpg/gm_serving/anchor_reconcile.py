@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -84,28 +85,12 @@ _EST_SUMMARY_CAP = 160
 # 出现在本回合正文 = 到达。保守 LLM 判定器对此屡漏(用户报「更新速度跟实际对不上」)→ 补一条
 # 确定性路径,与 maintain_structured_kb 的 canon 名扫描同源同口径(名入正文=现身)。事件型锚点
 # (非 intro)无法靠名字确定性判定,仍交给 LLM 判定器。
-_INTRO_MARKERS = ("首次登场", "首次引入", "首次出现")
-
-
-def _intro_subject(summary: str) -> str | None:
-    """从 intro 锚点摘要提取主体名。覆盖三种 seed 格式:
-      · concept「苍白之血」首次引入 / item「D20」首次引入  → 「」/『』 内
-      · 爱丽丝(character)首次登场                        → NAME( 之前
-      · 场景秋叶原避难所首次出现                          → 场景…首次 之间
-    取冒号前的标题段再解析,失败返 None。"""
-    import re
-    s = (summary or "").split(":", 1)[0].split("：", 1)[0].strip()
-    m = re.search(r"[「『]([^」』]+)[」』]", s)
-    if m:
-        return m.group(1).strip()
-    m = re.match(r"^场景(.+?)首次", s)
-    if m:
-        return m.group(1).strip()
-    m = re.match(r"^(.+?)[（(]", s)
-    if m:
-        return m.group(1).strip()
-    m = re.match(r"^(.+?)首次", s)
-    return m.group(1).strip() if m else None
+# 中英两种 seed 格式的识别/主体名解析统一在 kb.section_markers(旧存档行仍是中文)。
+from kb.section_markers import (  # noqa: E402
+    INTRO_MARKERS as _INTRO_MARKERS,
+    intro_subject as _intro_subject,
+    is_scene_intro as _is_scene_intro,
+)
 
 
 def _deterministic_intro_hits(
@@ -126,8 +111,8 @@ def _deterministic_intro_hits(
     #     GM 正文仍含「秋叶原」→ 名匹配会误标 → 过早退役未访问的强制场景。**改用权威信号:玩家当前所在地**
     #     (player.current_location,结构化态、GM 维护),且只用【全名】匹配(秋叶原避难所 ∈ "秋叶原避难所·入口
     #     通道" 命中;但 ∉ "秋叶原废墟·废土小径入口" → 拒绝/路过不误标)。短别名(秋叶原)会把废墟误配,故弃用。
-    ent_pend = [a for a in intro_pend if not (a.get("summary") or "").lstrip().startswith("场景")]
-    scene_pend = [a for a in intro_pend if (a.get("summary") or "").lstrip().startswith("场景")]
+    ent_pend = [a for a in intro_pend if not _is_scene_intro(a.get("summary") or "")]
+    scene_pend = [a for a in intro_pend if _is_scene_intro(a.get("summary") or "")]
     from platform_app.db import connect, init_db
     init_db()
     alias_map: dict[str, list[str]] = {}
@@ -194,6 +179,38 @@ _DEATH_NEGATION = (
 )
 
 
+# English equivalents(英文叙事):按词边界 + ~30 字符邻域判定,同样宁漏勿误。只收强死亡措辞,
+# 否定/未遂/假死/推测词在邻域内一律放弃。
+_DEATH_AFTER_EN = re.compile(
+    r"^\W{0,3}(?:\w+\s+){0,2}?(?:is\s+dead|was\s+dead|lay\s+dead|fell\s+dead|dropped\s+dead|died|dies|"
+    r"was\s+killed|is\s+killed|was\s+slain|is\s+slain|was\s+executed|was\s+beheaded|was\s+murdered|"
+    r"perished|perishes|breathed\s+(?:his|her|their)\s+last|breathes\s+(?:his|her|their)\s+last)\b",
+    re.IGNORECASE,
+)
+_KILL_BEFORE_EN = re.compile(
+    r"\b(?:killed|kills|slew|slays|executed|executes|beheaded|beheads|murdered|murders|"
+    r"finished\s+off|struck\s+down|cut\s+down)\s+$",
+    re.IGNORECASE,
+)
+_DEATH_NEGATION_EN = re.compile(
+    r"\b(?:not|n't|never|almost|nearly|barely|narrowly|survive[ds]?|surviving|alive|pretend(?:ed|s|ing)?|"
+    r"feign(?:ed|s|ing)?|fake[ds]?|faking|seem(?:ed|s)?|apparently|thought|believed|as\s+if|revived?|resurrected|"
+    r"would|could|might|whether|if)\b",
+    re.IGNORECASE,
+)
+
+
+def _detect_dead_in_prose_en(prose: str, nm: str) -> bool:
+    for m in re.finditer(r"(?<!\w)" + re.escape(nm) + r"(?!\w)", prose):
+        before = prose[max(0, m.start() - 30):m.start()]
+        after = prose[m.end():m.end() + 30]
+        if _DEATH_NEGATION_EN.search(before + " " + after):
+            continue
+        if _DEATH_AFTER_EN.search(after) or _KILL_BEFORE_EN.search(before):
+            return True
+    return False
+
+
 def _detect_dead_in_prose(prose: str, char_aliases: dict[str, list[str]]) -> set[str]:
     """确定性、保守地从本回合正文检出【死亡】角色。规则:角色名【紧邻】强死亡词(名后 ≤6 字
     出现死亡词,或名前 ≤6 字出现击杀动词),且邻域内无否定/未遂/假死/疑问。宁漏勿误 —— 误判会
@@ -214,6 +231,8 @@ def _detect_dead_in_prose(prose: str, char_aliases: dict[str, list[str]]) -> set
                 if any(dk in after for dk in _DEATH_MARKERS) or any(kv in before for kv in _KILL_VERBS):
                     found = True
                     break
+            if not found and nm.isascii() and _detect_dead_in_prose_en(prose, nm):
+                found = True
             if found:
                 break
         if found:
@@ -260,7 +279,7 @@ def _invalidate_dead_entity_anchors(db: Any, save_id: int, prose: str) -> int:
                   and (metadata->'participants'->>0) = any(%s)
                 returning id
                 """,
-                (f"角色「{name}」已死亡 —— 仅其单人参与的未来锚点不再可能发生(非死神来了)",
+                (f"Character \"{name}\" has died — future anchors involving only them can no longer happen (not a Final Destination anchor)",
                  save_id, names),
             ).fetchall()
             if res:
@@ -288,34 +307,34 @@ def _estimate_enabled() -> bool:
 
 
 _SYSTEM_PROMPT = """\
-你是一个【世界线锚点判定器】。读本回合 GM 写的剧情正文,完成两件事:
-(A) 判断其中是否**明确叙述到了**某些「待发生的原著锚点事件」;
-(B) 判断本回合剧情**最接近原著的第几章**(进度估计)。
+You are a **worldline anchor judge**. Read the story prose the GM wrote this turn and do two things:
+(A) decide whether it **explicitly narrates** any of the "pending source anchor events";
+(B) estimate **which chapter of the source** this turn's story is closest to (progress estimate).
 
-【任务 A — 锚点到达判定·极度保守,宁漏勿误】
-1. 只有当本回合正文【明确、确凿地叙述了】某锚点事件**实际发生 / 实际到达**时,
-   才把它列出来。仅仅提到、暗示、铺垫、即将发生、有人计划、做梦、回忆、假设、
-   讨论某事件 —— 都【不算】到达,绝不列出。
-2. 拿不准就【不列】。漏标的代价(下回合再核对一次)远小于误标(直接跳过原著内容)。
-3. 你只能从给定的 pending 锚点列表里选,绝不发明新锚点、绝不改 anchor_key。
-4. 只看本回合正文这一段材料,不要脑补正文之外的剧情。
-drift_score(偏离度 0.0-1.0):0.0=完全按原著;0.3=核心保留但过程/场景不同(变体);
-0.7+=核心结果保留但发生方式大改。拿不准给 0.2。
+[Task A — anchor arrival: extremely conservative; better to miss than to misjudge]
+1. List an anchor only when this turn's prose **clearly and unambiguously narrates** the anchor event
+   **actually happening / actually being reached**. Merely mentioning, hinting at, foreshadowing, being about to happen,
+   someone planning it, dreaming, remembering, hypothesizing or discussing an event does **not** count — never list it.
+2. When unsure, **do not list it**. The cost of missing one (it gets re-checked next turn) is far lower than a false mark (skipping source content outright).
+3. You may only choose from the given pending anchor list; never invent anchors and never alter an anchor_key.
+4. Look only at this turn's prose; do not imagine plot beyond it.
+drift_score (deviation 0.0-1.0): 0.0 = exactly as in the source; 0.3 = core kept but process/scene differs (variant);
+0.7+ = core outcome kept but the way it happened changed a lot. When unsure, give 0.2.
 
-【任务 B — 当前章估计·保守】
-给你一份「原著章节地图」(章号 + 该章梗概)。判断本回合正文最接近哪一章,返回该章号。
-1. 只能返回章节地图里列出的章号;正文明显还没到地图最早那章 → 返回 null。
-2. 看正文实际演到哪里,不要被人物的回忆/预告/计划带偏。
-3. 拿不准、正文太抽象无法定位 → 返回 null(漏估的代价远小于误估推快进度)。
+[Task B — current chapter estimate: conservative]
+You are given a "source chapter map" (chapter number + a synopsis of that chapter). Decide which chapter this turn's prose is closest to and return its number.
+1. Only return chapter numbers listed in the map; if the prose clearly hasn't reached the earliest chapter in the map -> return null.
+2. Go by where the prose actually is; don't be misled by characters' memories / previews / plans.
+3. If unsure, or the prose is too abstract to locate -> return null (missing an estimate costs far less than wrongly pushing progress ahead).
 
-【两任务独立】先独立完成任务 A(锚点到达,极度保守),再做任务 B(当前章估计)。
-任务 B 的章号推理【绝不可】反过来改变任务 A 对锚点的取舍。
+[The two tasks are independent] First complete task A on its own (anchor arrival, extremely conservative), then do task B (chapter estimate).
+The chapter reasoning of task B must **never** feed back into task A's anchor decisions.
 
-【输出格式(严格)】
-仅输出一个 JSON 对象,以 `{` 开头、以 `}` 结尾。不要 markdown 围栏、不要解释:
-  {"reached": [{"anchor_key":"<来自列表>","drift_score":<0.0-1.0>}], "current_chapter": <章号整数 或 null>, "progress_motion": <0|1|2>}
-没有锚点到达 → reached 为 []。无法定位章节 → current_chapter 为 null。
-progress_motion(必答,本回合叙事推进度):0=原地/回忆无推进,1=正常推进一拍,2=重大跨越。发散局脱离原著也要答,与 current_chapter 无关(供进度节奏兜底 pace fallback 用)。
+[Output format (strict)]
+Output only one JSON object, starting with `{` and ending with `}`. No markdown fences, no explanations:
+  {"reached": [{"anchor_key":"<from the list>","drift_score":<0.0-1.0>}], "current_chapter": <chapter number integer or null>, "progress_motion": <0|1|2>}
+No anchor reached -> reached is []. Chapter cannot be located -> current_chapter is null.
+progress_motion (always required; how far this turn's narrative moved): 0 = stayed put / memories with no progress, 1 = normal progress by one beat, 2 = a major leap. Answer it even when the game has diverged from the source; it is independent of current_chapter (used for the pace fallback).
 """
 
 
@@ -324,35 +343,35 @@ def _build_user_prompt(
     pending: list[dict[str, Any]],
     window_chapters: list[dict[str, Any]] | None = None,
 ) -> str:
-    lines = ["【待发生的原著锚点(任务 A,只能从这里选)】"]
+    lines = ["[Pending source anchors (task A; choose only from these)]"]
     if pending:
         for a in pending:
             key = a.get("anchor_key") or ""
             summ = (a.get("summary") or "").strip().replace("\n", " ")
             if len(summ) > 240:
                 summ = summ[:240]
-            fatal = "[死神来了·必发生]" if a.get("is_fatal") else ""
-            lines.append(f"- anchor_key={key} {fatal} 概要:{summ}")
+            fatal = "[Final Destination - must happen]" if a.get("is_fatal") else ""
+            lines.append(f"- anchor_key={key} {fatal} summary: {summ}")
     else:
-        lines.append("(本窗口暂无待发生锚点)")
+        lines.append("(no pending anchors in this window)")
     if window_chapters:
         lines.append("")
-        lines.append("【原著章节地图(任务 B,current_chapter 只能从这些章号里选或 null)】")
+        lines.append("[Source chapter map (task B; current_chapter must be one of these numbers or null)]")
         for c in window_chapters:
             ch = c.get("chapter")
             label = (c.get("label") or "").strip().replace("\n", " ")
             summ = (c.get("summary") or "").strip().replace("\n", " ")
             if len(summ) > _EST_SUMMARY_CAP:
                 summ = summ[:_EST_SUMMARY_CAP]
-            head = f"第{ch}章" + (f"「{label}」" if label else "")
-            lines.append(f"- chapter={ch} {head}:{summ}")
+            head = f"Chapter {ch}" + (f" \"{label}\"" if label else "")
+            lines.append(f"- chapter={ch} {head}: {summ}")
     lines.append("")
-    lines.append("【本回合 GM 剧情正文】")
+    lines.append("[This turn's GM story prose]")
     lines.append(turn_text.strip())
     lines.append("")
     lines.append(
-        "请完成任务 A(到达了哪些锚点)+ 任务 B(最接近第几章)。极度保守,宁漏勿误/宁漏勿快,"
-        "只输出 JSON 对象。"
+        "Complete task A (which anchors were reached) + task B (closest chapter). Be extremely conservative: "
+        "better to miss than to misjudge or rush. Output only the JSON object."
     )
     return "\n".join(lines)
 
@@ -929,7 +948,7 @@ def _apply_hits(
             """,
             (
                 new_status,
-                "系统每回合确定性兜底判定:本回合剧情明确到达此锚点",
+                "Per-turn deterministic system check: this turn's story clearly reached this anchor",
                 occurred_turn, drift, save_id, key,
             ),
         ).fetchone()
@@ -944,7 +963,7 @@ def _apply_hits(
             from agents.save_history import cascade_history_from_anchor
             cascade_history_from_anchor(
                 save_id, anchor_key=key, anchor_summary=row.get("summary") or "",
-                new_status=new_status, detail="本回合剧情到达此锚点(系统确定性判定)",
+                new_status=new_status, detail="This turn's story reached this anchor (deterministic system check)",
                 turn_occurred=occurred_turn, source="system", via="anchor_reconcile", db=db)
         except Exception as hist_exc:  # 留档失败不阻断锚点标记
             log.warning("[anchor_reconcile] 历史锚点级联失败(忽略): %s", hist_exc)

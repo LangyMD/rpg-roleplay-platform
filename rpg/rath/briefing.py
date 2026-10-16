@@ -22,8 +22,8 @@ log = logging.getLogger(__name__)
 MAX_BRIEF_CHARS = 700
 MIN_GAP_MINUTES = 120  # 上次玩家回合距今 < 2h 不注入(连续对话不打扰)
 TAIL_TEXT = (
-    "(以上是已发生的事实。让 NPC 在自然时机提及/谈论它们——寒暄、闲聊、汇报;"
-    "不要一口气复述全部,更不要说「你不在的时候」这种打破沉浸的话。)"
+    "(The above are facts that have already happened. Let NPCs mention or discuss them at natural moments - greetings, small talk, reports; "
+    "do not recount them all in one go, and never say anything immersion-breaking like \"while you were away\".)"
 )
 
 
@@ -82,7 +82,7 @@ def build_offline_briefing(db, save_id: int) -> str | None:
     by_day: dict[str, list[str]] = {}
     order: list[str] = []
     for r in rows:
-        day = str(r.get("story_time") or "").strip() or "(时间不详)"
+        day = str(r.get("story_time") or "").strip() or "(time unknown)"
         if day not in by_day:
             by_day[day] = []
             order.append(day)
@@ -92,7 +92,7 @@ def build_offline_briefing(db, save_id: int) -> str | None:
             by_day[day].insert(0, txt[:160])  # 场景优先且给更长篇幅
         elif len(by_day[day]) < 4:
             by_day[day].append(txt[:100])
-    header = "=== 离线世界纪要(玩家不在场期间,世界自行发生的事) ==="
+    header = "=== Offline world digest (what happened in the world on its own while the player was away) ==="
     segs = [f"◆ {day}\n" + "\n".join("  · " + t for t in by_day[day][:4]) for day in order]
     # 预算从最新的日组往前装(最近的事优先入选),输出仍按时间正序。
     # P2 修复:收尾指导句(TAIL_TEXT)固定会拼进最终输出,却从未计入 used——

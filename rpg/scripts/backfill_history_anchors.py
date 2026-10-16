@@ -32,18 +32,20 @@ import argparse
 import sys
 
 # 批量退役的描述指纹 —— 这两类刻意不补(理由见模块头)。
-_BULK_RETIREMENT_MARKERS = ("角色「", "已结束 (turn", "自动绕过")
+# 中英两种写法都认(老存档行是中文,现写入方是英文:anchor_reconcile / save_phase_manager / api/saves)。
+_BULK_RETIREMENT_MARKERS = ("角色「", "已结束 (turn", "自动绕过",
+                            "has died", "closed (turn", "bypassed automatically")
 # 系统兜底判定的描述指纹(anchor_reconcile 写的固定串)。
-_SYSTEM_MARKER = "系统每回合确定性兜底判定"
-_PLAYER_MARKER = "玩家在世界线面板手动标记已到达"
+_SYSTEM_MARKERS = ("系统每回合确定性兜底判定", "Per-turn deterministic system check")
+_PLAYER_MARKERS = ("玩家在世界线面板手动标记已到达", "Player manually marked as reached")
 
 
 def _source_of(variant_description: str) -> str:
     """按描述指纹还原「当初是谁标的」,与线上三个写入方的 source 一一对应。"""
     d = variant_description or ""
-    if d.startswith(_SYSTEM_MARKER):
+    if d.startswith(_SYSTEM_MARKERS):
         return "system"
-    if d.startswith(_PLAYER_MARKER):
+    if d.startswith(_PLAYER_MARKERS):
         return "player_declared"
     return "gm_generated"
 

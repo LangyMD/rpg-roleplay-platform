@@ -10,6 +10,7 @@ import CSBadge from '@cloudscape-design/components/badge';
 import CSModal from '@cloudscape-design/components/modal';
 import CSAlert from '@cloudscape-design/components/alert';
 import CSStatusIndicator from '@cloudscape-design/components/status-indicator';
+import { uiLocale } from '../i18n/index.js';
 
 /* ────────────────────────────────────────────────────────────────
  *  FileLibrary — 统一文件库(只读管理:列表/缩略图/下载/删除)
@@ -81,7 +82,7 @@ function fmtDate(iso) {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString(uiLocale()) + ' ' + d.toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit' });
   } catch (_) { return iso; }
 }
 

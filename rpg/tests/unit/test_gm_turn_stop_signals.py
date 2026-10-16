@@ -120,7 +120,7 @@ def test_truncation_notice_survives_the_reset():
     b = _backend(lambda: _chunks(["半截"], "length"))
     list(b.stream("s", [{"role": "user", "content": "x"}], max_tokens=512))
     out = _stop_reason_notice(_Ctx(b))
-    assert out and "截断" in out[0][1]
+    assert out and "cut off" in out[0][1]
 
 
 # ── 3. DSML 标记解析出 0 个调用 → tool_error ──────────────────────────────────

@@ -406,7 +406,7 @@ def _rebuild_worldbook_enrich(ctl, user_id, script_id, body) -> dict:
     # extract.worldbook_enrich.enrich_script_worldbook:命中 pattern 的世界书条目
     # LLM 重写 content。pattern 默认核心设定类词汇正则。
     from extract.worldbook_enrich import enrich_script_worldbook
-    pattern = str(body.get("pattern") or "力量|概念|势力|体系")
+    pattern = str(body.get("pattern") or "力量|概念|势力|体系|Power|Concept|Faction")
     with connect() as _dbc:
         before = _count(_dbc, "worldbook_entries", script_id)
     def _enrich_progress(done: int, total: int) -> None:
@@ -461,7 +461,7 @@ def _rebuild_world_key(ctl, user_id, script_id, body) -> dict:
     if r.get("overcut"):
         partial_failures.append({
             "stage": "world_key",
-            "error": "overcut:分段过密已整体退回单世界(null)",
+            "error": "overcut: too many segments, so it fell back to a single world (null)",
         })
     result = {
         "ok": True,

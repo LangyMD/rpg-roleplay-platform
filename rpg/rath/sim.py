@@ -20,7 +20,34 @@ MAX_FACTS = 40
 MAX_MEMORY = 10
 MAX_THREADS = 6
 NIGHT_START, NIGHT_END = 23 * 60, 6 * 60  # 夜间强制睡眠窗(分钟,模 1440)
-UNCONSCIOUS_MARKERS = ("昏迷", "沉睡", "深度睡眠", "无意识")
+UNCONSCIOUS_MARKERS = ("昏迷", "沉睡", "深度睡眠", "无意识", "unconscious", "comatose", "in a coma")
+# 状态哨兵值:新写英文,判定兼容旧档 sim_state 里持久化的中文值(机器契约,双形态都认)。
+STATUS_UNCONSCIOUS = "unconscious"
+_UNCONSCIOUS_STATUSES = ("昏迷", STATUS_UNCONSCIOUS)
+UNKNOWN_PLACE = "unknown location"
+_UNKNOWN_PLACES = ("未知地点", UNKNOWN_PLACE)
+CANON_GOAL_TAG = "(canon itinerary)"
+_CANON_GOAL_TAGS = ("(原著行程)", CANON_GOAL_TAG)
+CANON_FACT_TAG = "[Canon progress] "
+ACTIVITY_ASLEEP = "asleep"
+_SLEEP_MARKERS = ("睡", "sleep", "asleep")
+
+
+def _is_unconscious(status) -> bool:
+    return str(status or "") in _UNCONSCIOUS_STATUSES
+
+
+def _is_unknown_place(loc) -> bool:
+    return str(loc or "") in _UNKNOWN_PLACES
+
+
+def _has_canon_goal(goal) -> bool:
+    return str(goal or "").startswith(_CANON_GOAL_TAGS)
+
+
+def _is_sleeping(activity) -> bool:
+    a = str(activity or "").lower()
+    return any(m in a for m in _SLEEP_MARKERS)
 
 
 # ── 初始化 ───────────────────────────────────────────────────────────
@@ -30,8 +57,8 @@ def init_sim_state(snapshot: dict, cast_cards: list[dict], wb_rows: list[dict],
                    canon_locations: list[str] | None = None) -> dict:
     """从游戏快照+canon 卡司+世界书确定性构建初始 sim_state。纯函数。"""
     player = (snapshot or {}).get("player") or {}
-    pname = str(player.get("name") or "").strip() or "玩家"
-    ploc = str(player.get("current_location") or "").strip() or "未知地点"
+    pname = str(player.get("name") or "").strip() or "Player"
+    ploc = str(player.get("current_location") or "").strip() or UNKNOWN_PLACE
     pbg = str(player.get("background") or player.get("identity_role_desc") or "").strip()
     pstatus = _derive_player_status(snapshot)
 
@@ -41,7 +68,7 @@ def init_sim_state(snapshot: dict, cast_cards: list[dict], wb_rows: list[dict],
             "sheet": (str(player.get("role") or "").strip() + ";" + pbg[:220]).strip(";"),
             "location": ploc,
             "home": ploc,
-            "activity": "昏迷沉睡" if pstatus == "昏迷" else "静养",
+            "activity": "unconscious, asleep" if _is_unconscious(pstatus) else "resting",
             "goal": "",
             "stance": "",
             "status": pstatus,
@@ -57,11 +84,11 @@ def init_sim_state(snapshot: dict, cast_cards: list[dict], wb_rows: list[dict],
             # 优先用正典渲染的 sheet(_format_card,engine 传入);无则回退拼字段
             "sheet": str(c.get("sheet") or "").strip() or ";".join(x for x in [
                 str(c.get("personality") or "").strip()[:80],
-                ("外貌:" + str(c.get("appearance") or "").strip()[:40]) if c.get("appearance") else "",
+                ("Appearance: " + str(c.get("appearance") or "").strip()[:40]) if c.get("appearance") else "",
             ] if x),
             "location": ploc,
             "home": ploc,
-            "activity": "日常起居",
+            "activity": "daily routine",
             "goal": "",
             "stance": "",
             "status": "",
@@ -80,23 +107,24 @@ def init_sim_state(snapshot: dict, cast_cards: list[dict], wb_rows: list[dict],
     # 且这条路径不依赖 kb_canon_entities 是否已提取覆盖该剧本。
     for r in wb_rows or []:
         t = str(r.get("title") or "")
-        if any(k in t for k in ("地点", "场所", "城", "镇", "村", "宅", "厂", "馆", "宫")):
+        if any(k in t for k in ("地点", "场所", "城", "镇", "村", "宅", "厂", "馆", "宫")) or any(
+                k in t.lower() for k in ("location", "place", "city", "town", "village", "manor", "palace")):
             nm = t.split("·")[-1].strip()
             if nm and nm not in places:
                 places.append(nm)
-    facts = [f"{pname}目前在{ploc},状态:{pstatus or '正常'}。"]
+    facts = [f"{pname} is currently at {ploc}; status: {pstatus or 'normal'}."]
     hist = (snapshot or {}).get("history") or []
     if hist:
         last = str((hist[-1] or {}).get("content") or "")
         if last:
-            facts.append("最近发生:" + re.sub(r"\s+", " ", last)[:160])
+            facts.append("Recently: " + re.sub(r"\s+", " ", last)[:160])
     threads = []
-    if pstatus == "昏迷":
+    if _is_unconscious(pstatus):
         # 500k 浸泡实锤:种子线带「她究竟是谁」钩子=奖励 LLM 在不许推进的谜团上
         # 「有进展」(灵魂锚点研究=解释装置新形态),矛盾内建。改纯照料措辞。
         threads.append({
             "id": "t1",
-            "desc": f"照料昏迷的{pname}(日常看护;其来历是玩家自己的谜团,世界不得探究)",
+            "desc": f"Caring for the unconscious {pname} (routine nursing; their origin is the player's own mystery and the world must not probe it)",
             "tension": 3,
             "participants": [n for n in cast if n != pname][:2] + [pname],
         })
@@ -116,89 +144,89 @@ def _derive_player_status(snapshot: dict) -> str:
     hist = (snapshot or {}).get("history") or []
     if hist:
         blob += " " + str((hist[-1] or {}).get("content") or "")[-300:]
-    return "昏迷" if any(m in blob for m in UNCONSCIOUS_MARKERS) else ""
+    return STATUS_UNCONSCIOUS if any(m in blob.lower() for m in UNCONSCIOUS_MARKERS) else ""
 
 
 # ── 调度(LLM-A)prompt 与验收 ────────────────────────────────────────
 
 def compact_view(sim: dict) -> str:
-    lines = [f"世界钟:{sim.get('clock_min', 0)}分钟"]
+    lines = [f"World clock: {sim.get('clock_min', 0)} minutes"]
     active = _active_cast_names(sim)  # B11:决策槽位分配器——只给活跃 cast 全量卡片
     stable: list[str] = []
     for n, c in (sim.get("cast") or {}).items():
         if n not in active:
             stable.append(n)
             continue
-        tag = "[玩家]" if c.get("kind") == "player" else ""
-        st = f"状态:{c['status']};" if c.get("status") else ""
-        lines.append(f"- {n}{tag}:在{c.get('location')};正在{c.get('activity')};{st}"
-                     f"目标:{c.get('goal') or '(无)'};态度:{c.get('stance') or '(平静)'}")
+        tag = "[player]" if c.get("kind") == "player" else ""
+        st = f"status: {c['status']}; " if c.get("status") else ""
+        lines.append(f"- {n}{tag}: at {c.get('location')}; doing: {c.get('activity')}; {st}"
+                     f"goal: {c.get('goal') or '(none)'}; attitude: {c.get('stance') or '(calm)'}")
     if stable:
-        lines.append(f"(状态稳定:{'、'.join(stable)})")
-    lines.append("已知地点:" + "、".join(sim.get("places") or []))
+        lines.append(f"(stable: {', '.join(stable)})")
+    lines.append("Known places: " + ", ".join(sim.get("places") or []))
     rels = sim.get("relations") or {}
     if rels:
         # B7:预览按最近触及(since_seq 降序)排序,超10对时新/热关系不再被挤出窗口
         _top_rels = sorted(rels.items(), key=lambda kv: -int((kv[1] or {}).get("since_seq") or 0))[:10]
-        lines.append("人物关系:" + ";".join(
-            f"{k.replace('|', '与')}:{(v or {}).get('kind', '')}" for k, v in _top_rels))
-    lines.append("剧情线:")
+        lines.append("Relationships: " + "; ".join(
+            f"{k.replace('|', ' & ')}: {(v or {}).get('kind', '')}" for k, v in _top_rels))
+    lines.append("Plot threads:")
     for t in sim.get("threads") or []:
         _stg = t.get("stage") or "rising"
-        _stg_hint = {"seed": "萌芽", "rising": "发展", "climax": "高潮·本拍应有决定性事件",
-                     "aftermath": "余波·只收尾不升级"}.get(_stg, _stg)
-        lines.append(f"  · [{t['id']}|张力{t['tension']}|{_stg_hint}] {t['desc']}")
+        _stg_hint = {"seed": "seed", "rising": "rising", "climax": "climax - this beat needs a decisive event",
+                     "aftermath": "aftermath - wrap up only, do not escalate"}.get(_stg, _stg)
+        lines.append(f"  · [{t['id']}|tension {t['tension']}|{_stg_hint}] {t['desc']}")
     canon = sim.get("canon") or {}
     beats = canon.get("beats") or []
     cur = int(canon.get("cursor") or 0)
     nxt = beats[cur:cur + 2]
     if nxt:
-        lines.append("原著河道(这个世界正在/即将发生的主流事件):")
+        lines.append("Canon river (main events happening or about to happen in this world):")
         for b in nxt:
             lines.append(f"  → {b['text']}")
     hist = canon.get("history") or []
     if hist:
         # B8:canon 里程碑独立展示,不与 facts 的 FIFO 滚动共池竞争
-        lines.append("原著进程(已发生,里程碑):")
+        lines.append("Canon progress (already happened, milestones):")
         for h in hist[-3:]:
             lines.append(f"  ✓ {h}")
-    lines.append("已确立事实(节选):")
+    lines.append("Established facts (excerpt):")
     for f in (sim.get("facts") or [])[-8:]:
         lines.append(f"  · {f}")
     return "\n".join(lines)
 
 
-_SCHED_SYSTEM = """你是世界仿真的调度器:决定接下来这段时间里,每个角色做什么、谁与谁相遇、剧情线如何呼吸。
-铁律:
-0. 若某角色的位置是「未知地点」,本拍必须先为其确立一个符合情境的具体位置(cast_updates.location)。
-1. 只能调度下面列出的角色与地点;确需新的日常小地点(如某人的房间/街角)可给出,但新组织/新机构/新装置一律禁止发明。
-2. 每个角色的行动必须符合其设定、状态、目标与此刻时间(深夜就该睡觉,工作日就该干活)。
-3. 玩家角色[player]的状态神圣:昏迷则只能沉睡/微弱生理反应,绝不能行动或对话;
-   绝不为其编造来历/身份;其谜团只属于玩家。**绝不让任何角色研究/调查/检测玩家或其
-   随身物品,不设立以玩家为对象的研究项目(灵魂锚点、血统鉴定之类);照料是日常,不是调查。**
-4. 剧情自然呼吸:可以推进也可以只是生活;推进必须从已确立事实自然长出;
-   不必每拍都有相遇(interaction 可为 null)。剧情线有生命周期(萌芽→发展→高潮→余波):
-   高潮线本拍应发生决定性事件;余波线只处理后果与情绪,不再引入新冲突。
-   人物之间的关系会因相处而变化——值得记录的变化用 relation_updates 给出(≤2条)。
-   当现有剧情线均已进入余波或平息、且「已确立事实」里出现新的矛盾苗头时,应给出1条
-   new_threads;若所有剧情线张力长期偏低,也应主动构思一条贴近日常生活的新线(不必是
-   冲突,邻里琐事/旧友来访皆可),避免世界只剩最初那一条线空转。
-5. 有【观测者引导】时,将其翻译成剧情线/目标的调整,让世界朝该方向自然倾斜。
-6. 生活优先:角色有自己的本职与日常,调查/异象不得吞噬全部生活;除非某剧情线张力≥7,
-   角色应主要处于本职与日常活动。
-7. 世界的超常现象只能来自【世界观要点】已有的体系;禁止发明新的超常机制/发光装置/
-   现象链;禁止让环境发生灾变级变化;**禁止围绕玩家角色搭建解释其力量的装置或现象**。
-8. **原著河道是这个世界的主线**:goal 带「(原著行程)」标记的角色,其行动必须服务于该
-   行程,自由支线只能占用其零散时间;角色的本职、谈资、world_events 应与河道交织
-   (回声/铺垫/亲历);当河道第一条动向已在世界中发生或正在发生,输出 canon_advance: true。
-只输出严格 JSON(不要围栏):
-{"cast_updates": {"名字": {"location": "可选", "activity": "可选", "goal": "可选", "stance": "可选"}},
- "interaction": {"participants": ["甲","乙"], "place": "已知地点", "reason": "为何相遇", "expected_outcome": "本场自然收在哪"} 或 null,
- "world_events": ["≤1条,必须直接影响列出的角色或舞台"],
- "thread_updates": [{"id": "t1", "tension_delta": -2到2, "note": "≤40字"}],
- "new_threads": [{"desc": "≤60字", "tension": 1到6, "participants": ["名字"]}],
- "relation_updates": [{"pair": ["甲","乙"], "kind": "≤12字关系词(如 挚友/心存芥蒂/暗生情愫)", "note": "≤40字这段时间关系为何变化"}],
- "new_facts": ["≤2条,只能是本窗口行动的自然结果"],
+_SCHED_SYSTEM = """You are the scheduler of a world simulation: you decide what each character does over the coming stretch of time, who meets whom, and how the plot threads breathe.
+Iron rules:
+0. If a character's location is an unknown location ("unknown location" / "未知地点"), you must first give them a concrete location that fits the situation this beat (cast_updates.location).
+1. You may only schedule the characters and places listed below. If a new small everyday place is truly needed (someone's room, a street corner), you may name it, but never invent new organizations, institutions or devices.
+2. Every character's action must fit their profile, status, goal and the current time (late at night they should sleep; on a workday they should work).
+3. The player character [player]'s status is sacred: if unconscious, they can only sleep or show faint physiological reactions, never act or speak;
+   never invent a backstory or identity for them; their mysteries belong to the player alone. **Never let any character research / investigate / test the player or
+   their belongings, and never set up a research project with the player as its subject (soul anchors, bloodline tests and the like); caring for them is routine, not an investigation.**
+4. Let the plot breathe naturally: it may advance, or life may simply go on; any advance must grow naturally out of the established facts;
+   not every beat needs a meeting (interaction may be null). Plot threads have a life cycle (seed -> rising -> climax -> aftermath):
+   a climax thread should have a decisive event this beat; an aftermath thread only deals with consequences and feelings and introduces no new conflict.
+   Relationships between characters change as they spend time together - give changes worth recording in relation_updates (at most 2).
+   When every existing thread is in aftermath or settled, and the established facts show the first signs of a new conflict, give 1
+   new_threads entry; if all threads have stayed at low tension for a long time, also come up with a new thread close to everyday life on your own (it need not be
+   a conflict - neighbourhood trifles or an old friend visiting are fine), so the world is not left idling on its very first thread.
+5. When there is an [Observer guidance], translate it into adjustments of plot threads / goals so the world leans naturally in that direction.
+6. Life comes first: characters have their own jobs and routines, and investigations / anomalies must not swallow all of life; unless a thread's tension is >= 7,
+   characters should mainly be doing their jobs and daily activities.
+7. Supernatural phenomena in the world may only come from systems already in the [World notes]; never invent new supernatural mechanisms / glowing devices /
+   chains of phenomena; never let the environment undergo catastrophic change; **never build devices or phenomena around the player character that explain their power**.
+8. **The canon river is this world's main line**: characters whose goal carries the "(canon itinerary)" tag must act in service of that
+   itinerary, and free side threads may only use their spare time; characters' jobs, small talk and world_events should interweave with the river
+   (echoes / foreshadowing / first-hand experience); when the river's first development has already happened or is happening in the world, output canon_advance: true.
+Output strict JSON only (no code fences):
+{"cast_updates": {"name": {"location": "optional", "activity": "optional", "goal": "optional", "stance": "optional"}},
+ "interaction": {"participants": ["A","B"], "place": "a known place", "reason": "why they meet", "expected_outcome": "where this scene naturally ends"} or null,
+ "world_events": ["at most 1; it must directly affect a listed character or the stage"],
+ "thread_updates": [{"id": "t1", "tension_delta": -2 to 2, "note": "at most 40 characters"}],
+ "new_threads": [{"desc": "at most 60 characters", "tension": 1 to 6, "participants": ["name"]}],
+ "relation_updates": [{"pair": ["A","B"], "kind": "a relationship word of at most 12 characters (e.g. close friends / resentful / secretly smitten)", "note": "at most 40 characters on why the relationship changed in this period"}],
+ "new_facts": ["at most 2; only natural results of actions in this window"],
  "canon_advance": false}"""
 
 
@@ -214,19 +242,19 @@ def _climax_director_notes(sim: dict) -> list[str]:
             continue
         t = by_id.get(tid)
         if t and t.get("stage") == "climax":
-            notes.append(f"【导演指令:剧情线「{str(t.get('desc') or '')[:24]}」处于高潮,"
-                         f"本拍应演出其参与者的决定性一场】")
+            notes.append(f"[Director's instruction: plot thread '{str(t.get('desc') or '')[:24]}' is at its climax; "
+                         f"this beat should stage a decisive scene between its participants]")
     return notes
 
 
 def build_scheduler_prompts(sim: dict, *, elapsed_hint: str, directive: str = "",
                             world_context: str = "") -> tuple[str, str]:
     director_notes = "\n".join(_climax_director_notes(sim))
-    user = (f"【经过时间】{elapsed_hint}\n【世界现状】\n{compact_view(sim)}\n"
-            + (f"【世界观要点】\n{world_context}\n" if world_context else "")
+    user = (f"[Time elapsed] {elapsed_hint}\n[World state]\n{compact_view(sim)}\n"
+            + (f"[World notes]\n{world_context}\n" if world_context else "")
             + (f"{director_notes}\n" if director_notes else "")
-            + (f"【观测者引导】{directive}\n" if directive else "")
-            + "请给出这段时间的调度。")
+            + (f"[Observer guidance] {directive}\n" if directive else "")
+            + "Give the schedule for this period.")
     return _SCHED_SYSTEM, user
 
 
@@ -266,7 +294,7 @@ def anchor_cast_to_beat(sim: dict, beat_text: str) -> list[str]:
             continue
         short = n.split("·")[0]
         if (n in text) or (len(short) >= 2 and short in text):
-            c["goal"] = "(原著行程)" + text[:70]
+            c["goal"] = CANON_GOAL_TAG + " " + text[:70]
             anchored.append(n)
     return anchored
 
@@ -387,10 +415,12 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
     _pname = next((n for n, c in cast.items() if c.get("kind") == "player"), "")
     # 全名+首段简称都算提及玩家(「菲莉丝·卡俄斯」→「菲莉丝」,防简称绕过装置闸)
     _pkeys = [x for x in {_pname, _pname.split("·")[0] if _pname else ""} if len(x) >= 2]
-    _APPARATUS = ("共振", "能量转移", "能量核心", "激活条件", "装置")
+    _APPARATUS = ("共振", "能量转移", "能量核心", "激活条件", "装置",
+                  "resonance", "energy transfer", "energy core", "activation condition", "device", "apparatus")
     # 探究闸(浸泡实锤:「灵魂锚点研究」=解释玩家来历的装置新形态,词表打地鼠打不完;
     # 根因=任何以玩家为对象的探究项目都在滑向解释。玩家名+探究词近邻共现一律拒收,宁严勿松)
-    _PROBE = ("锚点", "锚定", "来历", "身世", "血统", "研究", "调查", "检测", "鉴定", "解析", "档案")
+    _PROBE = ("锚点", "锚定", "来历", "身世", "血统", "研究", "调查", "检测", "鉴定", "解析", "档案",
+              "anchor", "origin", "bloodline", "lineage", "research", "investigat", "examin", "analy", "dossier")
     # 夜间外出闸(浸泡实锤:夜律拍首拉回家,同拍调度又把人派去水泥厂搜查=夜归被覆盖。
     # 夜间低张力角色拒收「离家」位置变更;回家方向放行;高张力/高潮线参与者豁免)
     _m = int(sim.get("clock_min") or 0) % 1440
@@ -408,15 +438,15 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
         known = _whitelist(sim, world_context)
         fab = find_fabricated_nouns(t, known)
         if fab:
-            rejected.append(f"{what}:新造名词{'/'.join(fab[:2])}")
+            rejected.append(f"{what}: invented noun {'/'.join(fab[:2])}")
             return False
         # 玩家设定神圣旁路闸(浸泡实锤:铭牌共振玩家头顶能量=给玩家力量建解释装置)
         # B9:近邻窗口判定替代整句字符串共现,降低"薇欧拉调查账目"式的高频词误伤
         if _near_hit(t, _pkeys, _APPARATUS):
-            rejected.append(f"{what}:围绕玩家搭建解释装置")
+            rejected.append(f"{what}: builds an explanatory device around the player")
             return False
         if _near_hit(t, _pkeys, _PROBE):
-            rejected.append(f"{what}:以玩家为对象的探究(神圣条款)")
+            rejected.append(f"{what}: probes the player (sacred clause)")
             return False
         return True
 
@@ -438,29 +468,31 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
         rk = resolve_cast_name(cast, str(name))
         c = cast.get(rk) if rk else None
         if not c or not isinstance(u, dict):
-            rejected.append(f"cast_updates:未知角色{name}")
+            rejected.append(f"cast_updates: unknown character {name}")
             continue
-        unconscious = c.get("kind") == "player" and c.get("status") in ("昏迷",)
+        unconscious = c.get("kind") == "player" and _is_unconscious(c.get("status"))
         for k in ("location", "activity", "goal", "stance"):
             v = str(u.get(k) or "").strip()
             if not v:
                 continue
             if k == "location":
-                if unconscious and str(c.get("location") or "") != "未知地点":
+                if unconscious and not _is_unknown_place(c.get("location")):
                     # 守恒=不可移动;但「落定未知位置」不是移动(实锤:昏迷玩家位置永远卡死未知)
-                    rejected.append("玩家昏迷:位置不可变")
+                    rejected.append("player unconscious: location cannot change")
                     continue
                 _home = str(c.get("home") or "").strip()
-                if (_night and rk not in _hot and _home and _home != "未知地点"
+                if (_night and rk not in _hot and _home and not _is_unknown_place(_home)
                         and v != _home and str(c.get("location") or "") == _home):
-                    rejected.append(f"{rk}:夜间不外出(低张力)")
+                    rejected.append(f"{rk}: does not go out at night (low tension)")
                     continue
                 if v not in (sim.get("places") or []):
-                    if not _gate(v, "新地点"):
+                    if not _gate(v, "new place"):
                         continue
                     sim.setdefault("places", []).append(v)
-            if unconscious and k == "activity" and not any(m in v for m in ("沉睡", "昏迷", "梦", "呼吸", "颤", "翕动")):
-                rejected.append(f"玩家昏迷:活动『{v[:12]}』违反状态守恒")
+            if unconscious and k == "activity" and not any(m in v.lower() for m in (
+                    "沉睡", "昏迷", "梦", "呼吸", "颤", "翕动",
+                    "sleep", "unconscious", "dream", "breath", "trembl", "twitch", "stir")):
+                rejected.append(f"player unconscious: activity '{v[:12]}' violates state conservation")
                 continue
             if k in ("goal", "activity") and not _gate(v, f"{name}.{k}"):
                 continue
@@ -493,8 +525,8 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
                 data = dict(data or {})
                 data["interaction"] = {
                     "participants": _tp, "place": _loc0,
-                    "reason": f"剧情线「{str(_t.get('desc') or '')[:20]}」到了必须兑现的关口",
-                    "expected_outcome": "给出决定性的进展或转折",
+                    "reason": f"plot thread '{str(_t.get('desc') or '')[:20]}' has reached the point where it must pay off",
+                    "expected_outcome": "a decisive development or turn",
                 }
                 break  # 每拍只强插一场
 
@@ -509,7 +541,7 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
         ps = ps[:2]
         place = str(it.get("place") or "").strip()
         unconscious_active = [p for p in ps if cast[p].get("kind") == "player"
-                              and cast[p].get("status") == "昏迷"]
+                              and _is_unconscious(cast[p].get("status"))]
         _homes = {str(cast[p].get("home") or "").strip() for p in ps if p in cast}
         # B4:夜间外出闸补齐——之前只挡 cast_updates.location,同拍 interaction.place
         # 却能绕过去演出深夜外出场景,自相矛盾。非 hot 双人+夜间+地点非双方家一律拒收,
@@ -517,11 +549,11 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
         _night_violation = (len(ps) == 2 and _night and place
                             and not any(p in _hot for p in ps) and place not in _homes)
         if _night_violation:
-            rejected.append(f"interaction:夜间外出(非双方home){place}")
-            _fb = f"{ps[0]}与{ps[1]}本约在{place}相见,因夜深作罢,各自留宿"[:100]
+            rejected.append(f"interaction: going out at night (not either party's home) {place}")
+            _fb = f"{ps[0]} and {ps[1]} meant to meet at {place}, but it was too late at night, so each stayed home"[:100]
             if _gate(_fb, "interaction_night_fallback"):
                 sim.setdefault("facts", []).append(_fb)
-        elif len(ps) == 2 and (place in (sim.get("places") or []) or _gate(place, "相遇地点")):
+        elif len(ps) == 2 and (place in (sim.get("places") or []) or _gate(place, "meeting place")):
             # 昏迷玩家可以是场景的对象(被照料/被谈论),不作为主动方——呈现层约束
             applied["interaction"] = {
                 "participants": ps, "place": place or cast[ps[0]].get("location") or "",
@@ -531,7 +563,7 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
             }
             _feed_tension(ps)  # B1:相遇成立=世界侧对冲信号,喂养涉及的现存线
         elif it:
-            rejected.append("interaction:参与者/地点未过验收")
+            rejected.append("interaction: participants/place failed validation")
     # B11:上一拍相遇参与者(决策槽位分配器读取),每拍覆盖式记录(无相遇则清空,不留陈迹)
     sim["_last_interaction_participants"] = (
         list(applied["interaction"]["participants"]) if applied.get("interaction") else [])
@@ -551,7 +583,7 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
     # world_events(≤1,名词闸)
     for ev in (data.get("world_events") or [])[:1]:
         t = str(ev or "").strip()
-        if t and _gate(t, "world_event") and "你" not in t:
+        if t and _gate(t, "world_event") and "你" not in t and not re.search(r"\byou(r|rs|rself)?\b", t, re.I):
             applied["events"].append(t[:120])
 
     # threads
@@ -618,7 +650,7 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
             continue
         pair = [resolve_cast_name(cast, str(x)) for x in (ru.get("pair") or [])[:2]]
         if len(pair) != 2 or not all(pair) or pair[0] == pair[1]:
-            rejected.append("relation:成员未识别")
+            rejected.append("relation: member not recognised")
             continue
         kind = str(ru.get("kind") or "").strip()[:12]
         note = str(ru.get("note") or "").strip()[:40]
@@ -649,7 +681,7 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
     beats = canon.get("beats") or []
     cur = int(canon.get("cursor") or 0)
     if data.get("canon_advance") and cur < len(beats):
-        sim.setdefault("facts", []).append("【原著进程】" + beats[cur]["text"])
+        sim.setdefault("facts", []).append(CANON_FACT_TAG + beats[cur]["text"])
         _push_canon_history(sim, beats[cur]["text"])  # B8:里程碑独立保存,不受 facts FIFO 挤出
         canon["cursor"] = cur + 1
         canon["stall"] = 0
@@ -672,7 +704,7 @@ def apply_scheduler_output(sim: dict, data: dict, *, world_context: str = "") ->
                 _parts = [nm for nm, cc in (sim.get("cast") or {}).items()
                           if cc.get("kind") != "player"][:2]
             _threads.append({"id": f"t{_n}",
-                             "desc": ("(原著动向)" + str(applied["canon_text"]))[:80],
+                             "desc": ("(canon development) " + str(applied["canon_text"]))[:80],
                              "tension": 3, "stage": "seed", "tension_hist": [3],
                              "participants": _parts})
             applied["thread_born_from_beat"] = f"t{_n}"
@@ -734,7 +766,7 @@ def advance_stalled_canon(sim: dict) -> str | None:
     if cur >= len(beats) or int(canon.get("stall") or 0) < CANON_STALL_LIMIT:
         return None
     text = beats[cur]["text"]
-    sim.setdefault("facts", []).append("【原著进程】" + text)
+    sim.setdefault("facts", []).append(CANON_FACT_TAG + text)
     if len(sim["facts"]) > MAX_FACTS:
         sim["facts"] = sim["facts"][-MAX_FACTS:]
     _push_canon_history(sim, text)  # B8:强制前行同样是里程碑,独立保存不受 facts FIFO 挤出
@@ -773,7 +805,7 @@ def close_stale_threads(sim: dict) -> list[str]:
             continue
         if int(t.get("tension") or 0) <= 1 and seq - int(lt) >= STALE_THREAD_TICKS:
             closed.append(str(t.get("desc") or "")[:40])
-            sim.setdefault("facts", []).append("(已平息)" + str(t.get("desc") or "")[:60])
+            sim.setdefault("facts", []).append("(settled) " + str(t.get("desc") or "")[:60])
             continue
         keep.append(t)
     if closed:
@@ -795,13 +827,13 @@ def enforce_night(sim: dict) -> int:
     # B3:夜律认原著行程——goal 带「(原著行程)」标记的角色(anchor_cast_to_beat 写入)
     # 不受夜律管辖,否则刚被锚定去异地过夜的原著卡司会被强制拉回家,与河道主线自相矛盾。
     hot.update(n for n, c in (sim.get("cast") or {}).items()
-               if str(c.get("goal") or "").startswith("(原著行程)"))
+               if _has_canon_goal(c.get("goal")))
     n = 0
     for name, c in (sim.get("cast") or {}).items():
-        if name in hot or c.get("status") == "昏迷":
+        if name in hot or _is_unconscious(c.get("status")):
             continue
-        if "睡" not in str(c.get("activity") or ""):
-            c["activity"] = "睡眠"
+        if not _is_sleeping(c.get("activity")):
+            c["activity"] = ACTIVITY_ASLEEP
             # 夜归(浸泡实锤:自由调查线滚雪球→留学生夜宿水泥厂石灰窑深坑=行为脱设定,
             # 名词闸挡不住这种歪法)。被强制入睡者拉回住所树立日常重力;
             # LLM 主动安排的外宿(activity 已是睡眠,如出差宿旅馆)尊重不动。
@@ -814,16 +846,16 @@ def enforce_night(sim: dict) -> int:
 
 # ── 呈现(LLM-B):把已裁决的相遇写成对白 ─────────────────────────────
 
-_DIRECTOR_SYSTEM = """你是场景呈现器:把【已经决定发生的一次相遇】写成一小段对白与纪要。
-铁律:
-1. 情节已定(参与者/地点/缘由/自然落点都给你了),你只负责演绎,不得加戏、不得引入新情节要素。
-2. 只能使用给出的信息;绝不发明新的机构/地点/装置/计划名。
-3. 标注为[昏迷]的参与者绝不能说话或行动,只能有微弱生理反应(呼吸/皱眉/梦呓片段)。
-4. 对话≤8行,每行≤120字;语气贴合各自设定。
-只输出严格 JSON(不要围栏):
-{"transcript": [{"speaker": "名字", "line": "台词或动作"}],
- "scene_summary": "≤120字第三人称纪要",
- "private_memories": {"名字": "这个角色私下会记住的一句话(≤60字,可省略)"}}"""
+_DIRECTOR_SYSTEM = """You are the scene renderer: write [a meeting that has already been decided] as a short exchange of dialogue plus a summary.
+Iron rules:
+1. The plot is fixed (participants / place / reason / natural ending are all given). You only perform it; do not add drama or introduce new plot elements.
+2. Use only the information given; never invent new institutions / places / devices / plan names.
+3. A participant marked [unconscious] can never speak or act, only show faint physiological reactions (breathing / frowning / fragments of sleep-talk).
+4. At most 8 lines of dialogue, each at most 120 characters; the tone fits each character's profile.
+Output strict JSON only (no code fences):
+{"transcript": [{"speaker": "name", "line": "line of dialogue or action"}],
+ "scene_summary": "third-person summary of at most 120 characters",
+ "private_memories": {"name": "one sentence this character will privately remember (at most 60 characters; may be omitted)"}}"""
 
 
 def build_director_prompts(sim: dict, interaction: dict, *, elapsed_hint: str = "") -> tuple[str, str]:
@@ -831,8 +863,8 @@ def build_director_prompts(sim: dict, interaction: dict, *, elapsed_hint: str = 
     lines = []
     for p in interaction.get("participants") or []:
         c = cast.get(p) or {}
-        tag = "[昏迷]" if p in (interaction.get("passive") or []) else ""
-        lines.append(f"- {p}{tag}:{c.get('sheet','')[:100]};目标:{c.get('goal') or '(无)'};态度:{c.get('stance') or '(平静)'}")
+        tag = "[unconscious]" if p in (interaction.get("passive") or []) else ""
+        lines.append(f"- {p}{tag}: {c.get('sheet','')[:100]}; goal: {c.get('goal') or '(none)'}; attitude: {c.get('stance') or '(calm)'}")
     rel_facts = (sim.get("facts") or [])[-6:]
     # v3:两人现有关系喂给呈现层——关系是对白语气的地基(挚友与心存芥蒂说话不一样)
     ps2 = [str(x) for x in (interaction.get("participants") or [])[:2]]
@@ -840,12 +872,12 @@ def build_director_prompts(sim: dict, interaction: dict, *, elapsed_hint: str = 
     if len(ps2) == 2:
         _rv = (sim.get("relations") or {}).get("|".join(sorted(ps2)))
         if _rv:
-            _rel_line = f"\n【两人关系】{_rv.get('kind', '')}" + (f"(近况:{_rv.get('note', '')})" if _rv.get("note") else "")
-    user = ("【相遇】地点:" + str(interaction.get("place")) + ";缘由:" + str(interaction.get("reason"))
-            + ";自然落点:" + str(interaction.get("expected_outcome")) + _rel_line + "\n【参与者】\n" + "\n".join(lines)
-            + "\n【相关事实】\n" + "\n".join("· " + f for f in rel_facts)
-            + (f"\n【经过时间】{elapsed_hint}" if elapsed_hint else "")
-            + "\n请写出这场相遇。")
+            _rel_line = f"\n[Their relationship] {_rv.get('kind', '')}" + (f" (lately: {_rv.get('note', '')})" if _rv.get("note") else "")
+    user = ("[Meeting] place: " + str(interaction.get("place")) + "; reason: " + str(interaction.get("reason"))
+            + "; natural ending: " + str(interaction.get("expected_outcome")) + _rel_line + "\n[Participants]\n" + "\n".join(lines)
+            + "\n[Related facts]\n" + "\n".join("· " + f for f in rel_facts)
+            + (f"\n[Time elapsed] {elapsed_hint}" if elapsed_hint else "")
+            + "\nWrite this meeting.")
     return _DIRECTOR_SYSTEM, user
 
 
@@ -866,7 +898,9 @@ def validate_director_output(raw_text: str, interaction: dict, sim: dict,
         ln = str(row.get("line") or "").strip()[:120]
         if sp not in ps or not ln:
             continue
-        if sp in passive and not any(k in ln for k in ("呼吸", "皱眉", "梦呓", "颤", "翕动", "睫毛", "沉睡", "呢喃")):
+        if sp in passive and not any(k in ln.lower() for k in (
+                "呼吸", "皱眉", "梦呓", "颤", "翕动", "睫毛", "沉睡", "呢喃",
+                "breath", "frown", "murmur", "mumble", "trembl", "twitch", "eyelash", "asleep", "sleep", "stir")):
             continue  # 昏迷者只允许生理反应行
         transcript.append({"speaker": sp, "line": ln})
     summary = str(data.get("scene_summary") or "").strip()[:160]

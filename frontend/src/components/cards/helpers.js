@@ -84,7 +84,7 @@ function cardFormPayload(form, card) {
 // NPC 卡 → user_card(card_type='pc')payload。剧本编辑器 / 角色卡页共用,避免 shape 漂移。
 // 转换 = 完整复制一份独立用户卡(含头像 URL,站内资产不重存),非指针。后端走 POST
 // /api/me/character-cards(myUpsert),与 agent 工具 clone_npc_to_user_card 等价。
-function npcToUserCardBody(c, { fromNpcTag = '来自NPC', unnamed = '无名角色' } = {}) {
+function npcToUserCardBody(c, { fromNpcTag = 'From NPC', unnamed = 'Unnamed character' } = {}) {
   const raw = (c && c._raw) || c || {};
   const baseTags = Array.isArray(c && c.tags) && c.tags.length ? [...c.tags] : [];
   return {
@@ -113,30 +113,31 @@ function cardSnippet(c, n = 160) {
   return s ? (s.length > n ? s.slice(0, n) + '…' : s) : '';
 }
 
+// 离线 / 匿名设计预览用的示例卡(登录态不显示)。
 const USER_CARDS = [
-  { id: "uc1", name: "顾承砚", role: "漂流的史官", tone: "—", origin: "雾港未尽 · 默认主角",
-    bio: "南陵旧学世家出身，因雾港事件获得在三个王朝间穿越的能力。能记录但难以改变。",
-    tags: ["史官", "记录者", "穿越"], pinned: true, uses: 14, updated: "12 分钟前" },
-  { id: "uc2", name: "沈知微", role: "雾港医师", tone: "中立",  origin: "雾港未尽",
-    bio: "雾港医馆的女医师，掌握『若残页足三，则可推时』的旧学。",
-    tags: ["医师", "知情人", "女"], pinned: false, uses: 6, updated: "今天" },
-  { id: "uc3", name: "阿衡", role: "灯塔守人之女", tone: "亲近", origin: "通用",
-    bio: "年十四，性格倔强，会替父亲守灯塔。", tags: ["少女", "灯塔"], pinned: false, uses: 2, updated: "3 天前" },
-  { id: "uc4", name: "无名旅人", role: "—", tone: "中立", origin: "通用",
-    bio: "默认观察者视角，不参与剧情核心。", tags: ["观察者", "通用"], pinned: false, uses: 8, updated: "上周" },
+  { id: "uc1", name: "Gu Chengyan", role: "Drifting chronicler", tone: "—", origin: "Fog Harbor · default protagonist",
+    bio: "Born into an old scholarly family of Nanling, he gained the power to cross between three dynasties after the Fog Harbor incident. He can record events but can hardly change them.",
+    tags: ["Chronicler", "Recorder", "Time travel"], pinned: true, uses: 14, updated: "12 minutes ago" },
+  { id: "uc2", name: "Shen Zhiwei", role: "Fog Harbor physician", tone: "Neutral",  origin: "Fog Harbor",
+    bio: "A physician at the Fog Harbor clinic who knows the old lore: \"With three torn pages, time can be reckoned.\"",
+    tags: ["Physician", "Insider", "Female"], pinned: false, uses: 6, updated: "Today" },
+  { id: "uc3", name: "Aheng", role: "Lighthouse keeper's daughter", tone: "Friendly", origin: "Generic",
+    bio: "Fourteen and stubborn; she keeps the lighthouse for her father.", tags: ["Girl", "Lighthouse"], pinned: false, uses: 2, updated: "3 days ago" },
+  { id: "uc4", name: "Nameless traveler", role: "—", tone: "Neutral", origin: "Generic",
+    bio: "Default observer point of view; stays out of the core plot.", tags: ["Observer", "Generic"], pinned: false, uses: 8, updated: "Last week" },
 ];
 
 const NPC_CARDS = [
-  { id: "n1", name: "韩司直", role: "南陵巡检", tone: "戒备", save: "雾港·主线·顾承砚",
-    bio: "南陵驻雾港巡检，正在追查史官残页线索。", tags: ["巡检", "敌意", "权威"], uses: 9, updated: "12 分钟前" },
-  { id: "n2", name: "童守人", role: "灯塔守人", tone: "失踪", save: "雾港·主线·顾承砚",
-    bio: "灯塔守人，与南陵童氏同源，昨夜失踪。", tags: ["失踪", "线索"], uses: 3, updated: "今天" },
-  { id: "n3", name: "税吏甲", role: "码头税吏", tone: "敌意", save: "雾港·主线·顾承砚",
-    bio: "正在码头打听史官的下落。", tags: ["敌意", "次要"], uses: 4, updated: "今天" },
-  { id: "n4", name: "陈渡海", role: "船工", tone: "中立", save: "雾港·支线·沈知微视角",
-    bio: "雾港老船工，知道海路的人。", tags: ["导引"], uses: 2, updated: "昨天" },
-  { id: "n5", name: "尚书令", role: "南陵权臣", tone: "高位", save: "南陵旧灯录·开场",
-    bio: "南陵当权派，掌握光绪十三年的卷宗。", tags: ["权臣", "高位"], uses: 1, updated: "上周" },
+  { id: "n1", name: "Inspector Han", role: "Nanling patrol inspector", tone: "Wary", save: "Fog Harbor · main · Gu Chengyan",
+    bio: "Nanling's inspector stationed at Fog Harbor, tracking down the chronicler's torn pages.", tags: ["Inspector", "Hostile", "Authority"], uses: 9, updated: "12 minutes ago" },
+  { id: "n2", name: "Keeper Tong", role: "Lighthouse keeper", tone: "Missing", save: "Fog Harbor · main · Gu Chengyan",
+    bio: "The lighthouse keeper, kin to the Tong clan of Nanling. Went missing last night.", tags: ["Missing", "Clue"], uses: 3, updated: "Today" },
+  { id: "n3", name: "Tax collector", role: "Dock tax collector", tone: "Hostile", save: "Fog Harbor · main · Gu Chengyan",
+    bio: "Asking around the docks about the chronicler's whereabouts.", tags: ["Hostile", "Minor"], uses: 4, updated: "Today" },
+  { id: "n4", name: "Chen Duhai", role: "Boatman", tone: "Neutral", save: "Fog Harbor · side · Shen Zhiwei POV",
+    bio: "An old Fog Harbor boatman who knows the sea routes.", tags: ["Guide"], uses: 2, updated: "Yesterday" },
+  { id: "n5", name: "Chancellor", role: "Nanling power broker", tone: "High rank", save: "Nanling Lamp Records · opening",
+    bio: "Leader of Nanling's ruling faction, holder of the dossiers from the thirteenth year of Guangxu.", tags: ["Power broker", "High rank"], uses: 1, updated: "Last week" },
 ];
 
 export { _oneLine, ELLIPSIS_1, clampLines, cardFormInit, cardFormPayload, npcToUserCardBody, cardSnippet, USER_CARDS, NPC_CARDS };

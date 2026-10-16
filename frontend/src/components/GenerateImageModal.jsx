@@ -54,8 +54,8 @@ export default function GenerateImageModal({
   // 反馈采集:生图弹窗(无独立路由)标记当前活跃功能供运行环境快照识别。
   useEffect(() => {
     if (!open) return;
-    try { window.__activeFeature = 'AI 生图'; } catch (_) {}
-    return () => { try { if (window.__activeFeature === 'AI 生图') window.__activeFeature = null; } catch (_) {} };
+    try { window.__activeFeature = 'AI image generation'; } catch (_) {}
+    return () => { try { if (window.__activeFeature === 'AI image generation') window.__activeFeature = null; } catch (_) {} };
   }, [open]);
   // perCall:逐字保留本组件原 done/fail/error 文案与轮询策略。
   const PER_CALL = {

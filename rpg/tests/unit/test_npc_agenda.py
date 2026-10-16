@@ -267,7 +267,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         entry = s.data["npc_agendas"]["雷纳德"]
         self.assertEqual(entry["goal"], "查清东林兽伤的真相")
         self.assertEqual(entry["stance"], "信任但保留观察")
-        self.assertTrue(any("状态写入" in u for u in updates), updates)
+        self.assertTrue(any("State write" in u for u in updates), updates)
 
     def test_json_op_goal_only_variant(self):
         s = _new_state(turn=1)
@@ -290,7 +290,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         )
         updates = s.apply_structured_updates(gm_response)
         self.assertEqual(s.data.get("npc_agendas", {}), {})
-        self.assertTrue(any("缺 name" in u or "忽略" in u for u in updates), updates)
+        self.assertTrue(any("no name" in u or "ignored" in u for u in updates), updates)
 
     def test_json_op_missing_goal_and_stance_rejected_no_crash(self):
         s = _new_state(turn=1)
@@ -326,7 +326,7 @@ class ApplyOpBranchTests(unittest.TestCase):
             "```\n"
         )
         updates = s.apply_structured_updates(gm_response)
-        self.assertTrue(any("等待玩家回答" in u for u in updates), updates)
+        self.assertTrue(any("Awaiting player answer" in u for u in updates), updates)
 
     def test_consequence_op_still_works_alongside(self):
         """回归:新分支不破坏既有 consequence op 行为(同批柱子2/3 op 共存)。"""
@@ -338,7 +338,7 @@ class ApplyOpBranchTests(unittest.TestCase):
         )
         updates = s.apply_structured_updates(gm_response)
         self.assertEqual(len(s.data["consequence_ledger"]), 1)
-        self.assertTrue(any("状态写入" in u for u in updates), updates)
+        self.assertTrue(any("State write" in u for u in updates), updates)
 
 
 # ────────────────────────────────────────────────────────────
@@ -391,7 +391,7 @@ class NpcAgendaProviderTests(unittest.TestCase):
             self.assertTrue(contrib.applied)
             self.assertEqual(len(contrib.layers), 1)
             content = contrib.layers[0]["content"]
-            self.assertIn("当下活状态", content)
+            self.assertIn("current live state", content)
             self.assertIn("雷纳德", content)
             self.assertIn("查清东林兽伤真相", content)
         finally:

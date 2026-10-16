@@ -31,7 +31,7 @@ def _upsert_ref(db, save_id: int, name: str, target_commit_id: int, *, active: b
 def _upsert_ref_by_id(db, ref_id: int, target_commit_id: int, *, active: bool) -> dict[str, Any]:
     ref = db.execute("select * from branch_refs where id = %s", (ref_id,)).fetchone()
     if not ref:
-        raise ValueError("runtime 指向的分支引用不存在")
+        raise ValueError("The branch ref that runtime points to does not exist")
     if active:
         db.execute("update branch_refs set is_active = false where save_id = %s", (ref["save_id"],))
     return db.execute(

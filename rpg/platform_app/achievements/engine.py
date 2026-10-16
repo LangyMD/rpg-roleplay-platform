@@ -183,15 +183,15 @@ def build_stats_snapshot(db, user) -> dict[str, Any]:
 def validate_rule(rule: Any, _depth: int = 0) -> None:
     """校验声明式规则;非法抛 ValueError。这是阻止越权/可执行规则的关键闸。"""
     if _depth > _MAX_RULE_DEPTH:
-        raise ValueError("规则嵌套过深")
+        raise ValueError("Rule nesting is too deep")
     if not isinstance(rule, dict):
-        raise ValueError("规则必须是对象")
+        raise ValueError("Rule must be an object")
     if "all" in rule:
         parts = rule["all"]
         if not isinstance(parts, list) or not parts:
-            raise ValueError("all 必须是非空数组")
+            raise ValueError("all must be a non-empty array")
         if set(rule.keys()) - {"all"}:
-            raise ValueError("复合规则只能含 all")
+            raise ValueError("Composite rules may only contain all")
         for r in parts:
             validate_rule(r, _depth + 1)
         return
@@ -199,11 +199,11 @@ def validate_rule(rule: Any, _depth: int = 0) -> None:
     op = rule.get("op")
     target = rule.get("target")
     if metric not in ALLOWED_METRICS:
-        raise ValueError(f"未知 metric: {metric!r}(白名单:{sorted(ALLOWED_METRICS)})")
+        raise ValueError(f"Unknown metric: {metric!r} (allowlist: {sorted(ALLOWED_METRICS)})")
     if op not in ALLOWED_OPS:
-        raise ValueError(f"未知 op: {op!r}(白名单:{sorted(ALLOWED_OPS)})")
+        raise ValueError(f"Unknown op: {op!r} (allowlist: {sorted(ALLOWED_OPS)})")
     if isinstance(target, bool) or not isinstance(target, (int, float)):
-        raise ValueError("target 必须是数字")
+        raise ValueError("target must be a number")
 
 
 # ── 判定 ──────────────────────────────────────────────────────────────
@@ -237,8 +237,8 @@ def _project(d: dict, unlocked: bool, res: dict, urow: dict | None,
     mask = hidden and not unlocked
     return {
         "id": d["id"],
-        "name": "？？？" if mask else d["name"],
-        "desc": "隐藏成就" if mask else d["description"],
+        "name": "???" if mask else d["name"],
+        "desc": "Hidden achievement" if mask else d["description"],
         "icon": None if mask else d.get("icon"),
         "category": d["category"],
         "tier": d.get("tier"),

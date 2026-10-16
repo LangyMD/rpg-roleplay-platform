@@ -196,7 +196,7 @@ class TimelineLayerUsesRealAnchor(unittest.TestCase):
         from context_engine import _timeline_layer
         state = self._state(anchor_chapter=51, chapter_min=51, chapter_max=155)
         text = _timeline_layer(state)["text"]
-        self.assertIn("第51章", text)
+        self.assertIn("chapter 51", text)
         self.assertIn("51 - 155", text)
         self.assertIn("初期穿越与火星线", text)
 
@@ -216,8 +216,8 @@ class TimelineLayerUsesRealAnchor(unittest.TestCase):
         text = _timeline_layer(g)["text"]
         # 默认柏林 label 走 _safe_timeline_filter,通常返回 ? (未命中) 或 SQLite 结果
         # 主要是不抛异常
-        self.assertIn("当前锁定时间线", text)
-        self.assertIn("原著检索锚点", text)
+        self.assertIn("Locked timeline", text)
+        self.assertIn("Novel retrieval anchor", text)
 
 
 # ────────────────────────────────────────────────────────────
@@ -243,7 +243,7 @@ class ChatHandlerWritesAnchorAfterSet(unittest.TestCase):
 
     def test_chat_surfaces_anchor_in_directive_updates(self):
         # directive_updates 应附加"时间线锚点 → 第X-Y章"提示
-        self.assertIn("时间线锚点", self.app_text)
+        self.assertIn("Timeline anchor", self.app_text)
 
 
 class GenericAlgorithmNoHardcoding(unittest.TestCase):

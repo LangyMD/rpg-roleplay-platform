@@ -271,14 +271,14 @@ function useAutoSave(label, scope) {
       pendingRef.current = {};
       if (Object.keys(batch).length === 0) {
         // 兼容旧调用：仅 toast，不打后端
-        window.toast?.(`${label}${_t('platform.autosave.saved', '已保存')}`, { kind: "ok", detail: scope ? `${scope} · ${field}` : field, duration: 2400 });
+        window.toast?.(i18n.t('platform.autosave.saved_label', { label }), { kind: "ok", detail: scope ? `${scope} · ${field}` : field, duration: 2400 });
         return;
       }
       try {
         await window.api.account.preferences(batch);
-        window.toast?.(`${label}${_t('platform.autosave.saved', '已保存')}`, { kind: "ok", detail: Object.keys(batch).join(', '), duration: 2000 });
+        window.toast?.(i18n.t('platform.autosave.saved_label', { label }), { kind: "ok", detail: Object.keys(batch).join(', '), duration: 2000 });
       } catch (e) {
-        window.toast?.(`${label}${_t('platform.autosave.failed', '保存失败')}`, { kind: "danger", detail: e?.message || _t('platform.autosave.network_error', '网络错误'), duration: 3000 });
+        window.toast?.(i18n.t('platform.autosave.failed_label', { label }), { kind: "danger", detail: e?.message || _t('platform.autosave.network_error'), duration: 3000 });
       }
     }, 250);
   }, [label, scope]);

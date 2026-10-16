@@ -39,38 +39,38 @@ from core.logging import get_logger
 log = get_logger(__name__)
 
 _SET_PARSER_SYSTEM = """\
-你是 /set 解析器。玩家用自然语言描述了想强制改写的设定，
-你把它拆成精确的 JSON ops 列表让系统写入。**不要写小说**，只输出 JSON。
+You are the /set parser. The player has described, in natural language, settings they want to force-overwrite;
+you break that down into a precise list of JSON ops for the system to write. **Do not write fiction**; output JSON only.
 
-可写字段：
+Writable fields:
 - player.name / player.role / player.background / player.current_location
 - world.time / world.weather / world.timeline.current_phase
 - memory.main_quest / memory.current_objective
-- memory.facts (用 op=append)
-- relationships.<角色名>  - 关系状态如 "信任/警惕/敌意/亲近/紧张/疏离" 等
-- worldline.user_variables.<变量名>  - 玩家硬约束变量
+- memory.facts (use op=append)
+- relationships.<character name>  - a relationship status such as "trusting/wary/hostile/close/tense/distant"
+- worldline.user_variables.<variable name>  - a player hard-constraint variable
 
-禁止写入（硬黑名单）：
+Never write (hard blacklist):
 - permissions.* / history.* / schema_version
 
-可用 op：
-- "set":      覆盖字段
-- "append":   往列表追加（仅 memory.facts/resources/abilities/pinned/notes 等列表字段）
-- "hypothesis": 玩家想假设的内容，单独存放不入 facts
+Available ops:
+- "set":      overwrite the field
+- "append":   append to a list (only list fields such as memory.facts/resources/abilities/pinned/notes)
+- "hypothesis": something the player wants to hypothesize; stored separately, not in facts
 
-输出格式（**严格 JSON，不要 markdown，不要解释**）：
+Output format (**strict JSON, no markdown, no explanation**):
 {
   "ops": [
-    {"op":"set","path":"relationships.斯雷因","value":"信任下降"},
-    {"op":"append","path":"memory.facts","value":"蕾穆丽娜发现斯雷因隐瞒情报"},
-    {"op":"set","path":"worldline.user_variables.trust_slaine","value":"蕾穆丽娜对斯雷因信任下降"}
+    {"op":"set","path":"relationships.Slaine","value":"trust declining"},
+    {"op":"append","path":"memory.facts","value":"Lemrina discovered that Slaine is withholding intel"},
+    {"op":"set","path":"worldline.user_variables.trust_slaine","value":"Lemrina's trust in Slaine is declining"}
   ]
 }
 
-如果玩家话语模糊（如 "/set 让剧情更黑暗一点"），不要瞎拆，输出 ops=[]
-让 GM 在叙事里自然吸收；不要硬塞 set 字段。
+If the player's wording is vague (e.g. "/set make the story a bit darker"), do not force a breakdown; output ops=[]
+and let the GM absorb it naturally in the narration; do not cram it into set fields.
 
-如果完全没有可拆解的字段意图，输出 {"ops":[]}.
+If there is no field-level intent to break down at all, output {"ops":[]}.
 """
 
 
@@ -80,14 +80,14 @@ def _build_user_prompt(set_text: str, state_data: dict) -> str:
     rels = (state_data.get("relationships") or {})
     m = (state_data.get("memory") or {})
     snippet = (
-        f"## 当前状态快照\n"
-        f"- player.name = {p.get('name', '') or '(空)'}\n"
-        f"- player.role = {p.get('role', '') or '(空)'}\n"
-        f"- player.current_location = {p.get('current_location', '') or '(空)'}\n"
-        f"- memory.main_quest = {m.get('main_quest', '') or '(空)'}\n"
-        f"- 已识别关系：{', '.join(list(rels.keys())[:10]) or '(无)'}\n"
+        f"## Current state snapshot\n"
+        f"- player.name = {p.get('name', '') or '(empty)'}\n"
+        f"- player.role = {p.get('role', '') or '(empty)'}\n"
+        f"- player.current_location = {p.get('current_location', '') or '(empty)'}\n"
+        f"- memory.main_quest = {m.get('main_quest', '') or '(empty)'}\n"
+        f"- Known relationships: {', '.join(list(rels.keys())[:10]) or '(none)'}\n"
     )
-    return snippet + "\n\n## 玩家的 /set 文本\n" + (set_text or "")[:1200]
+    return snippet + "\n\n## The player's /set text\n" + (set_text or "")[:1200]
 
 
 _JSON_FENCE = re.compile(r"```(?:json)?\s*\n?\s*([\[\{][\s\S]*?[\]\}])\s*\n?```", re.MULTILINE)

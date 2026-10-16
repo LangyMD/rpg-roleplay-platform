@@ -73,32 +73,7 @@ function ModuleModelsSection() {
   };
   const MODULES = AGENT_MODULES.map((m) => ({ ...m, label: LABELS[m.id], tip: TIPS[m.id] }));
 
-  // 引擎特性的本地默认文案(i18n 缺键时回退);label/desc 走 settings.features.<i18nKey>.*
-  const FEAT_LABELS = {
-    ctx_tiered: "分层上下文缓存", recorder_unified: "史官三合一", narrator_slim: "文宗精简(去工具循环)",
-    rag_gate: "RAG 检索闸", anchor_pace: "世界线锚点节奏", kb_state: "存档知识库 DB 化",
-    consequence_ledger: "后果账本", world_heartbeat: "世界心跳", channel_fallback: "跨渠道自动备援",
-    npc_agenda: "NPC 议程",
-  };
-  const FEAT_DESCS = {
-    ctx_tiered: "把稳定前缀与动态内容分层,命中模型前缀缓存,显著省 token。",
-    recorder_unified: "状态提取 + 世界线锚点判定合并为一次调用,省一次 LLM。",
-    narrator_slim: "主叙事单次成文、不带工具循环(最大 token 乘数),状态交史官落库。",
-    rag_gate: "由司命判定本回合是否需要检索原著,不需要则跳过,省检索 token。",
-    anchor_pace: "按对话实际节奏推进锚点、同章逐个标记、角色死亡使相关锚点失效 —— 治跳章 / 不按锚点走。",
-    kb_state: "存档状态以数据库行存储(单一来源),便于精确检索与维护;关闭则用传统整档存储。",
-    consequence_ledger: "玩家的承诺/欠债到期或抵达指定地点时,提醒 GM 在剧情中主动兑现。",
-    world_heartbeat: "每隔几回合生成玩家不在场处发生的世界侧小事,之后以传闻方式自然浮现。",
-    channel_fallback: "主模型渠道持续故障时,自动切换到你配置的其他渠道把本回合讲完(切换会明确提示)。",
-    npc_agenda: "每个当下活跃的 NPC 带一份持续演化的议程(此刻想要什么/对玩家什么态度),GM 生成时看得见,跨回合保持连续。",
-  };
-  const GROUP_DESC = {
-    core: "三贤者流水线:文宗叙事、司命规划、史官记录,以及核心 GM 辅助模型。",
-    script: "剧本编辑、角色卡生成 / 导入与审校相关的模型。",
-    world: "世界线锚点、阶段摘要、黑天鹅事件等世界推进相关。",
-    gen: "向量检索(RAG)与图像生成。",
-    misc: "未单独配置时的通用兜底模型。",
-  };
+  // 引擎特性 / 分组文案全部走 i18n:settings.features.<i18nKey>.* / settings.modules.group_desc.<id>。
   const _subHdr = { fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 };
 
   // task: embedder 兜底状态 — RAG 模型 section banner 文案 + 是否给 admin/vip 平台 vertex 兜底
@@ -178,7 +153,7 @@ function ModuleModelsSection() {
           const groupLabel = t(`settings.more.modules.group_${grp.id}`, {
             defaultValue: { core: "对话核心（三贤者 + GM 管线）", script: "剧本与角色卡", world: "世界模拟与历史", gen: "检索与生成", misc: "通用兜底" }[grp.id] || grp.id,
           });
-          const groupDesc = t(`settings.modules.group_desc.${grp.id}`, { defaultValue: GROUP_DESC[grp.id] || "" });
+          const groupDesc = t(`settings.modules.group_desc.${grp.id}`, { defaultValue: "" });
           return (
             <div key={grp.id} style={{ border: "1px solid var(--pl-line, #e9e9ed)", borderRadius: 12, padding: "16px 18px 18px" }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--pl-accent, #0972d3)" }}>{groupLabel}</div>
@@ -192,8 +167,8 @@ function ModuleModelsSection() {
                       <FeatureToggle
                         key={f.key}
                         featureKey={f.key}
-                        label={t(`settings.features.${f.i18nKey}.label`, { defaultValue: FEAT_LABELS[f.key] || f.key })}
-                        desc={t(`settings.features.${f.i18nKey}.desc`, { defaultValue: FEAT_DESCS[f.key] || "" })}
+                        label={t(`settings.features.${f.i18nKey}.label`, { defaultValue: f.key })}
+                        desc={t(`settings.features.${f.i18nKey}.desc`, { defaultValue: "" })}
                         initial={featPrefs[`${f.key}.enabled`]}
                       />
                     ))}

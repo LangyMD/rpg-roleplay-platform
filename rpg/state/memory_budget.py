@@ -95,15 +95,15 @@ def check_append(data: dict[str, Any], bucket: str, text: str, origin: str = "")
     turn = int(data.get("turn") or 0)
     per_turn = memory_append_per_turn_max()
     if per_turn > 0 and _added_this_turn(data, bucket, turn) >= per_turn:
-        return (f"本回合已往 memory.{bucket} 追加 {per_turn} 条(上限),多余的条目请合并成一条再写 —— "
-                f"玩家面板里每条都要手动删,刷屏比漏记更伤")
+        return (f"already appended {per_turn} entries to memory.{bucket} this turn (the limit); merge the extra entries into one before writing - "
+                f"the player has to delete each entry by hand in the panel, so flooding hurts more than missing one")
 
     if bucket in FAMILY_GUARDED_BUCKETS:
         head = family_head(text)
         cap = memory_family_max()
         if head and cap > 0 and _family_count(data, bucket, head) >= cap:
-            return (f"「{head}」在 memory.{bucket} 里已有 {cap} 条(同族上限),别再逐条拆写;"
-                    f"请用 remove_memory_item 合并,或把新进展并进已有条目")
+            return (f"\"{head}\" already has {cap} entries in memory.{bucket} (the per-family limit); stop splitting it into separate entries - "
+                    f"merge them with remove_memory_item, or fold the new progress into an existing entry")
 
     return ""
 

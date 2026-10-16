@@ -49,7 +49,7 @@ async def admin_csam_decision(
     notes = body.get("notes", "")
 
     if decision not in ("founded", "unfounded", "escalate"):
-        raise HTTPException(status_code=400, detail="decision 须为 founded|unfounded|escalate")
+        raise HTTPException(status_code=400, detail="decision must be founded|unfounded|escalate")
 
     with connect() as db:
         result = db.execute(
@@ -63,7 +63,7 @@ async def admin_csam_decision(
             (decision, notes, "decided", admin.get("id"), report_id),
         ).fetchone()
         if not result:
-            raise HTTPException(status_code=404, detail="举报记录不存在")
+            raise HTTPException(status_code=404, detail="Report not found")
 
         _write_audit(db, admin, f"csam.decision.{decision}",
                      target_type="csam_report", target_id=str(report_id),

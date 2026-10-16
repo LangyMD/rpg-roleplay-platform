@@ -48,6 +48,16 @@ _FORBIDDEN_PATTERNS: list[tuple[str, str]] = [
     (r"^冷[,，]\s*刺骨的冷", "刺骨的冷开场"),
     (r"^冷得发[抖颤栗]", "发抖开场"),
     (r"当你再次[^,，。]{0,8}时", "当你再次X时模板"),
+    # English equivalents (GM 输出默认英文;只收过渡叙事的固定短语,宁漏勿误)
+    (r"(?i)\btravel(?:l?ed|s|ing)?\s+back\s+(?:in\s+time|to\s+the\s+past)\b", "time-travel narration"),
+    (r"(?i)\b(?:went|go|goes|going|sent)\s+back\s+in\s+time\b", "back-in-time narration"),
+    (r"(?i)\btime\s+(?:itself\s+)?(?:rewound|reversed|flowed\s+backwards?|was\s+rewritten)\b", "time-rewind narration"),
+    (r"(?i)\b(?:you|the\s+player)\s+(?:wake|woke|awaken|awoke)\s+(?:up\s+)?to\s+find\b", "wake-up-to-find narration"),
+    (r"(?i)\bopen(?:s|ed)?\s+(?:your|his|her|their)\s+eyes\s+(?:once\s+)?again\b", "eyes-open-again narration"),
+    (r"(?i)\b(?:clock|clocks|time)\s+(?:was\s+|were\s+|had\s+been\s+)?(?:turned|wound|rolled|pushed|dragged)\s+back\b",
+     "clock-turned-back narration"),
+    (r"(?i)\b(?:the\s+world|the\s+timeline|the\s+story)\s+(?:was\s+|had\s+been\s+)?(?:reset|restarted|rebooted|rewritten)\b",
+     "world-reset narration"),
 ]
 
 
@@ -162,9 +172,8 @@ def record_violations_to_audit(state: Any, violations: list[dict[str, Any]]) -> 
             for v in violations
         ],
         "hint": (
-            "GM 在 user_set 时间跳跃当回合写了"
-            f"{len(violations)} 处过渡叙事禁词,"
-            "可考虑 /retry 重新生成。"
+            f"On the turn of a /set time jump, the GM wrote {len(violations)} forbidden "
+            "transition phrase(s). Consider /retry to regenerate."
         ),
     })
     if len(audit) > 200:
@@ -198,6 +207,18 @@ _TODAY_WD_RE = re.compile(r"(?:今天|今日|当天|本日)(?:那天|这天)?\s*
 
 def _wd_name(idx: int) -> str:
     return _WD_NAME[idx % 7]
+
+
+# 玩家可见的 weekday_notice 用英文(检测本身只认中文正文;rel/星期名给 toast 时译出)。
+_WD_NAME_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+_REL_EN_BY_DELTA = {
+    0: "today", 1: "tomorrow", 2: "the day after tomorrow", 3: "three days from now",
+    -1: "yesterday", -2: "the day before yesterday", -3: "three days ago",
+}
+
+
+def _rel_en(rel: str) -> str:
+    return _REL_EN_BY_DELTA.get(_REL_DAY_DELTA.get(rel, 99), rel)
 
 
 def parse_today_weekday(text: str) -> int | None:
@@ -282,7 +303,8 @@ def run_narrative_guards(response: str, player_message: str, state: Any) -> list
             record_violations_to_audit(state, tj)
             events.append(("agent", {
                 "phase": "timeline_guard",
-                "message": f"GM 时间跳跃叙事检测到 {len(tj)} 处禁词(穿越/醒来/拨回 等过渡叙事)",
+                "message": (f"Found {len(tj)} forbidden phrase(s) in the GM's time-jump narration "
+                            "(time travel / waking up / clock turned back, etc.)"),
                 "status": "warning", "elapsed_ms": 0,
                 "violations": [{"label": v.get("pattern_label"), "match": v.get("match")} for v in tj],
             }))
@@ -302,9 +324,11 @@ def run_narrative_guards(response: str, player_message: str, state: Any) -> list
     try:
         wd = detect_weekday_violations((player_message or "") + "\n" + text)
         if wd:
-            errs = [{"rel": v["rel"], "claimed": v["claimed_name"], "expected": v["expected_name"]} for v in wd[:5]]
+            errs = [{"rel": _rel_en(v["rel"]), "claimed": _WD_NAME_EN[v["claimed"] % 7],
+                     "expected": _WD_NAME_EN[v["expected"] % 7]} for v in wd[:5]]
             _record_weekday_audit(state, errs)
-            events.append(("weekday_notice", {"base": wd[0]["base_name"], "errors": errs}))
+            base_idx = (wd[0]["expected"] - _REL_DAY_DELTA.get(wd[0]["rel"], 0)) % 7
+            events.append(("weekday_notice", {"base": _WD_NAME_EN[base_idx], "errors": errs}))
     except Exception as exc:
         _log.warning(f"[guards] weekday 跳过: {exc}")
     return events

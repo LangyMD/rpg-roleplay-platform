@@ -428,7 +428,7 @@ class ConfirmationApply(unittest.TestCase):
             decision="approve",
         )
         self.assertFalse(result["ok"])
-        self.assertIn("没有 pending 记录", (result.get("error") or ""))
+        self.assertIn("has no pending record", (result.get("error") or ""))
 
     def test_cross_user_cannot_see_pending(self):
         from console_assistant import apply_confirmation
@@ -608,7 +608,7 @@ class ConfirmationApplyStream(unittest.TestCase):
         self.assertIn("error", types)
         self.assertEqual(types[-1], "done")
         errs = [e["data"]["message"] for e in events if e["event"] == "error"]
-        self.assertTrue(any("没有 pending" in m for m in errs))
+        self.assertTrue(any("has no pending record" in m for m in errs))
 
 
 # ────────────────────────────────────────────────────────────
@@ -883,13 +883,13 @@ class ConsoleAssistantModuleBasics(unittest.TestCase):
         self.assertIn("platform.scripts", sp)
         self.assertIn("7", sp)
         self.assertIn("12", sp)
-        self.assertIn("控制台助手", sp)
+        self.assertIn("console assistant", sp)
 
     def test_build_system_prompt_handles_none(self):
         from console_assistant import build_system_prompt
         sp = build_system_prompt(None)
-        self.assertIn("控制台助手", sp)
-        self.assertIn("未知", sp)
+        self.assertIn("console assistant", sp)
+        self.assertIn("unknown", sp)
 
 
 if __name__ == "__main__":

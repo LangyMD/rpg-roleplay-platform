@@ -33,16 +33,16 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="update_script_chapter",
             description=(
-                "更新剧本某一章的正文/标题/分卷名(覆盖整章正文,destructive)。"
-                "chapter_index 必填;title/content/volume_title 至少传一个。"
-                "改前先向用户说清要改哪一章、改成什么。"
+                "Update the text / title / volume title of one chapter of the script (overwrites the whole chapter text; destructive). "
+                "chapter_index is required; pass at least one of title/content/volume_title. "
+                "Before changing anything, tell the user clearly which chapter you will change and to what."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "chapter_index": {"type": "integer", "description": "章序号(1-based)"},
+                    "chapter_index": {"type": "integer", "description": "Chapter number (1-based)"},
                     "title": {"type": "string"},
-                    "content": {"type": "string", "description": "整章正文(会覆盖原正文)"},
+                    "content": {"type": "string", "description": "The full chapter text (overwrites the existing text)"},
                     "volume_title": {"type": "string"},
                 },
                 "required": ["chapter_index"],
@@ -55,14 +55,14 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="upsert_worldbook_entry",
             description=(
-                "创建或更新世界书条目。传 entry_id = 更新该条目;不传 = 新建(新建需 title)。"
-                "keys/regex_keys/character_filter/scene_filter 是字符串数组。"
-                "改前先向用户说清要改什么。"
+                "Create or update a worldbook entry. With entry_id = update that entry; without it = create one (creating needs title). "
+                "keys/regex_keys/character_filter/scene_filter are string arrays. "
+                "Before changing anything, tell the user clearly what you will change."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "entry_id": {"type": "integer", "description": "有=更新,无=创建"},
+                    "entry_id": {"type": "integer", "description": "Present = update, absent = create"},
                     "title": {"type": "string"},
                     "content": {"type": "string"},
                     "priority": {"type": "integer"},
@@ -87,21 +87,21 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="upsert_worldbook_entries",
             description=(
-                "批量创建/更新世界书条目 —— 一次要建/改多条时用本工具(一次调用一并落库),"
-                "不要逐条调用 upsert_worldbook_entry(逐条在审查模式下只会成功第一条)。"
-                "entries 是条目数组,每项字段与 upsert_worldbook_entry 相同(新建带 title、改带 entry_id)。"
-                "**每次最多放 6 条**:条数太多整个调用会超输出长度被截断导致失败;超过 6 条请分多次调用。"
+                "Create/update worldbook entries in a batch - use this when creating/changing several entries at once (one call saves them all); "
+                "do not call upsert_worldbook_entry one by one (in review mode only the first of those succeeds). "
+                "entries is an array of entries; each item has the same fields as upsert_worldbook_entry (title when creating, entry_id when updating). "
+                "**At most 6 entries per call**: with too many, the whole call exceeds the output length, gets truncated and fails; split more than 6 across several calls."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
                     "entries": {
                         "type": "array",
-                        "description": "世界书条目数组(≤50 条);每项:新建带 title,更新带 entry_id",
+                        "description": "Array of worldbook entries (<= 50); each item: title when creating, entry_id when updating",
                         "items": {
                             "type": "object",
                             "properties": {
-                                "entry_id": {"type": "integer", "description": "有=更新,无=创建"},
+                                "entry_id": {"type": "integer", "description": "Present = update, absent = create"},
                                 "title": {"type": "string"},
                                 "content": {"type": "string"},
                                 "priority": {"type": "integer"},
@@ -128,9 +128,9 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="update_npc_card",
             description=(
-                "更新剧本内某张 NPC 角色卡。card_id 必填(先用 list_script_npcs 拿 id)。"
-                "只传要改的字段(其余保留)。不收 avatar_path(头像走专用端点)。"
-                "改前先向用户说清要改什么。"
+                "Update an NPC character card in the script. card_id is required (get the id with list_script_npcs first). "
+                "Pass only the fields to change (the rest are kept). avatar_path is not accepted (avatars use a dedicated endpoint). "
+                "Before changing anything, tell the user clearly what you will change."
             ),
             input_schema={
                 "type": "object",
@@ -162,8 +162,8 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="update_anchor",
             description=(
-                "更新时间线锚点。anchor_id 必填。keywords 是字符串数组。"
-                "改前先向用户说清要改什么。"
+                "Update a timeline anchor. anchor_id is required. keywords is a string array. "
+                "Before changing anything, tell the user clearly what you will change."
             ),
             input_schema={
                 "type": "object",
@@ -188,18 +188,18 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="create_anchor",
             description=(
-                "为剧本「新增」一个时间线锚点 —— 当续写引入了原著时间线里没有的全新事件/时间节点时用。"
-                "必填 story_time_label(节点名)+ chapter_min/chapter_max(该事件大致所处章节);"
-                "story_phase 可选。新增的锚点来源标记为 editor,时间线重建不会删它。"
-                "要改已有锚点用 update_anchor(不要用本工具重复新建)。"
+                "[Add] a timeline anchor to the script - use it when a continuation introduces a brand-new event/milestone that is not in the canon timeline. "
+                "Required: story_time_label (milestone name) + chapter_min/chapter_max (the approximate chapters of the event); "
+                "story_phase is optional. New anchors are marked with source editor, so timeline rebuilds will not delete them. "
+                "To change an existing anchor use update_anchor (do not create duplicates with this tool)."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "story_time_label": {"type": "string", "description": "新事件/时间节点名"},
-                    "chapter_min": {"type": "integer", "description": "该事件大致起始章"},
-                    "chapter_max": {"type": "integer", "description": "该事件大致结束章"},
-                    "story_phase": {"type": "string", "description": "所属阶段(可空)"},
+                    "story_time_label": {"type": "string", "description": "Name of the new event / milestone"},
+                    "chapter_min": {"type": "integer", "description": "Approximate starting chapter of the event"},
+                    "chapter_max": {"type": "integer", "description": "Approximate ending chapter of the event"},
+                    "story_phase": {"type": "string", "description": "Phase it belongs to (optional)"},
                     "sample_title": {"type": "string"},
                     "sample_summary": {"type": "string"},
                     "confidence": {"type": "number"},
@@ -215,15 +215,15 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="create_script_chapter",
             description=(
-                "在剧本【末尾】新增一章。title 必填,content 可选(新章正文,可留空之后再写)。"
-                "续写出全新一章时用。要改已有章用 update_script_chapter。"
+                "Add a new chapter at the [end] of the script. title is required; content is optional (the new chapter's text; it can be left empty and written later). "
+                "Use it when a continuation produces a brand-new chapter. To change an existing chapter use update_script_chapter."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "新章标题"},
-                    "content": {"type": "string", "description": "新章正文(可空)"},
-                    "volume_title": {"type": "string", "description": "所属卷名(可空)"},
+                    "title": {"type": "string", "description": "New chapter title"},
+                    "content": {"type": "string", "description": "New chapter text (optional)"},
+                    "volume_title": {"type": "string", "description": "Volume name (optional)"},
                 },
                 "required": ["title"],
             },
@@ -235,14 +235,14 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="create_npc_card",
             description=(
-                "为剧本【新建】一张 NPC 角色卡。name 必填,其余字段(identity/appearance/personality/"
-                "background/aliases/importance/first_revealed_chapter 等)可选。可结合别的剧本或正文情节"
-                "创建新角色。要改已有卡用 update_npc_card(先 list_script_npcs)。同名会被拒(改用 update)。"
+                "[Create] an NPC character card for the script. name is required; the other fields (identity/appearance/personality/"
+                "background/aliases/importance/first_revealed_chapter, etc.) are optional. You can draw on other scripts or the story text "
+                "to create new characters. To change an existing card use update_npc_card (list_script_npcs first). Duplicate names are rejected (use update instead)."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "description": "角色名(必填)"},
+                    "name": {"type": "string", "description": "Character name (required)"},
                     "full_name": {"type": "string"},
                     "aliases": {"type": "array", "items": {"type": "string"}},
                     "identity": {"type": "string"},
@@ -267,7 +267,7 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="delete_worldbook_entry",
             description=(
-                "删除一条世界书条目。entry_id 必填(先 list_worldbook_entries 拿 id)。不可逆,删前向用户确认。"
+                "Delete a worldbook entry. entry_id is required (get the id with list_worldbook_entries first). Irreversible; confirm with the user before deleting."
             ),
             input_schema={
                 "type": "object",
@@ -282,8 +282,8 @@ def _write_entity_crud_specs() -> list:
         ToolSpec(
             name="delete_anchor",
             description=(
-                "删除一个时间线锚点。anchor_id 必填(先 list_anchors 拿 id)。不可逆,删前向用户确认。"
-                "原著骨架锚点(source=novel)删后时间线重建可能再生成。"
+                "Delete a timeline anchor. anchor_id is required (get the id with list_anchors first). Irreversible; confirm with the user before deleting. "
+                "Canon skeleton anchors (source=novel) may be regenerated by a timeline rebuild after deletion."
             ),
             input_schema={
                 "type": "object",
@@ -303,15 +303,15 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="read_uploaded_document",
             description=(
-                "读取用户【拖入】的暂存文档的一段(分片 offset/limit)。用户拖入 txt/md 后会给到 doc_id。"
-                "用于按文档内容执行指令(如「据这段建角色/改写」)。原文不在上下文里,要看就用本工具读。"
+                "Read a segment (offset/limit slices) of a staged document the user [dropped in]. A doc_id is provided after the user drops in a txt/md file. "
+                "Use it to carry out instructions based on the document (e.g. 'create characters / rewrite based on this'). The original text is not in the context; read it with this tool."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
                     "doc_id": {"type": "string"},
-                    "offset": {"type": "integer", "description": "起始字符偏移(默认0)"},
-                    "limit": {"type": "integer", "description": "读取字符数(默认6000,上限20000)"},
+                    "offset": {"type": "integer", "description": "Starting character offset (default 0)"},
+                    "limit": {"type": "integer", "description": "Number of characters to read (default 6000, max 20000)"},
                 },
                 "required": ["doc_id"],
             },
@@ -323,9 +323,9 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="preview_document_split",
             description=(
-                "预览:把用户拖入的文档按规则【确定性】拆成几章、标题是什么(只读不落库)。"
-                "split_rule:auto(默认)/chapter_cn(第N章)/chapter_en(Chapter N)/number_dot(1.)/custom(配 custom_pattern)。"
-                "先预览给用户看,确认后再 import_document_as_chapters 落库。"
+                "Preview: how many chapters, with which titles, the user's dropped-in document [deterministically] splits into by rule (read-only, nothing saved). "
+                "split_rule: auto (default) / chapter_cn (Chinese '第N章' headings) / chapter_en (Chapter N) / number_dot (1.) / custom (with custom_pattern). "
+                "Show the preview to the user first; after they confirm, save with import_document_as_chapters."
             ),
             input_schema={
                 "type": "object",
@@ -344,9 +344,9 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="import_document_as_chapters",
             description=(
-                "把用户拖入的文档【确定性】拆章并写入当前剧本。mode=append(默认,末尾追加)/"
-                "replace(清空现有章再导入,慎用)。建议先 preview_document_split 给用户确认章数/标题。"
-                "纯确定性拆分(不消耗 LLM token),适合整段/整章/整本导入。"
+                "[Deterministically] split the user's dropped-in document into chapters and write them to the current script. mode=append (default, append at the end) / "
+                "replace (clear the existing chapters, then import; use with care). Preferably run preview_document_split first so the user can confirm chapter count/titles. "
+                "Purely deterministic splitting (no LLM tokens); suitable for importing a passage, chapter or whole book."
             ),
             input_schema={
                 "type": "object",
@@ -366,20 +366,20 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="delegate_writing_task",
             description=(
-                "把一段写作/特定任务【委派】给一个用户自己配置的(BYOK)子模型来做 —— 例如用一个更强/"
-                "更擅长某文风的模型写某章某段。可显式指定 model(api_id+model),否则用用户的写作/默认模型。"
-                "【只用用户自己配置的模型,不用平台兜底】;调用失败会明确返回失败原因。"
-                "产出是【草稿】,需你向用户确认后再用 update_script_chapter/create_script_chapter 落库。"
-                "context 可放参考正文(如相邻章节片段)。"
+                "[Delegate] a piece of writing / a specific task to a sub-model the user configured themselves (BYOK) - e.g. use a stronger model, "
+                "or one better at a certain style, to write a passage of a chapter. You can specify model (api_id+model) explicitly; otherwise the user's writing/default model is used. "
+                "[Only models the user configured themselves; no platform fallback]; a failed call returns the reason explicitly. "
+                "The output is a [draft]: confirm with the user before saving it with update_script_chapter/create_script_chapter. "
+                "context can hold reference text (e.g. excerpts of adjacent chapters)."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "task": {"type": "string", "description": "委派的写作任务(越具体越好)"},
-                    "api_id": {"type": "string", "description": "指定子模型 provider(可空=用默认写作模型)"},
-                    "model": {"type": "string", "description": "指定子模型名(可空)"},
-                    "context": {"type": "string", "description": "参考上下文/相邻正文(可空)"},
-                    "max_tokens": {"type": "integer", "description": "产出长度上限(默认2500)"},
+                    "task": {"type": "string", "description": "The delegated writing task (the more specific the better)"},
+                    "api_id": {"type": "string", "description": "Sub-model provider (optional; empty = default writing model)"},
+                    "model": {"type": "string", "description": "Sub-model name (optional)"},
+                    "context": {"type": "string", "description": "Reference context / adjacent text (optional)"},
+                    "max_tokens": {"type": "integer", "description": "Output length limit (default 2500)"},
                 },
                 "required": ["task"],
             },
@@ -391,16 +391,16 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="get_chapter_text",
             description=(
-                "读取某章【完整正文】(章节原著 content)。修锚点 / 核对设定 / 写作参考前,"
-                "用它读真正文 —— 不要只看可能被污染的摘要(summary/sample_summary)。"
-                "必填 chapter_index;长章用 offset 分段续读(返回会提示下一段 offset)。只读,owner/订阅者可用。"
+                "Read a chapter's [full text] (the chapter's source content). Before fixing anchors / checking lore / using it as writing reference, "
+                "read the real text with this - do not rely only on summaries that may be polluted (summary/sample_summary). "
+                "chapter_index is required; read long chapters in segments with offset (the result tells you the next offset). Read-only; available to the owner/subscribers."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "chapter_index": {"type": "integer", "description": "章号"},
-                    "offset": {"type": "integer", "description": "起始字符偏移(分段读长章,默认 0)"},
-                    "max_chars": {"type": "integer", "description": "本段最多字符(默认 12000,上限 20000)"},
+                    "chapter_index": {"type": "integer", "description": "Chapter number"},
+                    "offset": {"type": "integer", "description": "Starting character offset (for reading long chapters in segments; default 0)"},
+                    "max_chars": {"type": "integer", "description": "Maximum characters in this segment (default 12000, max 20000)"},
                 },
                 "required": ["chapter_index"],
             },
@@ -412,26 +412,26 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="search_manuscript",
             description=(
-                "全书检索:在剧本所有章节正文里搜一个词/短语/正则,返回命中的【章号 + 标题 + 上下文片段 + 字符偏移】。"
-                "这是『先读后写、避免与全书矛盾』的核心工具 —— 审稿查重复、查前文是否已交代过某设定、找某人物/"
-                "物件上次出场、核对伏笔是否回收,都先用它一次定位,再用 get_chapter_text(chapter_index, offset=@值) 精读。"
-                "默认大小写无关子串匹配;regex=true 走 Python 正则;可用 chapter_min/chapter_max 收窄。只读,owner/订阅者可用。"
+                "Full-text search: search all of the script's chapter texts for a word / phrase / regex and return the hits as [chapter number + title + context snippet + character offset]. "
+                "This is the core tool for 'read before you write, never contradict the rest of the book' - when reviewing for repetition, checking whether earlier chapters already established some lore, finding a character's/"
+                "item's last appearance, or checking whether foreshadowing paid off, locate it with this first, then read closely with get_chapter_text(chapter_index, offset=@value). "
+                "Default is case-insensitive substring matching; regex=true uses Python regex; narrow with chapter_min/chapter_max. Read-only; available to the owner/subscribers."
             ),
             input_schema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "要搜索的词/短语;regex=true 时为正则"},
-                    "regex": {"type": "boolean", "description": "是否按正则匹配(默认 false=子串)"},
-                    "chapter_min": {"type": "integer", "description": "只搜该章号及以后(可空)"},
-                    "chapter_max": {"type": "integer", "description": "只搜该章号及以前(可空)"},
-                    "max_results": {"type": "integer", "description": "最多列出多少条命中(默认 30,上限 100)"},
-                    "context_chars": {"type": "integer", "description": "每条命中前后各取多少字符上下文(默认 60)"},
+                    "query": {"type": "string", "description": "Word / phrase to search for; a regex when regex=true"},
+                    "regex": {"type": "boolean", "description": "Whether to match as a regex (default false = substring)"},
+                    "chapter_min": {"type": "integer", "description": "Only search this chapter number and later (optional)"},
+                    "chapter_max": {"type": "integer", "description": "Only search this chapter number and earlier (optional)"},
+                    "max_results": {"type": "integer", "description": "Maximum number of hits to list (default 30, max 100)"},
+                    "context_chars": {"type": "integer", "description": "Characters of context before and after each hit (default 60)"},
                 },
                 "required": ["query"],
             },
             input_examples=(
-                {"query": "重力控制"},
-                {"query": "蜜特·托蕾特", "chapter_min": 1, "chapter_max": 20},
+                {"query": "gravity control"},
+                {"query": "Mitt Torret", "chapter_min": 1, "chapter_max": 20},
             ),
             executor=_t_search_manuscript,
             scope="script",
@@ -441,11 +441,11 @@ def _write_document_manuscript_specs() -> list:
         ToolSpec(
             name="upsert_canon_entity",
             description=(
-                "创建或更新 canon 实体(按 logical_key)。改已有实体必须给 logical_key"
-                "(先 list_canon_entities 查);新建必须给 name 和 type,logical_key 可省略,"
-                "省略时按名字和类型自动生成并在结果里返回。type 只能是 character / faction / "
-                "organization / location / item / concept。aliases 是字符串数组,attrs 是开放对象。"
-                "改前先向用户说清要改什么。"
+                "Create or update a canon entity (by logical_key). Changing an existing entity requires logical_key "
+                "(look it up with list_canon_entities first); creating one requires name and type, and logical_key may be omitted - "
+                "it is then generated from the name and type and returned in the result. type can only be character / faction / "
+                "organization / location / item / concept. aliases is a string array; attrs is an open object. "
+                "Before changing anything, tell the user clearly what you will change."
             ),
             input_schema={
                 "type": "object",

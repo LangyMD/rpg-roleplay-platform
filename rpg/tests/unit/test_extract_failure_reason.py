@@ -40,7 +40,7 @@ class _ProseLLM:
 def test_extract_chapter_keeps_classified_reason():
     ex = extract_chapter(_DeadLLM(), 3, "正文", era="")
     assert ex.raw_ok is False
-    assert "下线" in ex.error
+    assert "retired" in ex.error
 
 
 def test_extract_chapter_non_object_output_has_reason():
@@ -71,7 +71,7 @@ def test_arc_pipeline_all_arcs_failed_returns_not_ok_with_reason():
         res = arc_pipeline.run_arc_extraction(12, 7, user_id=1, model="old-model", api_id="relay",
                                               target_arcs=2, concurrency=2)
     assert res["ok"] is False
-    assert "下线" in res["error"] and "提取模型 relay/old-model" in res["error"]
+    assert "下线" in res["error"] and "extraction model relay/old-model" in res["error"]
     assert "下线" in res["first_error"]
     # raw_ok=False 不重试:调用次数 = 弧数,模型下线时不会被多撞几轮
     assert m_arc.call_count == len(arc_pipeline.split_arcs(_chapters(10), target_arcs=2))
@@ -86,7 +86,7 @@ def test_per_chapter_pipeline_all_failed_returns_not_ok_with_reason():
          mock.patch.object(pipeline, "extract_chapter", return_value=dead):
         res = pipeline.run_extraction(12, 7, user_id=1, model="old-model", api_id="relay", concurrency=2)
     assert res["ok"] is False
-    assert "下线" in res["error"] and "提取模型 relay/old-model" in res["error"]
+    assert "下线" in res["error"] and "extraction model relay/old-model" in res["error"]
 
 
 def test_stage_canon_extract_records_reason_on_ctl():
@@ -179,7 +179,7 @@ def test_editor_selection_parse_failure_keeps_actionable_hint():
          mock.patch("agents._harness.resolve_api_and_model", return_value=("relay", "m")), \
          mock.patch.object(ExtractLLM, "complete_text", return_value="Into the Forbidden Forest."):
         out = tool._t_extract_from_selection(1, 12, {"text": "一段选中的正文"}, None)
-    assert "缩短选区" in out and "403" not in out, out
+    assert "shorter selection" in out and "403" not in out, out
 
 
 # ── 本地异常(写库 / 消歧)不进服务商分类器 ─────────────────────────────────
@@ -230,4 +230,4 @@ def test_stage_canon_extract_local_exception_is_not_classified():
         out = stages_core._stage_canon_extract(ctl, 1, 12)
     assert out[2] == "error"
     hint = ctl.stage_error_hints["canon_extract"]
-    assert "中途出错" in hint and "不可用" not in hint and "提取模型" not in hint
+    assert "failed partway" in hint and "不可用" not in hint and "extraction model" not in hint

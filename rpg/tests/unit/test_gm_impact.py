@@ -10,6 +10,13 @@ def test_levels():
     assert classify_impact("") == "local"
 
 
+def test_levels_english():
+    assert classify_impact("I walk to the window and talk to her") == "local"
+    assert classify_impact("A fierce battle breaks out between the two sides") == "scene"
+    assert classify_impact("Lin decides to assassinate the emperor") == "faction"
+    assert classify_impact("The Vers Empire declares war on the Earth Alliance") == "world"
+
+
 def test_offband_gate():
     assert needs_offband_sim("world") and needs_offband_sim("faction")
     assert not needs_offband_sim("local") and not needs_offband_sim("scene")

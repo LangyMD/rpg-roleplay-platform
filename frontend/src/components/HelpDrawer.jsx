@@ -14,17 +14,25 @@
  */
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { isZhUi } from '../i18n/index.js';
 import CSModal from '@cloudscape-design/components/modal';
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import Spinner from '@cloudscape-design/components/spinner';
 
 const DOCS_ORIGIN = 'https://docs.stellatrix.icu';
-const embedUrl = (slug) => `${DOCS_ORIGIN}/embed/${encodeURIComponent(slug)}/`;
+// 旧 slug 兼容(与 docs-site/src/embed-aliases.mjs 同步):英文整页没有别名页,客户端先映射。
+const SLUG_ALIASES = { intro: 'getting-started' };
+// 中文 UI → 去壳嵌入视图 /embed/<slug>/(仅 zh 根有);英文 UI → 英文正文页 /en/<slug>/
+// (文档站暂未生成英文嵌入视图,整页同样可 iframe;无 help-ready 消息,靠 onLoad 判就绪)。
+export const embedUrl = (slug, zh = isZhUi()) => (zh
+  ? `${DOCS_ORIGIN}/embed/${encodeURIComponent(slug)}/`
+  : `${DOCS_ORIGIN}/en/${encodeURIComponent(SLUG_ALIASES[slug] || slug)}/`);
 
 // ── HelpDrawer ──────────────────────────────────────────────────────────────
 export function HelpDrawer({ open, slug, onClose }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const zh = /^zh/i.test(i18n.resolvedLanguage || i18n.language || '');
   const [curSlug, setCurSlug] = React.useState(slug);
   const [title, setTitle] = React.useState('');
   const [loaded, setLoaded] = React.useState(false);
@@ -56,7 +64,7 @@ export function HelpDrawer({ open, slug, onClose }) {
     return () => clearTimeout(id);
   }, [open, curSlug, loaded]);
 
-  const src = curSlug ? embedUrl(curSlug) : '';
+  const src = curSlug ? embedUrl(curSlug, zh) : '';
 
   return (
     <CSModal
@@ -75,8 +83,8 @@ export function HelpDrawer({ open, slug, onClose }) {
         <Box float="right">
           {src ? (
             <Button variant="link" iconName="external" href={src} target="_blank"
-              ariaLabel={t('help_drawer.open_external', { defaultValue: '在新标签打开' })}>
-              {t('help_drawer.open_external', { defaultValue: '在新标签打开' })}
+              ariaLabel={t('help_drawer.open_external')}>
+              {t('help_drawer.open_external')}
             </Button>
           ) : null}
           <Button variant="primary" onClick={onClose}>{t('common.close')}</Button>
@@ -101,9 +109,9 @@ export function HelpDrawer({ open, slug, onClose }) {
           {failed ? (
             <div style={{ position: 'absolute', insetInline: 0, top: 0, display: 'flex', justifyContent: 'center' }}>
               <Box color="text-body-secondary" padding="s">
-                {t('help_drawer.load_failed', { defaultValue: '文档加载失败(需联网访问文档站)。' })}{' '}
+                {t('help_drawer.load_failed')}{' '}
                 <a href={src} target="_blank" rel="noopener noreferrer">
-                  {t('help_drawer.open_external', { defaultValue: '在新标签打开' })}
+                  {t('help_drawer.open_external')}
                 </a>
               </Box>
             </div>

@@ -26,7 +26,7 @@ def _detect_image_mime(data: bytes) -> tuple[str, str]:
         return "image/jpeg", "jpg"
     if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
         return "image/webp", "webp"
-    raise ValueError("仅支持 PNG / JPEG / WebP 图片（魔数校验失败）")
+    raise ValueError("Only PNG / JPEG / WebP images are supported (magic-number check failed)")
 
 
 def _store_imported_card_image(user_id: int, card_id: int, blob: bytes, script_id: int | None = None) -> None:

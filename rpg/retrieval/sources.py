@@ -10,6 +10,8 @@ import re
 import sqlite3
 from pathlib import Path
 
+from kb.en_terms import english_term_set, english_terms, is_english_term
+
 from ._common import DB_PATH, FACT_DB, SUM_IDX
 
 # 旧版默认剧本的本地角色索引已停用；运行期角色卡/世界书走数据库按 script_id scope 读取。
@@ -44,22 +46,34 @@ def _sqlite_available(path: Path) -> bool:
         return False
 
 
+def _keyword_tokens(query: str) -> set[str]:
+    """Keyword tokens for the LIKE path: CJK runs + CJK bigrams (中文直接切 2-char n-gram)
+    plus English word stems (lowercased, stopword-filtered, de-pluralised; kb/en_terms.py)."""
+    tokens: set[str] = set()
+    for run in re.findall(r"[一-鿿]+", query or ""):
+        if len(run) >= 2:
+            tokens.add(run)
+        # 补充2-char n-grams（对中文短词友好）
+        for i in range(len(run) - 1):
+            tokens.add(run[i:i + 2])
+    tokens.update(english_terms(query or "").keys())
+    for w in re.findall(r"\d{2,}", query or ""):
+        tokens.add(w)
+    return tokens
+
+
+def _keyword_score(tokens: set[str], content: str) -> int:
+    """命中词元数. English stems match whole words case-insensitively; CJK by substring."""
+    en = english_term_set(content) if any(is_english_term(t) and not t.isdigit() for t in tokens) else set()
+    return sum(1 for t in tokens
+               if (t in en if (is_english_term(t) and not t.isdigit()) else t in content))
+
+
 def bm25_search(query: str, top_k: int = 4, chapter_min: int | None = None, chapter_max: int | None = None) -> list[str]:
     """从 vectors.db 以 LIKE 关键词匹配，返回内容片段列表"""
     if not _sqlite_available(DB_PATH):
         return []
-    # 提取 2+ 字的词元（中文直接切2-char n-gram，跳过标点）
-    tokens = set()
-    clean = re.sub(r"[^一-鿿\w]", " ", query)
-    words = clean.split()
-    for w in words:
-        if len(w) >= 2:
-            tokens.add(w)
-    # 补充2-char n-grams（对中文短词友好）
-    for i in range(len(clean) - 1):
-        bg = clean[i:i+2]
-        if re.match(r"[一-鿿]{2}", bg):
-            tokens.add(bg)
+    tokens = _keyword_tokens(query)
     if not tokens:
         return []
 
@@ -71,7 +85,7 @@ def bm25_search(query: str, top_k: int = 4, chapter_min: int | None = None, chap
         seen_chunks: set[str] = set()
 
         # 合并为单条 SQL（原 N+1 循环最多 8 次 SELECT，现改为 1 次）
-        tok_list = list(tokens)[:8]  # 最多用8个词元
+        tok_list = sorted(tokens, key=lambda t: (-len(t), t))[:8]  # 最多用8个词元(长词优先,确定性)
         like_clauses = " OR ".join("content LIKE ?" for _ in tok_list)
         params: list[object] = [f"%{tok}%" for tok in tok_list]
         where = f"({like_clauses})"
@@ -90,7 +104,7 @@ def bm25_search(query: str, top_k: int = 4, chapter_min: int | None = None, chap
                 continue
             seen_chunks.add(chunk_id)
             # 简单评分：命中词元数
-            score = sum(1 for t in tokens if t in content)
+            score = _keyword_score(tokens, content)
             results.append((chapter, content, score))
 
         # 按评分排序，取 top_k
@@ -99,7 +113,7 @@ def bm25_search(query: str, top_k: int = 4, chapter_min: int | None = None, chap
         for chapter, content, _ in results[:top_k]:
             # 截取前300字防止 token 超限
             snippet = content[:300].strip()
-            snippets.append(f"[第{chapter}章片段]\n{snippet}")
+            snippets.append(f"[Chapter {chapter} excerpt]\n{snippet}")
         return snippets
     except Exception:
         return []
@@ -123,7 +137,7 @@ def load_recent_summaries(n: int = 3) -> str:
     keys = sorted(summaries.keys(), key=lambda x: int(x), reverse=True)[:n]
     lines = []
     for k in reversed(keys):
-        lines.append(f"第{k}章：{summaries[k]}")
+        lines.append(f"Chapter {k}: {summaries[k]}")
     return "\n".join(lines)
 
 
@@ -137,7 +151,7 @@ def load_summaries_window(chapter_min: int | None, chapter_max: int | None, fall
     for key in sorted(summaries.keys(), key=lambda x: int(x)):
         chapter = int(key)
         if chapter_min <= chapter <= chapter_max:
-            selected.append(f"第{key}章：{summaries[key]}")
+            selected.append(f"Chapter {key}: {summaries[key]}")
     return "\n".join(selected[:6])
 
 
@@ -170,13 +184,13 @@ def load_chapter_facts(chapter_min: int | None, chapter_max: int | None, limit: 
             # 只丢该章事件(仍出摘要),不让一个坏行丢掉整段章节摘要(与 worldbook 同隔离粒度)。
             try:
                 events = json.loads(events_json or "[]")
-                event_text = "；".join(event.get("event", "") for event in events[:2] if isinstance(event, dict) and event.get("event"))
+                event_text = "; ".join(event.get("event", "") for event in events[:2] if isinstance(event, dict) and event.get("event"))
             except (json.JSONDecodeError, TypeError, ValueError):
                 event_text = ""
             lines.append(
-                f"第{chapter}章《{title}》｜{time_label}\n"
-                f"摘要：{summary[:180]}\n"
-                f"事件：{event_text[:220]}"
+                f"Chapter {chapter} \"{title}\" | {time_label}\n"
+                f"Summary: {summary[:180]}\n"
+                f"Events: {event_text[:220]}"
             )
         return "\n\n".join(lines)
     except Exception:

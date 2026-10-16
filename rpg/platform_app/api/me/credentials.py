@@ -77,11 +77,11 @@ async def api_set_credential(request: Request, user=Depends(require_user)):
                     user_credentials.stored_base_url_override, user["id"], normalized_api_id,
                 )
             if setting_key and not known and not effective_base_url:
-                raise ValueError("自定义供应商必须填写 Base URL(中转站地址)")
+                raise ValueError("A custom provider requires a Base URL (relay address)")
             # 免鉴权模式没有"填了 key"这一说,上面那条按 api_key 写的校验兜不住它 ——
             # 单独要求 base_url(set_credential 里还有一道,这里给的是更早、更贴 UI 的报错)。
             if auth_mode == "none" and not effective_base_url:
-                raise ValueError("勾选「免 API Key」时必须填写 Base URL(本地模型的接口地址)")
+                raise ValueError("\"No API key\" mode requires a Base URL (the local model's endpoint)")
             api_id = normalized_api_id
         # 出站代理 URL(仅本地模式真正使用,见 core.outbound.credential_proxy)。
         # 请求体**带了** proxy 键才改代理(空串 = 清空);没带(手机端 / 供应商卡片 / 拦截弹窗
@@ -118,7 +118,7 @@ async def api_set_credential_enabled(request: Request, user=Depends(require_user
     body = await request.json() or {}
     from ... import user_credentials
     if "enabled" not in body:
-        return json_response({"ok": False, "error": "缺少 enabled"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing enabled"}, status_code=400)
     try:
         result = await asyncio.to_thread(
             user_credentials.set_credential_enabled,
@@ -200,9 +200,9 @@ async def api_embedder_status(user=Depends(require_user)):
         if _selected_embed_api and provider_lacks_embedding(_selected_embed_api):
             user_configured = False
             _embed_provider_hint = (
-                f"当前嵌入器 provider「{_selected_embed_api}」没有向量嵌入(embedding)接口,"
-                f"请改选支持 embedding 的 provider(OpenAI text-embedding-3 / 阿里 dashscope / siliconflow / "
-                f"Vertex,或本地 bge/nomic)。"
+                f"The selected embedder provider \"{_selected_embed_api}\" has no embedding endpoint; "
+                f"choose a provider that supports embeddings (OpenAI text-embedding-3 / Alibaba dashscope / siliconflow / "
+                f"Vertex, or a local bge/nomic)."
             )
     except Exception:
         pass
@@ -269,7 +269,7 @@ async def api_test_credential(
         return json_response({
             "ok": False, "api_id": api_id,
             "has_credential": False,
-            "error": "未配置 API key/credential,请先在「API 设置」添加。",
+            "error": "No API key/credential configured; add one under API settings first.",
         })
 
     # 找该 api_id 在 catalog 里的一个 enabled 模型(没传 model 时)
@@ -285,13 +285,13 @@ async def api_test_credential(
             if not enabled:
                 return json_response({
                     "ok": False, "api_id": api_id, "has_credential": True,
-                    "error": f"provider {catalog_api_id} 在 catalog 里没有 enabled 模型,无法 ping。",
+                    "error": f"provider {catalog_api_id} has no enabled models in the catalog; cannot ping.",
                 })
             model = enabled.get("real_name") or enabled.get("id") or ""
         except Exception as exc:
             return json_response({
                 "ok": False, "api_id": api_id, "has_credential": True,
-                "error": f"读取 catalog 失败: {type(exc).__name__}: {exc}",
+                "error": f"Failed to read the catalog: {type(exc).__name__}: {exc}",
             })
 
     # 实际打 ping:走 GameMaster.call 跟真实游戏一致

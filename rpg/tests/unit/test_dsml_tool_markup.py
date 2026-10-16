@@ -156,6 +156,6 @@ def test_text_marker_loop_executes_dsml_and_teaches_canonical_marker():
 # ── 三、工具清单自带格式 ───────────────────────────────────────────────────────
 def test_tool_list_carries_call_format():
     out = _format_tools_for_prompt([{"server_id": "dispatcher", "name": "list_worldbook_entries"}])
-    assert "【工具调用格式】" in out
+    assert "【Tool call format】" in out
     assert '"server_id"' in out and '"arguments"' in out and "<<END_TOOL_CALL>>" in out
     assert "DSML" in out  # 明确告诉模型别用它原生那套

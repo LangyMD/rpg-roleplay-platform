@@ -89,7 +89,7 @@ def run_skill_command(
     timeout_sec = max(1, min(int(timeout_sec or DEFAULT_TIMEOUT_SEC), MAX_TIMEOUT_SEC))
     skill_root = Path(skill_root).resolve()
     if not skill_root.exists() or not skill_root.is_dir():
-        return {"ok": False, "error": f"skill_root 不存在: {skill_root}", "exit_code": -1}
+        return {"ok": False, "error": f"skill_root does not exist: {skill_root}", "exit_code": -1}
 
     # 创建临时执行目录，把 skill 文件复制进去
     workdir = Path(tempfile.mkdtemp(prefix="skill_exec_"))
@@ -128,9 +128,9 @@ def run_skill_command(
                 errors="replace",
             )
         except FileNotFoundError:
-            return {"ok": False, "error": f"找不到可执行文件: {cmd[0]}", "exit_code": -1}
+            return {"ok": False, "error": f"executable not found: {cmd[0]}", "exit_code": -1}
         except Exception as e:
-            return {"ok": False, "error": f"启动失败: {e}", "exit_code": -1}
+            return {"ok": False, "error": f"failed to start: {e}", "exit_code": -1}
 
         timeout_hit = False
         try:
@@ -187,7 +187,7 @@ def run_python_skill(
     skill_root_p = Path(skill_root)
     entry = skill_root_p / entrypoint
     if not entry.exists():
-        return {"ok": False, "error": f"找不到 entrypoint: {entry}", "exit_code": -1}
+        return {"ok": False, "error": f"entrypoint not found: {entry}", "exit_code": -1}
     cmd = ["python3", entrypoint] + list(args or [])
     return run_skill_command(cmd, skill_root=skill_root, timeout_sec=timeout_sec, stdin_text=stdin_text)
 

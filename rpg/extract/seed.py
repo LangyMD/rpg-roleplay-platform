@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
+from core.token_estimate import cjk_chars_to_budget
 from extract.llm import ExtractLLM
 
 
@@ -26,13 +27,16 @@ class ScriptSeed:
 
 
 _NER_SYSTEM = (
-    "你是小说实体发现器。读若干章节片段,**只输出一个 JSON 对象**(无解释):\n"
-    '{"characters": ["人名"], "factions": ["势力/组织名"], "locations": ["地名"], '
-    '"concepts": ["力量体系/设定/专有名词"], "era_hint": "若文中出现明确纪元/年代则填,否则空"}\n'
-    "只抽**反复出现、像专有名词**的;别抽普通词。每类最多 30 个。\n"
-    "【characters 限定】只放【具体的个体人物名】(有名有姓的人)。官职/头衔/封号/泛称"
-    "(将军/单于/公主/大人/众人/士兵/丫鬟)归 factions 或不抽,**绝不可**放进 characters;"
-    "地名放 locations。同一人物的本名/小名/敬称只列一次,用最常见的称呼。"
+    "You discover named entities in a novel. Read several chapter excerpts and **output only one JSON "
+    "object** (no explanation):\n"
+    '{"characters": ["person name"], "factions": ["faction/organization name"], "locations": ["place name"], '
+    '"concepts": ["power system / setting term / proper noun"], "era_hint": "the era or period if the text states one clearly, otherwise empty"}\n'
+    "Extract only names that **recur and look like proper nouns**; skip ordinary words. At most 30 per category.\n"
+    "[characters rule] Only [specific individual people] (named persons). Official posts / titles / ranks / "
+    "generic terms (the General, the King, the Princess, my lord, the crowd, soldiers, maids) go to factions or "
+    "are skipped; they must **never** go in characters. Place names go in locations. List each person once, "
+    "under their most common name, even if they have a full name, a pet name and honorifics.\n"
+    "Copy names exactly as they are written in the text (keep the source language and spelling)."
 )
 
 
@@ -70,11 +74,11 @@ def bootstrap_vocab(llm: ExtractLLM, chapters: list[dict], *, sample: int = 12,
     era_orig: dict[str, str] = {}  # 归一key → 原始最长写法
     for i in idxs:
         ch = chapters[i]
-        body = (ch.get("content") or "")[:4000]
+        body = (ch.get("content") or "")[:cjk_chars_to_budget(ch.get("content") or "", 4000)]
         if not body.strip():
             continue
         try:
-            data = llm.complete_json(_NER_SYSTEM, f"【章节片段】\n{body}", max_tokens=max_tokens)
+            data = llm.complete_json(_NER_SYSTEM, f"[Chapter excerpt]\n{body}", max_tokens=max_tokens)
         except Exception:
             continue
         if not isinstance(data, dict):
@@ -120,7 +124,7 @@ def build_seed(llm: ExtractLLM, chapters: list[dict], *, author_era: str = "",
         era=era,
         power_system=list(author_power_system or voc.get("concepts", [])[:10]),
         key_factions=voc.get("factions", [])[:15],
-        worldlines=list(author_worldlines or [{"id": "main", "label": "主线", "arcs": []}]),
+        worldlines=list(author_worldlines or [{"id": "main", "label": "Main line", "arcs": []}]),
         entity_vocab=entity_vocab[:120],
     )
 

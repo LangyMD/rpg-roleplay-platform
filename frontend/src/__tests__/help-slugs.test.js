@@ -37,6 +37,12 @@ describe('站内帮助 slug 指向真实文档页', () => {
     expect(docExists(slug)).toBe(true);
   });
 
+  // 英文 UI 打开 /en/<slug>/ 整页(见 HelpDrawer.embedUrl),英文文档也必须有这一页。
+  it.each(ALL_SLUGS)('%s 也有英文文档页', (slug) => {
+    const en = join(DOCS_DIR, 'en');
+    expect(existsSync(join(en, `${slug}.md`)) || existsSync(join(en, `${slug}.mdx`))).toBe(true);
+  });
+
   it('helpSlugFor 只认映射表里的页面', () => {
     expect(helpSlugFor('scripts')).toBe('scripts');
     expect(helpSlugFor('no-such-page')).toBeNull();

@@ -57,19 +57,19 @@ def run_llm_extraction(
             (script_id, user_id),
         ).fetchone()
         if not script:
-            raise ValueError("无权访问该剧本")
+            raise ValueError("No access to this script")
         book_id = _ensure_book(db, script)["id"]
 
         # 跑前预算(算法感知,arc/per_chapter 分开估)
         est = estimate(db, script_id, model=model, algorithm=algorithm,
                        target_arcs=target_arcs, sample_chapters=sample_chapters)
         if not est.get("ok"):
-            return {"ok": False, "error": est.get("error", "无可提取章节")}
+            return {"ok": False, "error": est.get("error", "No chapters to extract")}
 
         # 成本上限闸:超阈值需显式确认(保护用户自己的 key 不被意外大额消耗)
         if est["est_usd"] > max_book_usd and not confirmed:
             return {"ok": False, "needs_confirm": True, "estimate": est,
-                    "message": f"本次提取约 ${est['est_usd']}(你的 {model} key)。超 ${max_book_usd},请确认。"}
+                    "message": f"This extraction will cost about ${est['est_usd']} (on your {model} key), which is over ${max_book_usd}. Please confirm."}
 
         # 月配额闸(限平台编排负载;免费档)
         if monthly_book_limit is not None:
@@ -80,7 +80,7 @@ def run_llm_extraction(
             used = int(q["books_extracted"]) if q else 0
             if used >= monthly_book_limit:
                 return {"ok": False, "quota_exceeded": True,
-                        "message": f"本月提取额度已用尽({used}/{monthly_book_limit})。"}
+                        "message": f"You have used up this month's extraction quota ({used}/{monthly_book_limit})."}
 
     # 调用相应算法(内部自管连接,LLM 期间不持连)
     if algorithm == "arc":

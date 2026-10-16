@@ -79,3 +79,14 @@ def test_judge_no_think_and_empty_guard_wired():
     h = (ROOT / 'agents' / '_harness.py').read_text(encoding='utf-8')
     assert '"thinking": {"type": "disabled"}' in h, '实测有效方言(op/deepseek-v4-pro)'
     assert '拒绝 extra_body 参数' in h, '严格 provider 400 退参自愈'
+
+
+def test_english_signatures_are_phrases_not_single_words():
+    """英文锚点:签名必须是多词短语,单词撞车不能判到达;逐字重演才命中。"""
+    s = 'Ainz meets Albedo in the throne room. Albedo vows eternal loyalty, saying "I will follow you to the end".'
+    sigs = extract_signatures(s)
+    assert sigs and all(len(x.split()) >= 3 for x in sigs)
+    replay = "Albedo knelt: I will follow you to the end. Ainz meets Albedo in the throne room."
+    assert match_anchor_in_text(s, replay)["hit"] is True
+    paraphrase = "Albedo walked through the throne room and thought about loyalty to the end of time."
+    assert match_anchor_in_text(s, paraphrase)["hit"] is False

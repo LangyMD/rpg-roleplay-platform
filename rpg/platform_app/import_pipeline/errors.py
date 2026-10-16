@@ -14,7 +14,7 @@ class MissingUserCredentialError(ValueError):
         self.api_id = api_id
         self.model = model
         self.credential_api_id = credential_api_id
-        super().__init__("需要先配置自己的 API Key 后才能继续知识流水线")
+        super().__init__("Configure your own API key before continuing the knowledge pipeline")
 
 
 class MissingEmbeddingCredentialError(ValueError):
@@ -26,5 +26,5 @@ class MissingEmbeddingCredentialError(ValueError):
         self.model = str(payload.get("model") or "")
         self.credential_api_id = str(payload.get("credential_api_id") or self.api_id)
         super().__init__(
-            str(payload.get("error") or payload.get("hint") or "需要先配置向量嵌入凭证")
+            str(payload.get("error") or payload.get("hint") or "Configure embedding credentials first")
         )

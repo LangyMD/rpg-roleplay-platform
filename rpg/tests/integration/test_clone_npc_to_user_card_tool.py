@@ -78,7 +78,7 @@ class TestCloneNpcToUserCardTool(unittest.TestCase):
     def test_owner_clone_full_copy(self):
         from tools_dsl.command_tools_persona import _t_clone_npc_to_user_card
         out = _t_clone_npc_to_user_card(self.owner, {"script_id": self.sid, "card_id": self.npc})
-        self.assertTrue(out.startswith("已克隆"), out)
+        self.assertTrue(out.startswith("Cloned"), out)
         card = self._user_card(self.owner)
         self.assertIsNotNone(card)
         self.assertEqual(card["card_type"], "pc")
@@ -92,7 +92,7 @@ class TestCloneNpcToUserCardTool(unittest.TestCase):
         """关键:订阅了共享剧本(无编辑权限)的用户,也能把 NPC 克隆成自己的卡。"""
         from tools_dsl.command_tools_persona import _t_clone_npc_to_user_card
         out = _t_clone_npc_to_user_card(self.subscriber, {"script_id": self.sid, "card_id": self.npc})
-        self.assertTrue(out.startswith("已克隆"), out)
+        self.assertTrue(out.startswith("Cloned"), out)
         card = self._user_card(self.subscriber)
         self.assertIsNotNone(card)
         self.assertEqual(card["full_name"], "薇拉·星河")
@@ -102,13 +102,13 @@ class TestCloneNpcToUserCardTool(unittest.TestCase):
         """既非 owner 也未订阅 → 读 NPC 被 _require_script 拦,不能克隆。"""
         from tools_dsl.command_tools_persona import _t_clone_npc_to_user_card
         out = _t_clone_npc_to_user_card(self.outsider, {"script_id": self.sid, "card_id": self.npc})
-        self.assertTrue(out.startswith("失败 (权限)"), out)
+        self.assertTrue(out.startswith("Failed (permission)"), out)
         self.assertIsNone(self._user_card(self.outsider))
 
     def test_missing_args(self):
         from tools_dsl.command_tools_persona import _t_clone_npc_to_user_card
-        self.assertIn("script_id 必填", _t_clone_npc_to_user_card(self.owner, {"card_id": self.npc}))
-        self.assertIn("card_id 必填", _t_clone_npc_to_user_card(self.owner, {"script_id": self.sid}))
+        self.assertIn("script_id is required", _t_clone_npc_to_user_card(self.owner, {"card_id": self.npc}))
+        self.assertIn("card_id is required", _t_clone_npc_to_user_card(self.owner, {"script_id": self.sid}))
 
     def test_origin_policy(self):
         """控制台助手退役后放开酒馆/游戏 agent:console_assistant 与 llm_chat 都可见。"""

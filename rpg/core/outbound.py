@@ -182,7 +182,7 @@ def _urllib_proxy_handler(proxy: str) -> urllib.request.ProxyHandler:
                 "向量 / 生图下载),这些请求改走环境/系统代理,没有就直连", shown)
         return _urllib_env_proxy_handler()
     if scheme not in {"http", "https"}:
-        raise UnsupportedProxy(f"代理地址协议不支持:{scheme or '(空)'}")
+        raise UnsupportedProxy(f"Unsupported proxy scheme: {scheme or '(empty)'}")
     return urllib.request.ProxyHandler({"http": proxy, "https": proxy})
 
 
@@ -217,21 +217,21 @@ def _resolve_external_ip(host: str, port: int) -> str:
     try:
         infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
     except OSError as exc:
-        raise OutboundBlocked(f"出站目标无法解析:{host}") from exc
+        raise OutboundBlocked(f"Outbound target cannot be resolved: {host}") from exc
     if not infos:
-        raise OutboundBlocked(f"出站目标无 A/AAAA 记录:{host}")
+        raise OutboundBlocked(f"Outbound target has no A/AAAA records: {host}")
     pinned: str | None = None
     for info in infos:
         ip_str = info[4][0]
         if _ip_is_internal(ip_str):
             raise OutboundBlocked(
-                f"出站目标解析到私有/本地/保留地址,已拒绝(防 SSRF/DNS rebinding):"
-                f"{host} → {ip_str}"
+                f"Outbound target resolves to a private/local/reserved address; rejected (SSRF/DNS rebinding protection): "
+                f"{host} -> {ip_str}"
             )
         if pinned is None:
             pinned = ip_str
     if pinned is None:
-        raise OutboundBlocked(f"出站目标解析后无有效公网 IP:{host}")
+        raise OutboundBlocked(f"Outbound target has no valid public IP after resolution: {host}")
     return pinned
 
 
@@ -318,10 +318,10 @@ def safe_urlopen(req, *, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy: str | No
     parsed = urlparse(full_url)
     scheme = (parsed.scheme or "").lower()
     if scheme not in {"http", "https"}:
-        raise OutboundBlocked(f"出站仅允许 http/https:{scheme or '(空)'}")
+        raise OutboundBlocked(f"Outbound requests only allow http/https: {scheme or '(empty)'}")
     host = parsed.hostname
     if not host:
-        raise OutboundBlocked("出站目标缺少 host")
+        raise OutboundBlocked("Outbound target is missing a host")
     port = parsed.port or (443 if scheme == "https" else 80)
 
     # urllib 默认 UA(Python-urllib/x.y)会被部分 provider 网关 WAF 直接 403(实测 opencode.ai/zen
@@ -390,7 +390,7 @@ def safe_get_bytes(
             with safe_urlopen(req, timeout=timeout, **proxy_kwargs(proxy)) as resp:
                 data = resp.read(max_bytes + 1)
                 if len(data) > max_bytes:
-                    raise OutboundBlocked(f"下载体积超限(> {max_bytes} bytes):{current}")
+                    raise OutboundBlocked(f"Download size exceeds the limit (> {max_bytes} bytes): {current}")
                 return data
         except urllib.error.HTTPError as exc:
             # _NoRedirect 把 30x 变成 HTTPError;手动跟随并对下一跳重新校验(safe_urlopen 内做)。
@@ -401,7 +401,7 @@ def safe_get_bytes(
                 current = urljoin(current, loc)
                 continue
             raise
-    raise OutboundBlocked(f"重定向次数超限(> {max_redirects}):{url}")
+    raise OutboundBlocked(f"Too many redirects (> {max_redirects}): {url}")
 
 
 class OutboundBlockedTransportError(httpx.ConnectError, OutboundBlocked):
@@ -434,9 +434,9 @@ class _SsrfGuardTransport:
             host = request.url.host
             scheme = (request.url.scheme or "").lower()
             if scheme not in {"http", "https"}:
-                raise OutboundBlocked(f"出站仅允许 http/https:{scheme or '(空)'}")
+                raise OutboundBlocked(f"Outbound requests only allow http/https: {scheme or '(empty)'}")
             if not host:
-                raise OutboundBlocked("出站目标缺少 host")
+                raise OutboundBlocked("Outbound target is missing a host")
             port = request.url.port or (443 if scheme == "https" else 80)
             # 服务器模式才做内网拦截;本地/自部署模式放行(本机大模型 / 梯子 fake-ip)。
             if _ssrf_enforced():
@@ -560,13 +560,13 @@ def _local_httpx_client(*, timeout: float, proxy: str | None, http2: bool):
             if isinstance(exc, ImportError):
                 # SOCKS 代理需要 socksio(requirements 已带);老安装包可能还缺它。
                 raise UnsupportedProxy(
-                    "当前安装缺少 SOCKS 代理支持组件,用不了 socks5:// 代理。请把连接方式里的代理"
-                    "改成 HTTP 代理(形如 http://127.0.0.1:7890),或更新到最新版本后再试。"
+                    "This installation lacks SOCKS proxy support, so socks5:// proxies cannot be used. Change the proxy under Connection method "
+                    "to an HTTP proxy (like http://127.0.0.1:7890), or update to the latest version and try again."
                 ) from exc
             if isinstance(exc, (ValueError, httpx.InvalidURL)):
                 raise UnsupportedProxy(
-                    f"连接方式里填的代理地址用不了:{redact_proxy_url(proxy)}。请改成形如 "
-                    "http://127.0.0.1:7890 的 HTTP 代理地址(或 socks5://127.0.0.1:1080)。"
+                    f"The proxy address under Connection method cannot be used: {redact_proxy_url(proxy)}. Use an HTTP proxy address like "
+                    "http://127.0.0.1:7890 (or socks5://127.0.0.1:1080)."
                 ) from exc
             raise
         # 代理来自环境变量 / 系统设置:用不了的条目 _env_proxy_map 已经跳过了,走到这里说明还有

@@ -123,34 +123,34 @@ class ImmersivePromptInjection(unittest.TestCase):
         旧工作树兜底,可能 stale(per-worker 缓存未失效 + 回合末 snapshot clobber)。修复后
         只认列派生的权威 gm._immersive_mode;via='state' 残留 True 不再单独触发覆盖块。"""
         out = self._build(True, via="state")   # 只设 state.immersive=True、不设 gm._immersive_mode
-        self.assertNotIn("沉浸式拟人模式", out)
+        self.assertNotIn("Immersive persona mode", out)
 
     def test_gm_flag_off_beats_stale_state_on(self):
         """关闭按钮真正生效:列=关(gm._immersive_mode=False)压过 state 残留=开。"""
         out = self._build_both(gm_immersive=False, state_immersive=True)
-        self.assertNotIn("沉浸式拟人模式", out)
+        self.assertNotIn("Immersive persona mode", out)
 
     def test_gm_flag_on_injects_regardless_of_state(self):
         """列=开 → 注入,即便 state 残留=关(列权威单一真相源)。"""
         out = self._build_both(gm_immersive=True, state_immersive=False)
-        self.assertIn("沉浸式拟人模式", out)
+        self.assertIn("Immersive persona mode", out)
 
     def test_gm_flag_path_triggers_override(self):
         # chat_pipeline 新鲜读 DB → gm._immersive_mode 路径(权威,跨 worker 安全)
         on = self._build(True, via="gm")
         off = self._build(False, via="gm")
-        self.assertIn("沉浸式拟人模式", on)
-        self.assertNotIn("沉浸式拟人模式", off)
+        self.assertIn("Immersive persona mode", on)
+        self.assertNotIn("Immersive persona mode", off)
 
     def test_char_name_filled_and_base_preserved(self):
         on = self._build(True, char="薇拉")
         self.assertIn("【薇拉】", on)
-        self.assertIn("推进剧情", on)  # 酒馆基底仍在
+        self.assertIn("Advancing the story", on)  # 酒馆基底仍在
 
     def test_no_character_uses_bootstrap_no_override(self):
         # 还没设角色 → 走 bootstrap 模板,不注入沉浸式覆盖
         out = self._build(True, char=None)
-        self.assertNotIn("沉浸式拟人模式", out)
+        self.assertNotIn("Immersive persona mode", out)
 
 
 class ImmersiveRequestDetector(unittest.TestCase):
@@ -161,6 +161,16 @@ class ImmersiveRequestDetector(unittest.TestCase):
         for s in ("关掉沉浸式", "退出沉浸模式", "回到正常叙事吧"):
             self.assertIs(f(s), False, s)
         for s in ("我递给她一壶水", "你好", "", "/set x", None):
+            self.assertIsNone(f(s), repr(s))
+
+    def test_on_off_none_english(self):
+        from chat_pipeline import _immersive_request as f
+        for s in ("Switch to immersive mode please", "Talk to me like a real person",
+                  "Don't write it like a novel", "Don’t speak for me", "Reply in first person"):
+            self.assertIs(f(s), True, s)
+        for s in ("Turn off immersive mode", "exit immersive", "Back to normal narration please"):
+            self.assertIs(f(s), False, s)
+        for s in ("I hand her a flask of water", "Hello", "The immersive smell of rain"):
             self.assertIsNone(f(s), repr(s))
 
 

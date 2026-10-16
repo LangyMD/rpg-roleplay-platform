@@ -25,13 +25,13 @@ def _validate_custom_pattern(pattern: str) -> None:
     """校验用户自定义正则，防止 ReDoS。"""
     import re as _re
     if len(pattern) > 200:
-        raise ValueError("正则过长（上限 200 字符）")
+        raise ValueError("Regex is too long (limit 200 characters)")
     if _NESTED_QUANTIFIER_RE.search(pattern):
-        raise ValueError("custom_pattern 含嵌套量词，可能导致 ReDoS，拒绝")
+        raise ValueError("custom_pattern contains nested quantifiers that could cause ReDoS; rejected")
     try:
         _re.compile(pattern)
     except Exception as exc:
-        raise ValueError(f"custom_pattern 不是合法正则：{exc}") from exc
+        raise ValueError(f"custom_pattern is not a valid regex: {exc}") from exc
 
 
 def import_script(
@@ -55,21 +55,21 @@ def import_script(
         original_name = safe_filename(file_item.get("name") or "script.txt")
         raw = decode_upload(file_item)
     else:
-        raise ValueError("请提供 file 或 upload_id")
+        raise ValueError("Please provide file or upload_id")
     if len(raw) > MAX_SCRIPT_UPLOAD_BYTES:
-        raise ValueError(f"剧本文件过大：{original_name}")
+        raise ValueError(f"Script file is too large: {original_name}")
 
     text, encoding = chapter_splitter.decode_bytes(raw)
     cleaned = chapter_splitter.clean_text(text)
     if not cleaned:
-        raise ValueError("剧本文本为空")
+        raise ValueError("Script text is empty")
 
-    script_title = (title or Path(original_name).stem or "未命名剧本").strip()[:160]
+    script_title = (title or Path(original_name).stem or "Untitled script").strip()[:160]
 
     # 自定义正则提前校验，避免坏正则被静默回退到 auto
     if (split_rule or "").strip() == "custom":
         if not (custom_pattern or "").strip():
-            raise ValueError("split_rule=custom 时必须提供 custom_pattern")
+            raise ValueError("custom_pattern is required when split_rule=custom")
         _validate_custom_pattern(custom_pattern)
 
     chapters, report = chapter_splitter.split_chapters_with_report(
@@ -89,9 +89,9 @@ def import_script(
     if split_rule == "custom":
         _expected_modes.add("custom_pattern")
     if (split_rule or "auto") not in {"", "auto"} and report.get("mode") not in _expected_modes:
-        raise ValueError(f"无法用 {split_rule} 规则切分该文本：实际只能用 {report.get('mode')}")
+        raise ValueError(f"Cannot split this text with the {split_rule} rule; only {report.get('mode')} works")
     if not chapters:
-        raise ValueError("没有识别到可导入章节")
+        raise ValueError("No importable chapters were detected")
 
     user_dir = SCRIPT_ROOT / f"user_{user_id}"
     user_dir.mkdir(parents=True, exist_ok=True)
@@ -105,7 +105,7 @@ def import_script(
         "storage_path": str(target_path.relative_to(BASE)),
     }
     total_words = sum(len(chapter.get("content") or "") for chapter in chapters)
-    description = f"导入剧本 · {len(chapters)}章 · {report.get('mode_label', report.get('mode'))} · 置信 {report.get('confidence')}"
+    description = f"Imported script · {len(chapters)} chapters · {report.get('mode_label', report.get('mode'))} · confidence {report.get('confidence')}"
 
     with connect() as db:
         script = db.execute(
@@ -131,7 +131,7 @@ def import_script(
                     (
                         script["id"],
                         index,
-                        str(chapter.get("title") or f"第{index}章")[:200],
+                        str(chapter.get("title") or f"Chapter {index}")[:200],
                         str(chapter.get("content") or ""),
                         len(str(chapter.get("content") or "")),
                         str(chapter.get("volume_title") or ""),
@@ -205,7 +205,7 @@ def _chapter_preview(chapters: list[dict], limit: int = 8) -> list[dict[str, Any
     return [
         {
             "chapter_index": index,
-            "title": str(chapter.get("title") or f"第{index}章"),
+            "title": str(chapter.get("title") or f"Chapter {index}"),
             "volume_title": str(chapter.get("volume_title") or ""),
             "word_count": len(str(chapter.get("content") or "")),
             "content_preview": str(chapter.get("content") or "").replace("\n", " ")[:120],
@@ -235,18 +235,18 @@ def preview_split(
     elif file_item:
         raw = decode_upload(file_item)
     else:
-        raise ValueError("需要 file 或 upload_id")
+        raise ValueError("file or upload_id is required")
     if len(raw) > MAX_SCRIPT_UPLOAD_BYTES:
-        raise ValueError("剧本文件过大")
+        raise ValueError("Script file is too large")
 
     text, encoding = chapter_splitter.decode_bytes(raw)
     cleaned = chapter_splitter.clean_text(text)
     if not cleaned:
-        raise ValueError("剧本文本为空")
+        raise ValueError("Script text is empty")
 
     if (split_rule or "").strip() == "custom":
         if not (custom_pattern or "").strip():
-            raise ValueError("split_rule=custom 时必须提供 custom_pattern")
+            raise ValueError("custom_pattern is required when split_rule=custom")
         _validate_custom_pattern(custom_pattern)
 
     chapters, report = chapter_splitter.split_chapters_with_report(

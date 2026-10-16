@@ -85,87 +85,87 @@ def _tool_remove_memory_item(state: Any, args: dict) -> str:
     bucket = (args.get("bucket") or "").strip()
     index = args.get("index")
     if bucket not in {"resources", "abilities", "facts", "pinned", "notes"}:
-        return f"失败: bucket 非法 {bucket!r}"
+        return f"Failed: invalid bucket {bucket!r}"
     try:
         idx = int(index)
     except (TypeError, ValueError):
-        return "失败: index 必须是整数"
+        return "Failed: index must be an integer"
     items = state.data.get("memory", {}).get(bucket, []) or []
     if not (0 <= idx < len(items)):
-        return f"失败: index={idx} 越界 (bucket={bucket} 长度={len(items)})"
+        return f"Failed: index={idx} out of range (bucket={bucket} length={len(items)})"
     removed = items[idx]
     state.remove_memory(bucket, idx)
-    return f"memory.{bucket}[{idx}] 已移除: {removed!r}"
+    return f"memory.{bucket}[{idx}] removed: {removed!r}"
 
 
 def _tool_approve_pending_write(state: Any, args: dict) -> str:
     pid = (args.get("id") or "").strip()
     if not pid:
-        return "失败: id 为空"
+        return "Failed: id is empty"
     try:
         result = state.approve_pending_write(pid)
-        return result or f"pending_write {pid} 已批准"
+        return result or f"pending_write {pid} approved"
     except AttributeError:
-        return "失败: state.approve_pending_write 未实现"
+        return "Failed: state.approve_pending_write is not implemented"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _tool_reject_pending_write(state: Any, args: dict) -> str:
     pid = (args.get("id") or "").strip()
     if not pid:
-        return "失败: id 为空"
+        return "Failed: id is empty"
     try:
         result = state.reject_pending_write(pid)
-        return result or f"pending_write {pid} 已拒绝"
+        return result or f"pending_write {pid} rejected"
     except AttributeError:
-        return "失败: state.reject_pending_write 未实现"
+        return "Failed: state.reject_pending_write is not implemented"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _tool_dismiss_pending_question(state: Any, args: dict) -> str:
     qid = (args.get("id") or "").strip()
     if not qid:
-        return "失败: id 为空"
+        return "Failed: id is empty"
     permissions = state.data.setdefault("permissions", {})
     questions = permissions.setdefault("pending_questions", [])
     before = len(questions)
     permissions["pending_questions"] = [q for q in questions if q.get("id") != qid]
     after = len(permissions["pending_questions"])
     if after == before:
-        return f"失败: 未找到 question id={qid}"
-    return f"pending_question {qid} 已关闭"
+        return f"Failed: question id={qid} not found"
+    return f"pending_question {qid} closed"
 
 
 def _tool_remove_user_variable(state: Any, args: dict) -> str:
     key = (args.get("key") or "").strip()
     if not key:
-        return "失败: key 为空"
+        return "Failed: key is empty"
     variables = state.data.setdefault("worldline", {}).setdefault("user_variables", {})
     if key not in variables:
-        return f"失败: user_variables 不含 {key}"
+        return f"Failed: user_variables has no {key}"
     state.remove_user_variable(key)
-    return f"user_variables.{key} 已删除"
+    return f"user_variables.{key} deleted"
 
 
 def _tool_save_runtime(state: Any, args: dict) -> str:
     """触发一次显式存档持久化 (write to disk / DB)."""
     try:
         path = state.save()
-        return f"已存档: {path or '(server 模式,由 runtime 持久化)'}"
+        return f"Saved: {path or '(server mode; persisted by the runtime)'}"
     except Exception as exc:
-        return f"失败: {type(exc).__name__}: {exc}"
+        return f"Failed: {type(exc).__name__}: {exc}"
 
 
 def _tool_set_known_event(state: Any, args: dict) -> str:
     """与 set_world_known_event 重名,新工具改名 add_world_event 兼顾语义。"""
     text = (args.get("text") or args.get("event") or "").strip()
     if not text:
-        return "失败: text 为空"
+        return "Failed: text is empty"
     events = state.data.setdefault("world", {}).setdefault("known_events", [])
     if text in events:
-        return f"已存在: {text}"
+        return f"Already exists: {text}"
     events.append(text)
     return f"world.known_events += {text}"
 
@@ -174,7 +174,7 @@ def _tool_stop_current_chat(state: Any, args: dict) -> str:
     """工具调用层抛出 stop 标志,具体停止逻辑由 chat handler 监听 state.permissions.stop_signal。"""
     permissions = state.data.setdefault("permissions", {})
     permissions["stop_signal"] = {"requested": True, "ts": now_iso()}
-    return "已请求停止当前 chat (由 chat handler 在下次循环检测)"
+    return "Requested to stop the current chat (the chat handler checks for it on its next loop)"
 
 
 def _register_phase2_tools() -> None:
@@ -183,8 +183,8 @@ def _register_phase2_tools() -> None:
         ToolSpec(
             name="remove_memory_item",
             description=(
-                "从指定 bucket 移除一条记忆项。bucket ∈ "
-                "{resources, abilities, facts, pinned, notes},index 为该 bucket 内 0-based 下标。"
+                "Remove one memory entry from the given bucket. bucket ∈ "
+                "{resources, abilities, facts, pinned, notes}; index is the 0-based position within that bucket."
             ),
             input_schema={
                 "type": "object",
@@ -202,7 +202,7 @@ def _register_phase2_tools() -> None:
         ),
         ToolSpec(
             name="approve_pending_write",
-            description="审批通过一个待写入的 state op。",
+            description="Approve a pending state write op.",
             input_schema={
                 "type": "object",
                 "properties": {"id": {"type": "string"}},
@@ -215,7 +215,7 @@ def _register_phase2_tools() -> None:
         ),
         ToolSpec(
             name="reject_pending_write",
-            description="拒绝一个待写入的 state op。",
+            description="Reject a pending state write op.",
             input_schema={
                 "type": "object",
                 "properties": {"id": {"type": "string"}},
@@ -227,7 +227,7 @@ def _register_phase2_tools() -> None:
         ),
         ToolSpec(
             name="dismiss_pending_question",
-            description="关闭一个 GM 待确认问题 (玩家明确放弃回答)。",
+            description="Close a pending GM question (the player explicitly declines to answer).",
             input_schema={
                 "type": "object",
                 "properties": {"id": {"type": "string"}},
@@ -239,7 +239,7 @@ def _register_phase2_tools() -> None:
         ),
         ToolSpec(
             name="remove_user_variable",
-            description="删除一个玩家世界线硬约束变量 (worldline.user_variables.{key})。",
+            description="Delete a player worldline hard-constraint variable (worldline.user_variables.{key}).",
             input_schema={
                 "type": "object",
                 "properties": {"key": {"type": "string"}},
@@ -252,7 +252,7 @@ def _register_phase2_tools() -> None:
         ),
         ToolSpec(
             name="save_runtime",
-            description="把当前 state 显式持久化到磁盘/DB。",
+            description="Explicitly persist the current state to disk/DB.",
             input_schema={"type": "object", "properties": {}, "required": []},
             executor=_tool_save_runtime,
             scope="save",
@@ -264,7 +264,7 @@ def _register_phase2_tools() -> None:
         # 5 选 1 决策树,_tool_set_known_event 仍保留供老代码 / 测试 import 复用。
         ToolSpec(
             name="stop_current_chat",
-            description="请求停止当前正在执行的 chat turn (由 chat handler 在下次检查点中断)。",
+            description="Request to stop the chat turn currently running (the chat handler interrupts it at its next checkpoint).",
             input_schema={"type": "object", "properties": {}, "required": []},
             executor=_tool_stop_current_chat,
             scope="save",
@@ -296,16 +296,16 @@ def _register_script_read_tools() -> None:
     registry = get_registry()
     read_specs = [
         ("list_worldbook_entries",
-         "列出剧本世界书条目精简清单(entry_id/title/keys/enabled/...)。"
-         "用 upsert_worldbook_entry 更新前先用它拿 entry_id。",
+         "List a compact list of the script's worldbook entries (entry_id/title/keys/enabled/...). "
+         "Use it to get entry_id before updating with upsert_worldbook_entry.",
          _t_list_worldbook_entries),
         ("list_anchors",
-         "列出剧本时间线锚点精简清单(anchor_id/label/story_phase/章节区间)。"
-         "用 update_anchor 更新前先用它拿 anchor_id。",
+         "List a compact list of the script's timeline anchors (anchor_id/label/story_phase/chapter range). "
+         "Use it to get anchor_id before updating with update_anchor.",
          _t_list_anchors),
         ("list_canon_entities",
-         "列出剧本 canon 实体精简清单(logical_key/name/type/...)。"
-         "用 upsert_canon_entity 更新前先用它拿 logical_key。",
+         "List a compact list of the script's canon entities (logical_key/name/type/...). "
+         "Use it to get logical_key before updating with upsert_canon_entity.",
          _t_list_canon_entities),
     ]
     for name, desc, exec_ in read_specs:
@@ -325,12 +325,12 @@ def _register_script_read_tools() -> None:
         registry.register(ToolSpec(
             name="get_chapter_context",
             description=(
-                "一次性取「该章相关编辑环境」(相关世界书/人物/词条/此刻时点/前情提要,按 chapter_index 防剧透)。"
-                "编辑或续写某章前先调它建立设定认知,免去逐个 list_*/get_* 多轮往返、也避免凭空写。"
+                "Fetch the 'editing context for this chapter' in one call (relevant worldbook / characters / glossary / point in time / story-so-far recap, spoiler-filtered by chapter_index). "
+                "Call it before editing or continuing a chapter to ground yourself in the lore, instead of many list_*/get_* round trips or writing from nothing."
             ),
             input_schema={"type": "object", "properties": {
                 "script_id": {"type": "integer"},
-                "chapter_index": {"type": "integer", "description": "正在编辑的章号(1-based)"},
+                "chapter_index": {"type": "integer", "description": "Chapter number being edited (1-based)"},
             }},
             executor=_t_get_chapter_context,
             scope="script",
@@ -342,13 +342,13 @@ def _register_script_read_tools() -> None:
         registry.register(ToolSpec(
             name="extract_from_selection",
             description=(
-                "对用户选中的一段正文跑结构化提取(复用提取器:反史实/反编造/中文别名归并铁律),"
-                "返回提议的人物/势力/地点/概念/事件/摘要(只产提议、不写库)。作者把设定写进正文后,"
-                "用它从选中段抽出知识资产,再按用户意愿用 upsert_*/create_anchor 落库(经写入权限闸)。"
+                "Run structured extraction on a passage of prose the user selected (reuses the extractor and its iron rules: no real-history leakage / no fabrication / alias merging), "
+                "returning proposed characters / factions / locations / concepts / events / summary (proposals only; nothing is written). After the author writes lore into the prose, "
+                "use it to pull knowledge assets out of the selected passage, then persist them with upsert_*/create_anchor as the user wishes (through the write-permission gate)."
             ),
             input_schema={"type": "object", "properties": {
                 "script_id": {"type": "integer"},
-                "text": {"type": "string", "description": "要提取信息的选中正文"},
+                "text": {"type": "string", "description": "The selected prose to extract information from"},
             }, "required": ["text"]},
             executor=_t_extract_from_selection,
             scope="script",

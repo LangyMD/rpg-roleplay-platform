@@ -157,6 +157,9 @@ def evaluate(events: list[dict]) -> dict[str, Any]:
     业务工具"作为 invoked_action。失败 (dispatcher 报 missing_required 等) 不算。
     ask_user_choice / user_choice_required → asked=True。
     """
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from tools_dsl.command_dispatcher import is_failure_result_text
+
     pending_action: str | None = None
     invoked_action: str | None = None
     asked = False
@@ -178,7 +181,7 @@ def evaluate(events: list[dict]) -> dict[str, Any]:
             res = d.get("result") or ""
             ok_flag = d.get("ok")
             success = (ok_flag is True) or (
-                isinstance(res, str) and not res.startswith("失败")
+                isinstance(res, str) and not is_failure_result_text(res)
             )
             if success:
                 invoked_action = pending_action

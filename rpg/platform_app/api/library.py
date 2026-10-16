@@ -56,7 +56,7 @@ async def api_library_asset(asset_id: int, user=Depends(require_user)):
     """查单个资产，owner 校验。不存在或不属于该用户返回 404。"""
     asset = _library.get_asset(user["id"], asset_id)
     if asset is None:
-        raise HTTPException(status_code=404, detail="资产不存在或无权访问")
+        raise HTTPException(status_code=404, detail="Asset not found or not accessible")
     return json_response({"ok": True, "asset": asset})
 
 
@@ -76,9 +76,9 @@ async def api_library_download(asset_id: int, user=Depends(require_user)):
     except ValueError as exc:
         err = str(exc)
         if err == "not_found":
-            raise HTTPException(status_code=404, detail="资产不存在或无权访问")
+            raise HTTPException(status_code=404, detail="Asset not found or not accessible")
         if err == "file_missing":
-            raise HTTPException(status_code=404, detail="物理文件已丢失")
+            raise HTTPException(status_code=404, detail="The physical file is missing")
         raise HTTPException(status_code=400, detail=err)
 
     filename = path.name
@@ -134,7 +134,7 @@ async def api_library_delete_asset(asset_id: int, request: Request, user=Depends
 async def api_library_upload_removed(user=Depends(require_user)):
     """手动上传已移除。文件库只展示系统功能组件（生图/头像/封面等）自动产生的资产。"""
     return json_response(
-        {"ok": False, "error": "文件库不支持手动上传，请使用生图或头像上传功能", "code": "method_not_allowed"},
+        {"ok": False, "error": "The file library does not support manual uploads; use image generation or avatar upload instead", "code": "method_not_allowed"},
         status_code=405,
     )
 
@@ -143,6 +143,6 @@ async def api_library_upload_removed(user=Depends(require_user)):
 async def api_library_mkdir_removed(user=Depends(require_user)):
     """创建文件夹已移除，文件库无目录树结构。"""
     return json_response(
-        {"ok": False, "error": "文件库不支持手动创建文件夹", "code": "method_not_allowed"},
+        {"ok": False, "error": "The file library does not support creating folders manually", "code": "method_not_allowed"},
         status_code=405,
     )

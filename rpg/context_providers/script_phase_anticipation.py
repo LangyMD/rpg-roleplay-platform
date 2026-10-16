@@ -16,6 +16,8 @@ script_phase_anticipation.py — task 107E (part 2/2)
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -57,7 +59,7 @@ class ScriptPhaseAnticipationProvider(ContextProvider):
         text = _render_lookahead(phases, current_phase)
         layer = self.make_layer(
             "script_phase_anticipation",
-            "剧本预期接下来 (仅参考)",
+            "What the Script Expects Next (reference only)",
             text,
             sticky=False,
             priority=42,  # 中等 priority, 低于 worldbook (45) 但高于 rag (40)
@@ -67,8 +69,8 @@ class ScriptPhaseAnticipationProvider(ContextProvider):
             kind="script_future",
             priority=42,
             layers=[layer],
-            facts=[f"剧本下一段: {p.get('phase_label')}" for p in phases],
-            tokens_estimate=len(text) // 2,
+            facts=[f"Next script segment: {p.get('phase_label')}" for p in phases],
+            tokens_estimate=estimate_tokens(text),
             debug={"current_phase": current_phase, "lookahead": len(phases)},
         )
 
@@ -109,18 +111,18 @@ def _load_script_lookahead(script_id: int, current_phase: str, limit: int) -> li
 
 
 def _render_lookahead(phases: list[dict], current_phase: str) -> str:
-    parts = ["(以下是剧本作者预期接下来的走向 — 仅供参考方向, 玩家可能完全偏离, 不要强制对齐)"]
+    parts = ["(Below is where the script's author expects the story to go next - a direction for reference only. The player may diverge completely; do not force the story back onto it.)"]
     if current_phase:
-        parts.append(f"当前所在: {current_phase}")
+        parts.append(f"Currently at: {current_phase}")
     for p in phases:
-        label = (p.get("phase_label") or "").strip() or "无标题段"
-        ch_range = f"第 {p.get('chapter_min')}-{p.get('chapter_max')} 章"
+        label = (p.get("phase_label") or "").strip() or "untitled segment"
+        ch_range = f"chapters {p.get('chapter_min')}-{p.get('chapter_max')}"
         story_time = ""
         s = (p.get("story_time_label_start") or "").strip()
         e = (p.get("story_time_label_end") or "").strip()
         if s or e:
             story_time = f" · {s}{(' → ' + e) if e and e != s else ''}"
-        head = f"# 剧本下一段: {label} ({ch_range}{story_time})"
+        head = f"# Next script segment: {label} ({ch_range}{story_time})"
         summary = (p.get("summary") or "").strip()
         events = p.get("key_events") or []
         locs = p.get("key_locations") or []
@@ -136,12 +138,12 @@ def _render_lookahead(phases: list[dict], current_phase: str) -> str:
                 elif isinstance(ev, str) and ev.strip():
                     evt_lines.append(f"  · {ev[:100]}")
             if evt_lines:
-                block.append("预期事件:")
+                block.append("Expected events:")
                 block.extend(evt_lines)
         if locs:
-            loc_str = "、".join(str(loc) for loc in locs[:5] if loc)
+            loc_str = ", ".join(str(loc) for loc in locs[:5] if loc)
             if loc_str:
-                block.append(f"预期场景: {loc_str}")
+                block.append(f"Expected locations: {loc_str}")
 
         chunk = "\n".join(block)
         if len(chunk) > PER_PHASE_BUDGET:

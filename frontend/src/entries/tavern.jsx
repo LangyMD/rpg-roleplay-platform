@@ -1,5 +1,6 @@
 // Tavern 页面入口 — Vite ESM 版(镜像 entries/game-console.jsx)
 import '../web-vitals-rum.js';
+import '../fonts.js';
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
 

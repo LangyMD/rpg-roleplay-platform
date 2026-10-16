@@ -51,42 +51,46 @@ from core.logging import get_logger
 log = get_logger(__name__)
 
 _EXTRACTOR_SYSTEM = """\
-你是状态提取器。读 GM 这一轮的叙事正文 + 当前状态快照，输出一个 JSON 数组，
-每条代表一次状态变化。**不要写小说**，只输出 JSON。
+You are a state extractor. Read the GM's narration for this turn plus the current state
+snapshot, and output a JSON array where each item is one state change. **Do not write
+fiction**; output only JSON.
 
-可用 op：
-- "set":      覆盖标量字段（player.* / world.time / memory.main_quest 等）
-- "append":   追加进列表字段（memory.resources / memory.facts / world.known_events 等）
-- "overwrite": 整体覆盖列表（少用）
-- "question": GM 在叙事里向玩家提问（玩家需要选择）
+Available ops:
+- "set":       overwrite a scalar field (player.* / world.time / memory.main_quest, etc.)
+- "append":    append to a list field (memory.resources / memory.facts / world.known_events, etc.)
+- "overwrite": replace a whole list (use rarely)
+- "question":  the GM asks the player a question in the narration (the player must choose)
 
-可写字段（**严格**）：
+Writable fields (**strict**):
 - player.name / player.role / player.background / player.current_location
 - world.time / world.weather / world.timeline.current_phase / world.known_events
 - memory.main_quest / memory.current_objective / memory.mode
 - memory.resources / memory.abilities / memory.facts / memory.pinned / memory.notes
-- relationships.<角色名>
-- worldline.user_variables.<变量名>
-- ui.<自定义键>
+- relationships.<character name>
+- worldline.user_variables.<variable name>
+- ui.<custom key>
 
-禁止写入（硬黑名单，会被拒绝）：
+Forbidden (hard blacklist, will be rejected):
 - permissions.* / history.* / schema_version / created_at
 
-如果某个字段在叙事里**真的发生了变化**才输出 op；没变就不要编。
-如果叙事里 GM 向玩家提问（"你是进还是退？"），输出 {"op":"question","question":"...","options":[...]}。
-如果叙事里完全没有状态变化，输出空数组 [].
+Only output an op if the field **actually changed** in the narration; if it did not change,
+do not invent one.
+If the GM asks the player a question in the narration ("Do you go forward or fall back?"),
+output {"op":"question","question":"...","options":[...]}.
+If the narration has no state change at all, output an empty array [].
 
-输出格式（**严格 JSON，不要 markdown fence，不要解释**）：
+Output format (**strict JSON, no markdown fence, no explanation**):
 
 [
-  {"op":"set","path":"player.current_location","value":"<地点名>"},
-  {"op":"append","path":"memory.resources","value":"<物品名>"},
-  {"op":"set","path":"relationships.<角色名>","value":"信任"},
-  {"op":"question","question":"是否进入<地点名>？","options":["进入","退后观察"]}
+  {"op":"set","path":"player.current_location","value":"<place name>"},
+  {"op":"append","path":"memory.resources","value":"<item name>"},
+  {"op":"set","path":"relationships.<character name>","value":"trust"},
+  {"op":"question","question":"Enter <place name>?","options":["Enter","Hang back and watch"]}
 ]
 
-⚠️ 上面只是**格式示例**：尖括号占位必须换成本局正文里真实出现的人名/地名/物品名。
-不要把示例里的任何名字当作本局已存在的设定。
+⚠️ The above is only a **format example**: replace the angle-bracket placeholders with
+names of people, places and items that really appear in this session's narration. Do not
+treat any name in the example as an existing fact of this session.
 """
 
 
@@ -98,18 +102,18 @@ def _build_user_prompt(narrative_text: str, state_data: dict) -> str:
     rels = (state_data.get("relationships") or {})
 
     state_snippet = (
-        f"## 当前状态快照（在叙事之前的值）\n"
-        f"- player.name = {p.get('name', '') or '(空)'}\n"
-        f"- player.role = {p.get('role', '') or '(空)'}\n"
-        f"- player.current_location = {p.get('current_location', '') or '(空)'}\n"
-        f"- world.time = {w.get('time', '') or '(空)'}\n"
-        f"- world.weather = {w.get('weather', '') or '(空)'}\n"
-        f"- memory.main_quest = {m.get('main_quest', '') or '(空)'}\n"
-        f"- memory.current_objective = {m.get('current_objective', '') or '(空)'}\n"
+        f"## Current state snapshot (values before the narration)\n"
+        f"- player.name = {p.get('name', '') or '(empty)'}\n"
+        f"- player.role = {p.get('role', '') or '(empty)'}\n"
+        f"- player.current_location = {p.get('current_location', '') or '(empty)'}\n"
+        f"- world.time = {w.get('time', '') or '(empty)'}\n"
+        f"- world.weather = {w.get('weather', '') or '(empty)'}\n"
+        f"- memory.main_quest = {m.get('main_quest', '') or '(empty)'}\n"
+        f"- memory.current_objective = {m.get('current_objective', '') or '(empty)'}\n"
         f"- memory.resources = {(m.get('resources') or [])[-5:]}\n"
         f"- relationships = {dict(list(rels.items())[-8:])}\n"
     )
-    return state_snippet + "\n\n## GM 本轮叙事\n" + (narrative_text or "")[:4000]
+    return state_snippet + "\n\n## GM narration this turn\n" + (narrative_text or "")[:4000]
 
 
 # 兼容 ```json ... ``` 和裸 JSON 两种输出
@@ -275,30 +279,30 @@ def _call_anthropic_tool_use(
     result = resolve_api_key(user_id, "anthropic", env_fallback="ANTHROPIC_API_KEY")
     key = result.get("key")
     if not key:
-        raise RuntimeError("找不到 Anthropic API Key for extractor")
+        raise RuntimeError("No Anthropic API key found for extractor")
     # 走统一出站层(不跟随重定向 + 凭据代理),读超时守调用方的 timeout_sec。
     client = micro_task_anthropic_client(result, timeout_sec=timeout_sec)
     tools = [{
         "name": "emit_state_ops",
-        "description": "把 GM 叙事里发生的状态变化输出为操作数组。没有变化就传 ops=[].",
+        "description": "Output the state changes in the GM narration as an array of ops. If nothing changed, pass ops=[].",
         "input_schema": {
             "type": "object",
             "properties": {
                 "ops": {
                     "type": "array",
-                    "description": "每条代表一次状态变化",
+                    "description": "Each item is one state change",
                     "items": {
                         "type": "object",
                         "properties": {
                             "op": {"type": "string", "enum": ["set", "append", "overwrite", "question", "hypothesis", "confirm_hypothesis", "reject_hypothesis"]},
-                            "path": {"type": "string", "description": "state 路径（如 player.role / relationships.<角色名>）；op=question/hypothesis/confirm_hypothesis/reject_hypothesis 时可省"},
-                            "value": {"description": "要写入的值，字符串"},
-                            "question": {"type": "string", "description": "op=question 时用"},
-                            "options": {"type": "array", "items": {"type": "string"}, "description": "op=question 时用"},
-                            "text": {"type": "string", "description": "op=hypothesis 时用（推测内容）"},
-                            "id": {"type": "string", "description": "op=confirm_hypothesis/reject_hypothesis 时用（mem_ 前缀的 hypothesis id）"},
-                            "characters": {"type": "array", "items": {"type": "string"}, "description": "op=hypothesis 时用，涉及角色名"},
-                            "time_label": {"type": "string", "description": "op=hypothesis 时可选，叙事时间标签"},
+                            "path": {"type": "string", "description": "State path (e.g. player.role / relationships.<character name>); may be omitted when op=question/hypothesis/confirm_hypothesis/reject_hypothesis"},
+                            "value": {"description": "Value to write, as a string"},
+                            "question": {"type": "string", "description": "Used when op=question"},
+                            "options": {"type": "array", "items": {"type": "string"}, "description": "Used when op=question"},
+                            "text": {"type": "string", "description": "Used when op=hypothesis (the guess itself)"},
+                            "id": {"type": "string", "description": "Used when op=confirm_hypothesis/reject_hypothesis (the hypothesis id, prefixed mem_)"},
+                            "characters": {"type": "array", "items": {"type": "string"}, "description": "Used when op=hypothesis: names of the characters involved"},
+                            "time_label": {"type": "string", "description": "Optional when op=hypothesis: story time label"},
                         },
                         "required": ["op"],
                     },
@@ -352,7 +356,7 @@ def _call_openai_compat_json_mode(
     )
     cred = resolve_api_key(user_id, api_id)
     if not resolved_is_usable(cred):
-        raise RuntimeError(f"无 {api_id} 凭证可用于 extractor")
+        raise RuntimeError(f"No usable {api_id} credential for extractor")
     cred = {**cred, "key": resolved_auth_token(cred)}   # 免鉴权 → 占位 token
     import urllib.error
     import urllib.request
@@ -364,11 +368,11 @@ def _call_openai_compat_json_mode(
     _proxy = credential_proxy(cred)  # 凭据代理(本地模式才有值;没配时为 None)
     base_url = cred.get("base_url_override") or _api_base_url(api_id)
     if not base_url:
-        raise RuntimeError(f"未知 base_url for {api_id}")
+        raise RuntimeError(f"Unknown base_url for {api_id}")
     body_dict = {
         "model": model,
         "messages": [
-            {"role": "system", "content": system_prompt + f"\n\n输出必须是 JSON 对象 {json_hint}，不要任何文字。"},
+            {"role": "system", "content": system_prompt + f"\n\nThe output must be a JSON object {json_hint}, with no other text."},
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0,
@@ -389,7 +393,7 @@ def _call_openai_compat_json_mode(
         with _no_redirect_urlopen(req, timeout=timeout_sec, proxy=_proxy) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         if not payload.get("choices"):
-            raise RuntimeError(f"provider 响应结构异常: {str(payload)[:200]}")
+            raise RuntimeError(f"Unexpected provider response shape: {str(payload)[:200]}")
         text = (payload.get("choices") or [{}])[0].get("message", {}).get("content") or ""
         # 响应是 {"ops": [...]} 格式 → 提取 ops 数组
         try:
@@ -414,7 +418,7 @@ def _call_openai_compat_json_mode(
         with _no_redirect_urlopen(req, timeout=timeout_sec, proxy=_proxy) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         if not payload.get("choices"):
-            raise RuntimeError(f"provider 响应结构异常: {str(payload)[:200]}")
+            raise RuntimeError(f"Unexpected provider response shape: {str(payload)[:200]}")
         return (payload.get("choices") or [{}])[0].get("message", {}).get("content") or ""
 
 

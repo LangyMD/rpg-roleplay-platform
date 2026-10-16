@@ -235,8 +235,8 @@ def timeline_filter_for_label(label: str, db_path: Path = DB_PATH) -> dict[str, 
             "chapter_min": max(1, direct_chapter - 1),
             "chapter_max": direct_chapter + 1,
             "anchor_chapter": direct_chapter,
-            "anchor_event": f"原著第{direct_chapter}章",
-            "story_time_label": f"原著第{direct_chapter}章附近",
+            "anchor_event": f"novel chapter {direct_chapter}",
+            "story_time_label": f"around novel chapter {direct_chapter}",
             "confidence": 0.75,
         }
     # 标签没写章号 → 剩下的语义匹配全靠 SQLite 索引;缺文件就返回空窗口,
@@ -278,7 +278,7 @@ def timeline_filter_for_label(label: str, db_path: Path = DB_PATH) -> dict[str, 
             "chapter_min": None,
             "chapter_max": None,
             "anchor_chapter": None,
-            "anchor_event": "未能匹配原著时间线",
+            "anchor_event": "no match in the novel timeline",
             "story_time_label": "",
             "confidence": 0.0,
         }
@@ -330,8 +330,8 @@ def _chapter_filter(chapter: int, db_path: Path) -> dict[str, Any] | None:
                 "chapter_min": max(1, chapter - 1),
                 "chapter_max": chapter + 1,
                 "anchor_chapter": chapter,
-                "anchor_event": f"原著第{chapter}章",
-                "story_time_label": f"原著第{chapter}章附近",
+                "anchor_event": f"novel chapter {chapter}",
+                "story_time_label": f"around novel chapter {chapter}",
                 "confidence": 0.80,
                 "source": "direct_chapter",
             }
@@ -413,7 +413,7 @@ def _time_label_for(chapter: int, event: str, text: str, script_key: str | None 
         if tl_fallback_tmpl:
             return tl_fallback_tmpl.format(chapter=chapter)
     # 无 script_key 或 JSON 不存在 → 通用兜底
-    return f"第{chapter}章"
+    return f"Chapter {chapter}"
 
 
 def _extract_names(text: str, script_key: str | None = None) -> list[str]:

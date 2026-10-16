@@ -127,3 +127,19 @@ def test_verb_forms_unaffected_by_removing_optional_prefix_patterns():
 def test_has_jump_verb_shape():
     assert has_jump_verb("跳到1968年") and has_jump_verb("/time 第30章")
     assert not has_jump_verb("他在1985年出生")
+
+
+
+def test_english_time_values_and_chapter_target():
+    """The curator now normalises a bare chapter number to "Chapter N" (English); the gate and
+    the anchor resolver must accept it, plus common English time shapes, while still rejecting
+    narrative clauses with a person subject."""
+    from agents.context_agent import _normalize_timeline_target
+    from script_timeline import _extract_chapter_number
+    assert _normalize_timeline_target("12") == "Chapter 12"
+    assert _extract_chapter_number("Chapter 12") == 12
+    assert _extract_chapter_number("第 50 章") == 50
+    for v in ("Chapter 12", "three days later", "the next morning", "1453 AD", "at dawn"):
+        assert looks_like_time_value(v), v
+    for v in ("the day my mother died", "he walked into the hall", "look around carefully"):
+        assert not looks_like_time_value(v), v

@@ -33,5 +33,5 @@ def require_int_arg(value, label, *, fail=None):
     「必须是整数」/「必填且必须是整数」)时用 fail= 整句覆盖,逐字保持原文案。
     """
     if not isinstance(value, (int, float, str)) or not str(value).lstrip("-").isdigit():
-        return fail if fail is not None else f"失败: {label} 必须整数"
+        return fail if fail is not None else f"Failed: {label} must be an integer"
     return int(value)

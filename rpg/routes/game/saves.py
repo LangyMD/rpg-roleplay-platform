@@ -76,7 +76,7 @@ async def api_message_edit(
             # [安全] 存档归属校验:原 PR 直接用请求体 save_id 改 messages,无归属校验 = IDOR
             # (任何登录用户可改他人存档的消息)。与全平台 save 端点统一走 perms.owns_save。
             if not owns_save(db, int(save_id), int(api_user["id"])):
-                return json_response({"ok": False, "error": "无权访问该存档"}, status_code=403)
+                return json_response({"ok": False, "error": "No access to this save"}, status_code=403)
             # 并发锁(与 record_runtime_turn / persist_runtime_state / 分支写操作同 key 的事务级
             # advisory lock):_amend_history_message 对 branch_commits/game_saves/runtime_checkouts
             # 三表读改写,不持锁会与并发回合提交 / autosave / 另一 tab 的编辑互相覆盖快照(同类操作
@@ -90,7 +90,7 @@ async def api_message_edit(
             ok, _orig = _amend_history_message(db, int(save_id), msg_index, str(new_content))
             db.commit()
         if not ok:
-            return json_response({"ok": False, "error": f"message_index {msg_index} 越界或无有效消息"}, status_code=400)
+            return json_response({"ok": False, "error": f"message_index {msg_index} is out of range or has no valid message"}, status_code=400)
     except Exception as e:
         _log.exception("[message/edit] failed")
         return json_response({"ok": False, "error": str(e)}, status_code=500)
@@ -359,7 +359,7 @@ async def api_acceptance_choice(
     choice = (body.get("choice") or "").strip().lower()
     msg_index = body.get("message_index")
     if alt_id is None or choice not in ("original", "rewrite"):
-        return json_response({"ok": False, "error": "alt_id 与 choice(original|rewrite) 必填"}, status_code=400)
+        return json_response({"ok": False, "error": "alt_id and choice (original|rewrite) are required"}, status_code=400)
     try:
         alt_id = int(alt_id)
     except (TypeError, ValueError):
@@ -376,10 +376,10 @@ async def api_acceptance_choice(
                 (alt_id,),
             ).fetchone()
             if not row:
-                return json_response({"ok": False, "error": f"acceptance 候选 {alt_id} 不存在"}, status_code=404)
+                return json_response({"ok": False, "error": f"Acceptance candidate {alt_id} not found"}, status_code=404)
             # 归属校验:候选必须属于当前用户(IDOR 防护)。
             if int(row["user_id"] or 0) != uid:
-                return json_response({"ok": False, "error": "无权操作该候选"}, status_code=403)
+                return json_response({"ok": False, "error": "Not allowed to act on this candidate"}, status_code=403)
             save_id = int(row["save_id"] or 0)
             row_turn = int(row["turn"] or 0)
             original_text = str(row["original_text"] or "")

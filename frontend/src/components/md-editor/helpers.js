@@ -17,7 +17,10 @@ const NODE_GROUPS = [
 const api = () => (typeof window !== 'undefined' ? window.api : null);
 const toast = (msg, opts) => { try { window.__apiToast?.(msg, opts); } catch (_) {} };
 // 章节标题存「裸标题」(不含「第N章」),显示时由前端加序号前缀。剥掉任何已混入的前缀,防重命名/重建出现「第5章 第5章 …」双序号。
-const stripChapterPrefix = (s) => String(s || '').replace(/^\s*第\s*[0-9一二三四五六七八九十百千零〇两]+\s*章\s*/, '');
+// 英文界面的序号前缀是「Chapter N」/「Ch. N」,同样剥掉(后接分隔符或结尾才算前缀)。
+const stripChapterPrefix = (s) => String(s || '')
+  .replace(/^\s*第\s*[0-9一二三四五六七八九十百千零〇两]+\s*章\s*/, '')
+  .replace(/^\s*(?:chapter|ch\.)\s*\d+(?=\s|[:：.\-–—]|$)[\s:：.\-–—]*/i, '');
 // Canon 实体类型本地化 → i18n md_editor.canon_type.* 键。含常见同义词回退。
 // organization 是后端合法类型(提取链路会把乐团/工作室等标成它),单独显示「组织」,不再混成「势力」。
 const CANON_TYPE_KEYS = { character: 'character', person: 'character', faction: 'faction', organization: 'organization', org: 'organization', location: 'location', place: 'location', item: 'item', concept: 'concept', event: 'event' };
@@ -35,7 +38,7 @@ const CAN_CREATE_KIND = () => true; // 5 类都支持新建
 
 export const nodeKey = (kind, id) => `${kind}:${id}`;
 
-const KIND_LABEL_KEY = { chapter: 'md_editor.tree.group_chapter', card: 'md_editor.tree.group_card', worldbook: 'md_editor.tree.group_worldbook', anchor: 'md_editor.tree.group_anchor', canon: 'md_editor.tree.group_canon' };
-function kindLabelZh(kind) { return i18n.t(KIND_LABEL_KEY[kind] || '', { defaultValue: ({ chapter: '章节', card: '角色卡', worldbook: '世界书', anchor: '时间线', canon: '设定' })[kind] || kind }); }
+const KIND_LABEL_KEY = { chapter: 'md_editor.tree.kind.chapter', card: 'md_editor.tree.kind.card', worldbook: 'md_editor.tree.kind.worldbook', anchor: 'md_editor.tree.kind.anchor', canon: 'md_editor.tree.kind.canon' };
+function kindLabelZh(kind) { return KIND_LABEL_KEY[kind] ? i18n.t(KIND_LABEL_KEY[kind]) : kind; }
 
 export { IS_MAC, MOD_LABEL, NODE_GROUPS, api, toast, stripChapterPrefix, canonTypeZh, KIND_ICON, CAN_DELETE, CAN_RENAME, CAN_DRAG, CAN_CREATE_KIND, kindLabelZh };

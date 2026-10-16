@@ -27,12 +27,103 @@ SPLIT_SCORE_WEIGHTS = {
     "coverage": 0.15,
 }
 
+# ─── 英文章节标题 (chapter_splitter 也从这里取,单一真相源) ─────────────────────
+# 支持:Chapter 12 / CHAPTER IV / Chapter One / Chapter Twenty-Three / Chapter the First /
+# Chapter 1: Title / Chapter 7. Title / Part Two / Book III / Prologue / Epilogue: Title。
+# 大小写不敏感;标题尾巴必须是分隔符或大写开头,挡掉正文句子「Chapter one of my life was over.」。
+_EN_ONES = "one|two|three|four|five|six|seven|eight|nine"
+_EN_TEENS = "ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen"
+_EN_TENS = "twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety"
+_EN_UNDER_100 = rf"(?:(?:{_EN_TENS})(?:[\s\-]+(?:{_EN_ONES}))?|{_EN_TEENS}|{_EN_ONES})"
+EN_NUMBER_WORDS = (
+    rf"(?:(?:{_EN_ONES})[\s\-]+hundred(?:[\s\-]+(?:and[\s\-]+)?{_EN_UNDER_100})?"
+    rf"|{_EN_UNDER_100}|zero)"
+)
+_EN_ORDINALS = (
+    r"(?:the\s+)?(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|"
+    r"eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|"
+    r"nineteenth|twentieth|last|final)"
+)
+# 合法罗马数字(拒绝 did / mild 这类恰好全是罗马字母的英文词)
+EN_ROMAN = r"(?=[mdclxvi])m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})(?<=[mdclxvi])"
+EN_NUM = rf"(?:\d{{1,4}}|[０-９]{{1,4}}|{EN_NUMBER_WORDS}|{_EN_ORDINALS}|{EN_ROMAN})"
+_EN_TAIL = r"(?:\s*[:.\-–—)]\s*.{0,100}|\s+(?-i:[A-Z0-9\"'“‘(\[]).{0,100})?\s*$"
+EN_CHAPTER_HEADING = rf"(?:chapter|chap\.?|ch\.)\s*{EN_NUM}\b{_EN_TAIL}"
+EN_PART_HEADING = rf"(?:part|book|volume|vol\.)\s+{EN_NUM}\b{_EN_TAIL}"
+EN_SPECIAL_HEADING = (
+    r"(?:prologue|epilogue|interlude|afterword|foreword|preface|introduction|coda)"
+    r"(?:\s*[:.\-–—]\s*.{0,100}|\s+(?-i:[A-Z0-9\"'“‘(]).{0,100})?\s*$"
+)
+# 整行判定(已 strip 的行);可带 markdown # 前缀
+EN_HEADING_LINE = rf"(?i)^(?:#{{1,3}}\s*)?(?:{EN_CHAPTER_HEADING}|{EN_SPECIAL_HEADING})"
+EN_PART_LINE = rf"(?i)^(?:#{{1,3}}\s*)?{EN_PART_HEADING}"
+
+_EN_WORD_VALUES = {
+    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
+    "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13,
+    "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
+    "seventy": 70, "eighty": 80, "ninety": 90,
+}
+_EN_ORDINAL_VALUES = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6, "seventh": 7,
+    "eighth": 8, "ninth": 9, "tenth": 10, "eleventh": 11, "twelfth": 12, "thirteenth": 13,
+    "fourteenth": 14, "fifteenth": 15, "sixteenth": 16, "seventeenth": 17,
+    "eighteenth": 18, "nineteenth": 19, "twentieth": 20,
+}
+_ROMAN_VALUES = {"i": 1, "v": 5, "x": 10, "l": 50, "c": 100, "d": 500, "m": 1000}
+_EN_SEQ_RE = re.compile(
+    rf"(?i)^\s*(?:#{{1,3}}\s*)?(?:chapter|chap\.?|ch\.|part|book|volume|vol\.)\s*(?P<num>{EN_NUM})\b"
+)
+
+
+def _is_latin_text(text: str) -> bool:
+    """正文以拉丁文字为主(英文书)→ True。采样开头,CJK 占比 < 30%。"""
+    from core.token_estimate import is_cjk_text
+    return bool(text) and not is_cjk_text(text)
+
+
+def parse_en_number(tok: str) -> int | None:
+    """英文章节序号:阿拉伯 / 罗马 / 英文数词 / 序数词。失败返 None。"""
+    s = (tok or "").strip().lower().translate(_FULLWIDTH)
+    if not s:
+        return None
+    if s.isdigit():
+        return int(s)
+    s = re.sub(r"^the\s+", "", s)
+    if s in _EN_ORDINAL_VALUES:
+        return _EN_ORDINAL_VALUES[s]
+    if re.fullmatch(EN_ROMAN, s):
+        total = 0
+        prev = 0
+        for ch in reversed(s):
+            v = _ROMAN_VALUES[ch]
+            total = total - v if v < prev else total + v
+            prev = max(prev, v)
+        return total or None
+    words = [w for w in re.split(r"[\s\-]+", s) if w and w != "and"]
+    if not words or any(w not in _EN_WORD_VALUES and w != "hundred" for w in words):
+        return None
+    total = 0
+    cur = 0
+    for w in words:
+        if w == "hundred":
+            cur = (cur or 1) * 100
+        else:
+            cur += _EN_WORD_VALUES[w]
+    total += cur
+    return total
+
+
 # ─── 预设候选规则 (self-contained,避免与 chapter_splitter 形成 import 环) ──────
 # 每条 = 逐行 heading 判定正则 (anchored ^...);删去任何书本特化。
 _PRESET_RULES: list[tuple[str, str]] = [
     ("chapter_cn", rf"^.{{0,30}}(?:第[{NUMBER_TOKEN}]+[章节集回]|[序楔]章|楔子|引[子言]|前言|番外).*$"),
     ("corpus", rf"^.{{0,40}}(?:第[{NUMBER_TOKEN}]+[章节集回卷]|第[{NUMBER_TOKEN}]+部|[序楔终]章|楔子|引[子言]|前言|正文|番外|外传|大结局).*$"),
-    ("chapter_en", r"^(?:chapter|chap\.|part)\s+[0-9０-９ivxlcdm]+.*$"),
+    # 英文:大小写不敏感(以前没带 IGNORECASE,"CHAPTER IV" / "chapter one" 全漏)
+    ("chapter_en", EN_HEADING_LINE),
+    # 只用 Part/Book/Volume 当单元的英文书
+    ("part_en", EN_PART_LINE),
     ("number_dot", r"^[0-9０-９]+[.、]\s*.*$"),
     ("paren_num", rf"^.{{0,10}}[（(]\s*[{NUMBER_TOKEN}]+\s*[)）].*$"),
     ("hua", rf"^.{{0,8}}(?:【\s*第?[{NUMBER_TOKEN}]+话\s*】|第[{NUMBER_TOKEN}]+话).*$"),
@@ -107,6 +198,11 @@ def extract_seq(title: str) -> int | None:
     """从标题抽取首个序号 (第X / X. / (X) / 【第X话】 等)。"""
     if not title:
         return None
+    em = _EN_SEQ_RE.match(title)
+    if em:
+        v = parse_en_number(em.group("num"))
+        if v is not None:
+            return v
     m = _NUM_RUN.search(title)
     if not m:
         return None
@@ -252,8 +348,11 @@ def structural_score(chapters: list[dict], text: str) -> tuple[float, dict]:
         cv = (var ** 0.5) / mean_sz
         size_uniformity = max(0.0, 1.0 - min(cv, 1.0))
 
-    # 3. 数量合理性:网文每章 1.5k-8k 字
-    lo, hi = total_chars / 8000, total_chars / 1500
+    # 3. 数量合理性:网文每章 1.5k-8k 字;英文小说每章约 1k-10k 词 ≈ 5k-55k 字符
+    if _is_latin_text(text):
+        lo, hi = total_chars / 55000, total_chars / 5000
+    else:
+        lo, hi = total_chars / 8000, total_chars / 1500
     if lo <= n <= hi:
         count_sanity = 1.0
     elif n < lo:
@@ -307,13 +406,16 @@ def fuse(best: list[dict], text: str) -> tuple[list[dict], list[dict]]:
     median = sorted(sizes)[n // 2]
     std = (sum((x - mean_sz) ** 2 for x in sizes) / n) ** 0.5
     stat_thresh = mean_sz + 2 * std
+    # 阈值按中文字数定;英文同等篇幅约 4x 字符
+    _k = 4 if _is_latin_text(text) else 1
+    min_outlier, hard_outlier = _MIN_OUTLIER_CHARS * _k, _HARD_OUTLIER_CHARS * _k
 
     fused: list[dict] = []
     for ch in best:
         body = ch.get("content") or ""
         L = len(body)
-        is_outlier = L > _HARD_OUTLIER_CHARS or (
-            L > stat_thresh and L > max(2 * median, _MIN_OUTLIER_CHARS)
+        is_outlier = L > hard_outlier or (
+            L > stat_thresh and L > max(2 * median, min_outlier)
         )
         sub: list[dict] = []
         if is_outlier:

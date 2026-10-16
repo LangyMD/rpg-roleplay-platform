@@ -43,10 +43,10 @@ describe('_shouldFetchOnPoll — 可见性门控纯函数', () => {
 
 describe('_pauseReasonMeta / PauseReasonBadge — 暂停原因徽标映射', () => {
   it('四个枚举值都有对应文案', () => {
-    expect(_pauseReasonMeta('user').fallback).toBe('已暂停');
-    expect(_pauseReasonMeta('player_active').fallback).toBe('你在游玩，世界让路');
-    expect(_pauseReasonMeta('unviewed').fallback).toBe('久未查看已休眠');
-    expect(_pauseReasonMeta('no_model').fallback).toBe('无可用模型');
+    expect(_pauseReasonMeta('user').fallback).toBe('Paused');
+    expect(_pauseReasonMeta('player_active').fallback).toBe("You're playing — the world stepped aside");
+    expect(_pauseReasonMeta('unviewed').fallback).toBe('Dormant after a long time unseen');
+    expect(_pauseReasonMeta('no_model').fallback).toBe('No model available');
   });
   it('未知/空值返回 null', () => {
     expect(_pauseReasonMeta('bogus')).toBeNull();
@@ -65,9 +65,9 @@ describe('_pauseReasonMeta / PauseReasonBadge — 暂停原因徽标映射', () 
 
 describe('_preflightTierMeta / _normalizePreflightResponse — 预检纯函数', () => {
   it('三档 tier 都有颜色 + 文案', () => {
-    expect(_preflightTierMeta('full')).toMatchObject({ color: 'green', fallback: '材料齐全' });
-    expect(_preflightTierMeta('degraded')).toMatchObject({ color: 'blue', fallback: '部分退化' });
-    expect(_preflightTierMeta('free')).toMatchObject({ color: 'grey', fallback: '自由演化' });
+    expect(_preflightTierMeta('full')).toMatchObject({ color: 'green', fallback: 'Fully stocked' });
+    expect(_preflightTierMeta('degraded')).toMatchObject({ color: 'blue', fallback: 'Partially degraded' });
+    expect(_preflightTierMeta('free')).toMatchObject({ color: 'grey', fallback: 'Free-form evolution' });
   });
   it('未知 tier 兜底灰色徽标 + 原始值', () => {
     expect(_preflightTierMeta('weird')).toMatchObject({ color: 'grey', key: null, fallback: 'weird' });

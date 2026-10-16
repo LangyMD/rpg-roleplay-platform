@@ -16,6 +16,7 @@ import re
 
 # 签名短语长度界(CJK):太短撞车率高,太长 GM 改写后命不中。
 _SIG_MIN, _SIG_MAX = 5, 24
+_SIG_MAX_LATIN = 80  # 无 CJK(英文等)引文/片段的长度上限
 # 判定阈值:≥2 个不同签名逐字命中,且命中数占签名总数 ≥35%。
 MIN_HITS = 2
 MIN_RATIO = 0.35
@@ -27,6 +28,14 @@ _STOP_PREFIX = ("这个", "那个", "他们", "我们", "你们", "但是", "所
                 "然后", "接着", "此时", "这时", "突然", "已经", "自己", "没有")
 
 
+# 英文片段开头的高频套话(小写比较)。
+_STOP_PREFIX_EN = ("and ", "but ", "then ", "so ", "because ", "suddenly ", "meanwhile ")
+
+
+def _has_cjk(text: str) -> bool:
+    return any("\u3400" <= ch <= "\u9fff" for ch in text)
+
+
 def extract_signatures(summary: str) -> list[str]:
     """从锚点 summary 提取签名短语(确定性)。优先引号台词,其次逗号/句号切出的长片段。"""
     s = str(summary or "").strip()
@@ -34,8 +43,13 @@ def extract_signatures(summary: str) -> list[str]:
         return []
     sigs: list[str] = []
     # 1) 引号内台词(“…”/「…」/ASCII "…"):原著台词=最强签名。
-    for m in re.findall(r"[“「\"]([^”」\"]{%d,%d})[”」\"]" % (_SIG_MIN, _SIG_MAX), s):
-        sigs.append(m)
+    #    英文台词按字符计长得多:无 CJK 的引文放宽到 ≤80 字符且至少 3 词。
+    for m in re.findall(r"[“「\"]([^”」\"]{%d,%d})[”」\"]" % (_SIG_MIN, _SIG_MAX_LATIN), s):
+        if _has_cjk(m):
+            if len(m) <= _SIG_MAX:
+                sigs.append(m)
+        elif len(m.split()) >= 3:
+            sigs.append(m.strip())
     # 2) 台词内再按标点切子句(长台词 GM 常只复述半句)。
     expanded: list[str] = []
     for sig in sigs:
@@ -43,13 +57,27 @@ def extract_signatures(summary: str) -> list[str]:
         # 顿号不切:「不限种族、年龄、性别」这类并列串是整体强签名,切碎全变短词。
         for part in re.split(r"[,，;；!!??]", sig):
             part = part.strip()
+            if not _has_cjk(part) and len(part.split()) < 3:
+                continue  # 英文子句至少 3 词,防单词撞车
             if _SIG_MIN <= len(part) <= _SIG_MAX:
                 expanded.append(part)
     # 3) 叙述句片段:按标点切,取长度合规且不以虚词开头的。
-    for part in re.split(r"[,，。;；:\s!!??…]+", re.sub(r"[“”「」\"]", "", s)):
-        part = part.strip()
-        if _SIG_MIN <= len(part) <= _SIG_MAX and not part.startswith(_STOP_PREFIX):
-            expanded.append(part)
+    #    CJK 片段沿用原口径(空白也切);无 CJK 的片段(英文等)绝不按空白切成单词 —— 单个英文词
+    #    撞车率极高,会让意译的正文误判到达。只收 3-12 词、≥15 字符的整段短语(逐字命中才算)。
+    for chunk in re.split(r"[,，。;；:!！?？…]+|\.(?=\s|$)", re.sub(r"[“”「」\"]", "", s)):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if not _has_cjk(chunk):
+            n_words = len(chunk.split())
+            if (3 <= n_words <= 12 and 15 <= len(chunk) <= _SIG_MAX_LATIN
+                    and not chunk.lower().startswith(_STOP_PREFIX_EN)):
+                expanded.append(chunk)
+            continue
+        for part in re.split(r"\s+", chunk):
+            part = part.strip()
+            if _SIG_MIN <= len(part) <= _SIG_MAX and not part.startswith(_STOP_PREFIX):
+                expanded.append(part)
     # 去重保序,截断(控成本)。
     seen: set[str] = set()
     out: list[str] = []

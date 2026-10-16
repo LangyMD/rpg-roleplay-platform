@@ -11,6 +11,7 @@ from typing import Any
 from psycopg.types.json import Jsonb
 
 from agents.provider_errors import plain_error_summary
+from core.token_estimate import cjk_chars_to_budget
 
 from ..db import connect
 from ..perms import script_owned
@@ -105,7 +106,7 @@ def _stage_phase_digests(script_id: int) -> int:
 
         by_phase: dict[str, list[dict]] = {}
         for r in rows:
-            phase = (r["story_phase"] or "").strip() or "未分组"
+            phase = (r["story_phase"] or "").strip() or "Ungrouped"
             by_phase.setdefault(phase, []).append(dict(r))
 
         # 重跑前清表(避免重复 import 时残留旧 phase_label)
@@ -119,7 +120,7 @@ def _stage_phase_digests(script_id: int) -> int:
             for c in chapters[:50]:
                 s = (c.get("summary") or "").strip()
                 if s:
-                    summary_parts.append(f"第{c['chapter']}章 · {s[:120]}")
+                    summary_parts.append(f"Ch.{c['chapter']} · {s[:cjk_chars_to_budget(s, 120)]}")
             summary = "\n".join(summary_parts)[:3000]
             tls = [c.get("story_time_label") or "" for c in chapters if c.get("story_time_label")]
             tl_start = tls[0] if tls else ""
@@ -298,6 +299,13 @@ def _stage_entities(ctl: JobController, script_id: int, user_id: int) -> list[di
             existing_names.update(r.get("aliases") or [])
 
     full_text = "\n".join(c["content"] for c in chapters)
+    # 英文(拉丁文字为主)小说:中文 n-gram 一个候选都抽不出 → 走英文专名候选路径
+    from core.token_estimate import is_cjk_text
+    if full_text and not is_cjk_text(full_text):
+        from .en_names import english_name_candidates
+        ctl.update(stage_progress=1, stage_total=1)
+        return english_name_candidates(full_text[:_NAME_SCAN_CHARS * 3], limit=60,
+                                       existing_names=existing_names)
     # 候选：2-3 字中文连续词，且不在常见停用词里
     candidates = re.findall(r"[一-鿿]{2,3}", full_text)
     # task 47: 复用 session.py 的统一 blacklist,避免维护两份。包含 40+ 高频副词/
@@ -374,7 +382,7 @@ def _stage_canon_extract(
                 ctl.update(warnings={
                     "stage": "canon_extract",
                     "exception": "MissingBook",
-                    "message": "无 book 记录,canon/anchors/worldbook 跳过",
+                    "message": "No book record; skipped canon/anchors/worldbook",
                 })
             except Exception:
                 pass
@@ -405,7 +413,7 @@ def _stage_canon_extract(
         _log.warning("[canon_extract] run_arc_extraction raised: %s", exc, exc_info=True)
         # 模型调用的异常都被 extract_chapter 吞成 raw_ok=False(原因走 result["error"]),能冒到这里的
         # 是本地异常(读章节 / 消歧写库 / 嵌入):不进服务商分类器,也不挂提取模型名。
-        _note_stage_error(ctl, "canon_extract", f"规范实体提取中途出错:{plain_error_summary(exc)}")
+        _note_stage_error(ctl, "canon_extract", f"Canon entity extraction failed partway: {plain_error_summary(exc)}")
         try:
             ctl.update(warnings={
                 "stage": "canon_extract",
@@ -561,18 +569,12 @@ def _backfill_chapter_facts_events_from_canon(script_id: int) -> int:
                 elif background:
                     hint_parts.append(background[:120])
                 if aliases[:3]:
-                    hint_parts.append(f"别名: {', '.join(aliases[:3])}")
+                    hint_parts.append(f"aliases: {', '.join(aliases[:3])}")
                 hint = " / ".join(hint_parts)
 
                 # 事件文本:type 不同模板不同
-                if etype == "character":
-                    ev_text = f"{name}({etype})首次登场"
-                elif etype == "location":
-                    ev_text = f"场景{name}首次出现"
-                elif etype in ("concept", "item", "faction"):
-                    ev_text = f"{etype}「{name}」首次引入"
-                else:
-                    ev_text = f"{name} 首次出现"
+                from kb.section_markers import format_intro_event
+                ev_text = format_intro_event(name, etype)
                 if hint:
                     ev_text += f": {hint}"
                 if ev_text in seen_texts:

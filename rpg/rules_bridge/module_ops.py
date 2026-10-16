@@ -38,7 +38,7 @@ def start_module(state, module_id: str, character_overrides: dict | None = None)
     manifest = bundle.get("manifest") or {}
     rooms = bundle.get("rooms") or []
     if not rooms:
-        return {"ok": False, "error": f"模组 {module_id} 无房间数据"}
+        return {"ok": False, "error": f"module {module_id} has no room data"}
 
     # 选定起点
     start_id = manifest.get("starting_location") or rooms[0].get("id")
@@ -101,12 +101,12 @@ def start_module(state, module_id: str, character_overrides: dict | None = None)
     module_tag = manifest.get("tagline") or ""
     state.data["player"] = {
         "name": pc_now.get("name") or "Drifter",
-        "role": "5E 探险者",
-        "background": f"5E compatible · 五版规则兼容 · 原创规则模组『{module_name}』。{module_tag}",
+        "role": "5E adventurer",
+        "background": f"5E compatible · original rules module \"{module_name}\". {module_tag}",
         "current_location": start_room.get("name") or start_room.get("id"),
     }
     state.data["world"] = {
-        "time": "灰烬山岭 · 黎明前",
+        "time": "Ashen Ridge · before dawn",
         "timeline": {
             "anchor_state": "locked",
             "current_label": module_name,
@@ -121,8 +121,8 @@ def start_module(state, module_id: str, character_overrides: dict | None = None)
     state.data["relationships"] = {}
     # memory 主线/当前目标也按模组覆盖
     memory_block = state.data.setdefault("memory", {})
-    memory_block["main_quest"] = f"完成 {module_name} 冒险"
-    memory_block["current_objective"] = manifest.get("tagline") or f"从 {start_room.get('name','起点')} 出发"
+    memory_block["main_quest"] = f"Complete the {module_name} adventure"
+    memory_block["current_objective"] = manifest.get("tagline") or f"Set out from {start_room.get('name','the start')}"
     memory_block["facts"] = []
     memory_block["notes"] = []
     memory_block["pinned"] = []
@@ -154,12 +154,12 @@ def enter_room(state, location_id: str) -> dict:
     scene = state.data.setdefault("scene", {})
     module_id = scene.get("module_id")
     if not module_id:
-        return {"ok": False, "error": "未加载模组"}
+        return {"ok": False, "error": "no module loaded"}
     bundle = module_registry.load_module(module_id)
     rooms = bundle.get("rooms") or []
     room = next((r for r in rooms if r.get("id") == location_id), None)
     if not room:
-        return {"ok": False, "error": f"未知房间：{location_id}"}
+        return {"ok": False, "error": f"unknown room: {location_id}"}
     # 校验当前房间出口是否允许去 location_id
     cur_id = scene.get("location_id")
     cur_room = next((r for r in rooms if r.get("id") == cur_id), None)
@@ -171,12 +171,12 @@ def enter_room(state, location_id: str) -> dict:
         manifest = bundle.get("manifest") or {}
         start_id = manifest.get("starting_location") or (rooms[0].get("id") if rooms else None)
         if location_id != start_id:
-            return {"ok": False, "error": f"当前位置 {cur_id!r} 不在模组房间图中,只能回到起点 {start_id} 重新进入"}
+            return {"ok": False, "error": f"the current location {cur_id!r} is not in the module's room graph; you can only go back to the start room {start_id} and re-enter"}
     else:
         exits = cur_room.get("exits") or []
         valid_targets = {e.get("to") for e in exits}
         if location_id not in valid_targets:
-            return {"ok": False, "error": f"当前房间不能直接前往 {location_id}（出口：{sorted(list(valid_targets))}）"}
+            return {"ok": False, "error": f"cannot go to {location_id} directly from the current room (exits: {sorted(list(valid_targets))})"}
         # 检查 requires
         target_exit = next((e for e in exits if e.get("to") == location_id), None)
         if target_exit and target_exit.get("requires"):
@@ -184,11 +184,11 @@ def enter_room(state, location_id: str) -> dict:
             if req.startswith("flag:"):
                 flag = req.split(":", 1)[1]
                 if not scene.get("flags", {}).get(flag):
-                    return {"ok": False, "error": f"前往 {location_id} 需要先满足条件：{flag}"}
+                    return {"ok": False, "error": f"going to {location_id} first requires: {flag}"}
             else:
                 # 未识别的 requires 前缀(item:/key:/quest: 等):锁应 fail-closed,不静默放行
                 # (原来非 flag: 前缀的上锁出口会被直接放行 = 锁失效穿门)。
-                return {"ok": False, "error": f"前往 {location_id} 的通行条件 {req!r} 暂不支持,通行被拒"}
+                return {"ok": False, "error": f"the access requirement {req!r} for {location_id} is not supported yet; passage denied"}
     scene["location_id"] = location_id
     scene["exits"] = list(room.get("exits") or [])
     scene["visible_clues"] = list(room.get("visible_clues") or [])

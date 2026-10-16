@@ -92,7 +92,7 @@ def test_non_openai_provider_with_empty_base_url_is_refused(monkeypatch):
     # 提示按用户记(不再是进程级全局,别的用户看不到)
     msg = embedding._breaker.last_error_for(7)
     assert "my_qwen" in msg
-    assert "接口地址" in msg
+    assert "endpoint address" in msg
     assert embedding._breaker.last_error_for(8) == ""
 
 

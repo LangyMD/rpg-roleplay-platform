@@ -23,7 +23,8 @@ AD_LINE_TESTS: list[re.Pattern] = [
     re.compile(r"\b[a-zA-Z0-9\-]+\.(?:com|net|org|cc|xyz|top|vip|cn)\b", re.I),
     re.compile(r"搜书吧|sosdbot", re.I),
     re.compile(r"最新地址|最新域名|备用网址|永久地址|请收藏|回家地址|发布页"),
-    re.compile(r"关注公众号|加入QQ群|加群|电报群|Telegram|tg群", re.I),
+    # Telegram 只认引流语境:裸词会把英文正文里的 "telegram"(电报)整段删掉
+    re.compile(r"关注公众号|加入QQ群|加群|电报群|tg群|(?:加入|关注|订阅)\s*(?:Telegram|TG)(?![A-Za-z])|Telegram\s*(?:群|频道|[:：@])", re.I),
     re.compile(r"蔷薇后花园|黑沼泽俱乐部"),
     re.compile(r"AV片源|AVCAR|avcar", re.I),
     re.compile(r"广告"),
@@ -36,6 +37,37 @@ AD_LINE_TESTS: list[re.Pattern] = [
     re.compile(r"(?:收藏本站|本站|笔趣|UU\s*看书|UC\s*浏览器|微信公众号).{0,40}(?:获取|追书|更新|阅读)"),
     re.compile(r"PS[:：].{0,80}(?:推荐|月票|订阅|打赏)"),
 ]
+
+# ─── 英文盗版站/翻译站整行广告 → 删除整行 ─────────────────────────────────────
+# 只对短行(≤ _EN_AD_MAX_LEN 字符)生效:正文长段落里偶然出现同样短语不会被整段删掉。
+_EN_AD_MAX_LEN = 300
+EN_AD_LINE_TESTS: list[re.Pattern] = [
+    re.compile(r"(?i)\b(?:read|find)\b.{0,40}\b(?:latest|new(?:est)?|more)\s+chapters?\b.{0,40}\b(?:at|on)\b"),
+    re.compile(r"(?i)\bthis\s+chapter\s+(?:is|was)\s+(?:updated|uploaded|published|first\s+published)\s+(?:by|on|at)\b"),
+    re.compile(r"(?i)\bif\s+you\s+find\s+any\s+errors?\b.{0,80}\b(?:let\s+us\s+know|report|notify)\b"),
+    re.compile(r"^\s*(?:(?i:translator|translated\s+by|editor|edited\s+by|proofreader)|TL|ED|PR)\s*[:：]\s*\S.{0,60}$"),
+    re.compile(r"(?i)\b(?:support|read)\s+(?:the\s+)?(?:translators?|us|author)\b.{0,40}\b(?:on|at|via)\s+(?:patreon|ko-?fi)\b"),
+    re.compile(r"(?i)\bstolen\s+(?:content|from|novel)\b|\bthis\s+(?:novel|content)\s+is\s+(?:taken|stolen)\s+from\b"),
+]
+
+# Project Gutenberg 版权首尾样板:START 行之前 / END 行之后的整块许可证文本都不是正文
+_GUTENBERG_START = re.compile(r"(?im)^\s*\*{3}\s*START OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[^\n]*$")
+_GUTENBERG_END = re.compile(r"(?im)^\s*\*{3}\s*END OF (?:THE|THIS) PROJECT GUTENBERG EBOOK[^\n]*$")
+
+
+def _strip_gutenberg(text: str) -> tuple[str, int]:
+    """去掉 Project Gutenberg 首尾样板,返回 (text, 删除行数)。没有标记时原样返回。"""
+    removed = 0
+    m = _GUTENBERG_START.search(text)
+    if m:
+        removed += text[: m.end()].count("\n") + 1
+        text = text[m.end():]
+    m = _GUTENBERG_END.search(text)
+    if m:
+        removed += text[m.start():].count("\n") + 1
+        text = text[: m.start()]
+    return text, removed
+
 
 # ─── 行内删除匹配片段 (保留行本身) (port INLINE_CLEANERS) ────────────────────
 INLINE_CLEANERS: list[tuple[re.Pattern, str]] = [
@@ -116,13 +148,20 @@ def sanitize_corpus(text: str) -> tuple[str, dict]:
     text = _CONTROL_RE.sub("", text)
 
     ad = garble = promo = 0
+    # 2b. Project Gutenberg 许可证样板(计入 ad)
+    text, ad = _strip_gutenberg(text)
+    gutenberg_lines = ad
     lines = text.split("\n")
-    total_lines = len(lines)
+    total_lines = len(lines) + gutenberg_lines
     cleaned: list[str] = []
     for line in lines:
         stripped = line.strip()
         # 3. 整行广告 → 删
         if stripped and any(rx.search(stripped) for rx in AD_LINE_TESTS):
+            ad += 1
+            continue
+        if stripped and len(stripped) <= _EN_AD_MAX_LEN and any(
+                rx.search(stripped) for rx in EN_AD_LINE_TESTS):
             ad += 1
             continue
         # 4. 整行乱码 → 删

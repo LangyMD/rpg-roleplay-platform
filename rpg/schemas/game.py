@@ -12,7 +12,7 @@ class NewGameRequest(_BaseRequest):
     user_card_id: Any | None = None
     persona_id: Any | None = None
     role: str | None = ""
-    name: str | None = "无名者"
+    name: str | None = "Nameless"
     background: str | None = ""
 
 

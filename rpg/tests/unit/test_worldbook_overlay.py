@@ -218,7 +218,7 @@ class TestWorldbookRetire(unittest.TestCase):
             })
         self.assertTrue(r.ok, r.error or r.result)
         self.assertIn("#7", r.result)
-        self.assertIn("已停用", r.result)
+        self.assertIn("Retired", r.result)
 
     def test_retire_entry_not_found(self):
         mock_db = self._make_db(entry_exists=False)
@@ -230,7 +230,7 @@ class TestWorldbookRetire(unittest.TestCase):
                 "reason": "测试",
             })
         self.assertFalse(r.ok)
-        self.assertIn("不存在", r.result or "")
+        self.assertIn("does not exist", r.result or "")
 
     def test_retire_duplicate_idempotent(self):
         """重复 retire 同一 entry 返回已存在提示（不是 ok）。"""
@@ -243,7 +243,7 @@ class TestWorldbookRetire(unittest.TestCase):
                 "reason": "重复操作",
             })
         # 返回 "已存在" 提示，ok=False（result 以 "已存在" 开头,不被 dispatcher 标为 ok）
-        self.assertIn("已存在", r.result or "")
+        self.assertIn("Already exists", r.result or "")
 
     def test_retire_blocked_from_llm_chat(self):
         """destructive 工具禁 llm_chat。"""
@@ -365,7 +365,7 @@ class TestWorldbookListOverlay(unittest.TestCase):
             r = self._call({"save_id": 999})
 
         self.assertFalse(r.ok)
-        self.assertIn("权限", r.result or "")
+        self.assertIn("permission", r.result or "")
 
 
 # ────────────────────────────────────────────────────────────

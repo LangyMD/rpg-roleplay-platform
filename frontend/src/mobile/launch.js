@@ -1,3 +1,4 @@
+import i18n from '../i18n/index.js';
 /* launch.js — 移动端进入游戏台。
    桌面 __openContinue 会开新标签;移动端改为同标签全屏跳转(无弹窗拦截、贴合手机)。
    P2 上线后会被"页内移动游戏台 overlay"取代。
@@ -12,7 +13,7 @@ export async function launchSave(save, nodeId, onToast) {
     try { window.__apiToast?.(msg, { kind: kind === 'accent' ? 'warn' : kind }); } catch (_) {}
   };
   const id = (save && typeof save === 'object') ? save.id : save;
-  if (!id) { _toast('没有可进入的存档', 'accent', 'warn'); return; }
+  if (!id) { _toast(i18n.t('mobile_launch.no_save'), 'accent', 'warn'); return; }
   try {
     if (nodeId != null && nodeId !== '') {
       await window.api.branches.activate({ node_id: nodeId, commit_id: nodeId });
@@ -20,7 +21,7 @@ export async function launchSave(save, nodeId, onToast) {
       await window.api.saves.activate(id);
     }
   } catch (e) {
-    _toast(e?.message ? `切换存档失败 · ${e.message}` : '切换存档失败', 'danger', 'warn');
+    _toast(e?.message ? i18n.t('mobile_launch.switch_failed_detail', { error: e.message }) : i18n.t('mobile_launch.switch_failed'), 'danger', 'warn');
     return;
   }
   try { window.location.href = new URL('Game Console.html', window.location.href).href; }

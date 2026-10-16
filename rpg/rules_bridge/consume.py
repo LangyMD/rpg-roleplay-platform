@@ -102,14 +102,14 @@ def consume_item_action(state, item_id: str, qty: int = 1,
     失败保持状态不变。
     """
     if not item_id:
-        return {"ok": False, "error": "缺少 item_id"}
+        return {"ok": False, "error": "missing item_id"}
     try:
         qty = int(qty or 1)
     except (TypeError, ValueError):
         qty = 1
     result = state.consume_inventory_item(item_id, qty)
     if not result.get("ok"):
-        return {"ok": False, "error": result.get("error") or "consume_item 失败"}
+        return {"ok": False, "error": result.get("error") or "consume_item failed"}
     # 记 dice_log（虽然没掷骰，但作为 rules action 留痕）
     pc = state.data.get("player_character") or {}
     entry = {
@@ -122,7 +122,7 @@ def consume_item_action(state, item_id: str, qty: int = 1,
         "total": result.get("consumed"),
         "dc": None,
         "success": True,
-        "reason": reason or f"消耗 {result.get('item_name')} ×{result.get('consumed')}",
+        "reason": reason or f"used {result.get('item_name')} ×{result.get('consumed')}",
         "ts": now_iso(),
         "extra": {
             "item_id": result.get("item_id"),
@@ -139,8 +139,8 @@ def consume_item_action(state, item_id: str, qty: int = 1,
             "target": entry["target"],
             "success": True,
             "gm_facts": [
-                f"{entry['actor']} 消耗 {result.get('item_name')} ×{result.get('consumed')}"
-                f"（剩余 {result.get('qty_after')}）。"
+                f"{entry['actor']} uses {result.get('item_name')} ×{result.get('consumed')}"
+                f" ({result.get('qty_after')} left)."
             ],
             "extra": entry["extra"],
         },
@@ -154,7 +154,7 @@ def short_rest(state, seed: int | None = None) -> dict:
     scene = state.data.get("scene") or {}
     cur_room_flags = (scene.get("current_room") or {}).get("flags") or {}
     if not cur_room_flags.get("can_short_rest"):
-        return {"ok": False, "error": "当前房间不适合短休"}
+        return {"ok": False, "error": "the current room is not suitable for a short rest"}
     pc = state.data.setdefault("player_character", {})
     result = engine.short_rest(pc, hit_die="1d8", seed=seed)
     _sync_player_combatant(state)

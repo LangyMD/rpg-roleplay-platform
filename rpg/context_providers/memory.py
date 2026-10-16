@@ -150,8 +150,8 @@ class MemoryProvider(ContextProvider):
         # 时一律以玩家手记为准(修「GM 拿事实库过时数值、不读玩家笔记」)。仅当确有手记时注入。
         if m.get("notes") or m.get("pinned"):
             _add_line(
-                "【记忆优先级:带「笔记：」「固定记忆：」的是玩家手写、权威且最新;"
-                "与「事实：」冲突时一律以笔记/固定记忆为准,数值/状态以玩家手记为最新。】"
+                "[Memory priority: lines starting with \"Note:\" or \"Pinned memory:\" were written by the player by hand and are authoritative and current. "
+                "When they conflict with a \"Fact:\" line, the note / pinned memory always wins; for numbers and status, the player's notes are the latest.]"
             )
 
         # 窗口方向:各桶写入端是尾部 append(state.add_memory / apply_ops list 分支),
@@ -161,29 +161,29 @@ class MemoryProvider(ContextProvider):
         # ── bucket_world_enabled: main_quest / current_objective / facts / notes ─
         if ms.bucket_world_enabled:
             if m.get("main_quest"):
-                _add_line(f"主线：{m['main_quest']}")
+                _add_line(f"Main quest: {m['main_quest']}")
             if m.get("current_objective"):
-                _add_line(f"当前目标：{m['current_objective']}")
+                _add_line(f"Current objective: {m['current_objective']}")
             for item in (m.get("facts") or [])[-depth:]:
-                if not _add_line(f"事实：{item}"):
+                if not _add_line(f"Fact: {item}"):
                     break
             for item in (m.get("notes") or [])[-depth:]:
-                if not _add_line(f"笔记：{item}"):
+                if not _add_line(f"Note: {item}"):
                     break
 
         # ── bucket_character_enabled: abilities / resources ───────────────────
         if ms.bucket_character_enabled:
             for item in (m.get("abilities") or [])[-depth:]:
-                if not _add_line(f"能力：{item}"):
+                if not _add_line(f"Ability: {item}"):
                     break
             for item in (m.get("resources") or [])[-depth:]:
-                if not _add_line(f"资源：{item}"):
+                if not _add_line(f"Resource: {item}"):
                     break
 
         # ── bucket_pinned_enabled: pinned ─────────────────────────────────────
         if ms.bucket_pinned_enabled:
             for item in (m.get("pinned") or [])[-depth:]:
-                if not _add_line(f"固定记忆：{item}"):
+                if not _add_line(f"Pinned memory: {item}"):
                     break
 
         # ── hypotheses（归属 world 类，随 bucket_world_enabled 开关）────────────
@@ -196,12 +196,12 @@ class MemoryProvider(ContextProvider):
                 and not it.get("archived")
             ]
             for h in active_hypos[:depth]:
-                if not _add_line(f"未确认推测：{h.get('text', '')}"):
+                if not _add_line(f"Unconfirmed hypothesis: {h.get('text', '')}"):
                     break
 
-        text = "\n".join(lines) or "（暂无长期记忆）"
+        text = "\n".join(lines) or "(no long-term memory yet)"
         layer = self.make_layer(
-            "memory", "长期记忆", text,
+            "memory", "Long-Term Memory", text,
             sticky=False, priority=60,
         )
         return ContextContribution(

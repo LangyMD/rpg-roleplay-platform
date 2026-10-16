@@ -38,17 +38,17 @@ async def api_persona_skill_import(
     """
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     body = await request.json() or {}
     source = str(body.get("source") or "upload")
     if source not in ("upload", "github"):
-        return json_response({"ok": False, "error": "source 必须是 upload 或 github"}, status_code=400)
+        return json_response({"ok": False, "error": "source must be upload or github"}, status_code=400)
     files = body.get("files") if isinstance(body.get("files"), list) else []
     repo_url = str(body.get("repo_url") or "")
     if source == "github" and not repo_url:
-        return json_response({"ok": False, "error": "缺少 repo_url"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing repo_url"}, status_code=400)
     if source == "upload" and not files:
-        return json_response({"ok": False, "error": "缺少上传的 .md 文件"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing the uploaded .md file"}, status_code=400)
 
     from platform_app.persona_skills import import_persona_skill
     try:
@@ -67,7 +67,7 @@ async def api_persona_skill_import(
     except ValueError as exc:
         return value_error_response(exc)
     except Exception as exc:  # noqa: BLE001
-        return json_response({"ok": False, "error": f"导入失败: {exc}"}, status_code=500)
+        return json_response({"ok": False, "error": f"Import failed: {exc}"}, status_code=500)
 
 
 @router.get("/api/me/persona-skills")
@@ -76,7 +76,7 @@ async def api_persona_skills_list(
 ) -> JSONResponse:
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     from platform_app.persona_skills import list_persona_skills
     return json_response(await asyncio.to_thread(list_persona_skills, uid))
 
@@ -88,6 +88,6 @@ async def api_persona_skill_delete(
 ) -> JSONResponse:
     uid = _uid(api_user)
     if not uid:
-        return json_response({"ok": False, "error": "需要登录"}, status_code=401)
+        return json_response({"ok": False, "error": "Login required"}, status_code=401)
     from platform_app.persona_skills import delete_persona_skill
     return json_response(await asyncio.to_thread(delete_persona_skill, uid, int(skill_id)))

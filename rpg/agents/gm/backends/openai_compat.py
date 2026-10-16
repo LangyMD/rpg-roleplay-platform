@@ -199,8 +199,8 @@ class _OpenAICompatBackend:
         key = resolved_auth_token(result)
         if not resolved_is_usable(result):
             raise ValueError(
-                f"{api_id or display_kind} 的 API Key 未配置。请在「设置 → API 设置」添加你自己的 API Key。"
-                "(测试服 LLM 调用必须 BYOK,平台不提供共享 key;本地/自托管模型可勾选「免 API Key」)"
+                f"API key for {api_id or display_kind} is not configured. Add your own API key under Settings -> API settings. "
+                "(LLM calls on this server are bring-your-own-key and the platform provides no shared key; for local / self-hosted models you can tick \"No API key needed\")"
             )
         # 用户覆盖了 base_url 的话优先用用户的
         effective_base = result.get("base_url_override") or base_url
@@ -368,7 +368,7 @@ class _OpenAICompatBackend:
             self.last_usage["max_tokens"] = int(max_tokens)
 
     def call_structured(self, system: str, messages: list[dict], max_tokens: int) -> str:
-        sys_text = (system or "") + "\n\n你必须只返回合法 JSON，不能包含 Markdown 代码围栏或解释文字。"
+        sys_text = (system or "") + "\n\nYou must return only valid JSON, with no Markdown code fences or explanatory text."
         resp = self._create(
             model=self.model_name,
             messages=self._to_messages(sys_text, messages),
@@ -685,12 +685,12 @@ class _OpenAICompatBackend:
                 if not tool_name:
                     # 个别中转站流式回传 tool_calls 时丢了 function.name。别拿空名去路由(只会得到
                     # 一句「未知工具」,用户以为缺了什么要装),直接告诉模型缺的是名字。
-                    result = {"ok": False, "error": "这次工具调用没有工具名,未执行。请带上工具名重新调用。"}
+                    result = {"ok": False, "error": "This tool call had no tool name, so it was not executed. Call it again with the tool name."}
                 else:
                     try:
                         result = mcp_call(server_id, tool_name, args)
                     except Exception as exc:
-                        result = {"ok": False, "error": f"call_tool 异常: {exc}"}
+                        result = {"ok": False, "error": f"call_tool error: {exc}"}
                 yield {
                     "type": "tool_result", "ok": bool(result.get("ok")),
                     "result": result.get("result"), "error": result.get("error"),
@@ -701,4 +701,4 @@ class _OpenAICompatBackend:
                     "tool_call_id": buf["id"] or f"call_{idx}",
                     "content": truncated,
                 })
-        yield {"type": "text", "text": "\n\n【已达本轮工具调用上限 (限制为本次回复内的调用次数,下一条消息自动重置),本轮终止】"}
+        yield {"type": "text", "text": "\n\n[Tool-call limit reached for this reply (the limit counts calls within this one reply and resets with your next message); this turn has ended]"}

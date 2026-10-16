@@ -50,98 +50,98 @@ _PROSE_CAP = 6000
 # ── 合并系统提示（三 agent 指令合并）────────────────────────────────────
 
 _SYSTEM_OPS = """\
-【任务 OPS — 状态提取】
-读 GM 本轮叙事 + 当前状态快照，提取状态变化到 ops 数组。**不要写小说，只输出 JSON 字段**。
+[TASK OPS - state extraction]
+Read the GM's narration for this turn plus the current state snapshot, and extract state changes into the ops array. **Do not write fiction; output JSON fields only.**
 
-可用 op：
-- "set":      覆盖标量字段（player.* / world.time / memory.main_quest 等）
-- "append":   追加进列表字段（memory.resources / memory.facts / world.known_events 等）
-- "overwrite": 整体覆盖列表（少用）
-- "question": GM 在叙事里向玩家提问（玩家需要选择）
+Available ops:
+- "set":      overwrite a scalar field (player.* / world.time / memory.main_quest etc.)
+- "append":   append to a list field (memory.resources / memory.facts / world.known_events etc.)
+- "overwrite": replace a whole list (use sparingly)
+- "question": the GM asks the player something in the narration (the player has to choose)
 
-可写字段（严格）：
-- player.role / player.background / player.current_location（注意：**绝不写 player.name**——
-  玩家姓名是玩家自己选的身份,原著里出现别的角色名也不要改成它,后端会硬拒）
-- player.appearance / player.personality / player.speech_style（玩家人设卡;只在叙事中玩家形象/性情/说话方式发生**持久**变化时更新——变身/易容/重大性情转变;值=完整替换文本,保持简洁;临时状态(一次受伤/换装)不要写;玩家手动定制过的字段会被拒,被拒后同字段不要再试）
+Writable fields (strict):
+- player.role / player.background / player.current_location (note: **never write player.name** --
+  the player's name is an identity the player chose; even if another character name appears in the source, do not change it to that; the backend rejects it)
+- player.appearance / player.personality / player.speech_style (the player persona card; update only when the narration makes a **lasting** change to the player's look / temperament / way of speaking -- transformation / disguise / a major personality shift; value = full replacement text, keep it concise; do not write temporary states (one injury / a change of clothes); fields the player customized by hand are rejected, and once rejected do not retry the same field)
 - world.time / world.weather / world.timeline.current_phase / world.known_events
 - memory.main_quest / memory.current_objective / memory.mode
 - memory.resources / memory.abilities / memory.facts / memory.pinned / memory.notes
-- relationships.<角色名>
-- worldline.user_variables.<变量名>
-- ui.<自定义键>
+- relationships.<character name>
+- worldline.user_variables.<variable name>
+- ui.<custom key>
 
-禁止写入：player.name(玩家身份) / permissions.* / history.* / schema_version / created_at
+Forbidden: player.name (player identity) / permissions.* / history.* / schema_version / created_at
 
-如果某个字段在叙事里真的发生了变化才输出 op；没变就不要编。
-如果叙事里完全没有状态变化，ops 输出 []。
+Only output an op when a field really changed in the narration; if it did not change, do not invent one.
+If the narration contains no state change at all, output ops as [].
 """
 
 # 后果账本 v1(feature_enabled("consequence_ledger") 时启用,docs/design/consequence_ledger_v1.md)。
 # recorder_unified 下史官是唯一权威 ops 通道(GM 自带 fence 会被剥弃,见 chat_pipeline 史官三合一段),
 # 所以 consequence 必须由史官提取,否则 GM 侧登记会被静默丢弃(「提示词在≠生效」同款陷阱)。
 _SYSTEM_OPS_CONSEQUENCE = """\
-【任务 OPS · 附加 — 后果登记(consequence)】
-叙事里出现「此刻种下、日后必有回响的因」时,额外输出 consequence op 登记到后果账本:
-- 何时登记:玩家许下承诺/欠下人情或债务/结仇树敌/救人留恩/与人约定期限/放走危险人物。
-- 何时不登记:即时兑现的小事、纯氛围描写、不确定的推测(推测用 hypothesis)。宁缺勿滥,每轮最多 2 条。
-- 形态(二选一):
-  {"op":"consequence","text":"答应雷纳德查清林中兽伤,明早带证据回村","due_turns":4}
-  {"op":"consequence","text":"在莉妮面前暴露非人身份,她进城赶集时可能说漏","due_location":"玛瓦尔特"}
-- due_turns 建议 2-8(近期回响),重大伏笔可 10-15;due_location 填地点关键词,玩家到达含该词的地点时到期。
+[TASK OPS - extra: consequence registration (consequence)]
+When the narration plants "a cause now that is bound to echo later", also output a consequence op to register it in the consequence ledger:
+- Register when: the player makes a promise / incurs a favor or debt / makes an enemy / saves someone and is owed / agrees on a deadline / lets a dangerous person go.
+- Do not register: small things settled on the spot, pure atmosphere, uncertain speculation (use hypothesis for speculation). Fewer is better; at most 2 per turn.
+- Shape (pick one):
+  {"op":"consequence","text":"Promised Reynard to find out what mauled the beasts in the woods; bring proof back to the village tomorrow morning","due_turns":4}
+  {"op":"consequence","text":"Revealed a non-human nature in front of Lynnie; she may let it slip when she goes to market in town","due_location":"Mawald"}
+- due_turns: 2-8 is recommended (near-term echo); major foreshadowing may use 10-15. due_location: a place keyword; it comes due when the player reaches a place whose name contains it.
 """
 
 # NPC 议程 v0(feature_enabled("npc_agenda") 时启用,docs/design/npc_agenda_v0.md)。
 # 同 consequence:史官是权威 ops 通道,议程必须由史官提取。
 _SYSTEM_OPS_AGENDA = """\
-【任务 OPS · 附加 — NPC 议程更新(agenda)】
-本回合某 NPC 的言行【透露了新的意图/目标,或对玩家的态度发生变化】时,输出 agenda op:
-- 形态:{"op":"agenda","name":"雷纳德","goal":"查清东林兽伤真相,保住猎场","stance":"信任但保留观察"}
-- goal 写【角色自己想要的】(不是玩家的任务);stance 写对玩家的当下态度;各 ≤60 字;
-  goal/stance 至少给一个,只写变化的那个(部分更新,另一项会保留)。
-- 只更新本回合真的透露了新信息的 NPC,每轮最多 2 条;没有变化就一条都不输出。
-- name 必须是已出场角色(关系表/在场名单里有的),绝不发明新名字。
+[TASK OPS - extra: NPC agenda update (agenda)]
+When an NPC's words or actions this turn [reveal a new intention/goal, or their attitude toward the player changes], output an agenda op:
+- Shape: {"op":"agenda","name":"Reynard","goal":"Find out the truth behind the mauled beasts in the east woods and keep the hunting grounds","stance":"Trusting, but still watching"}
+- goal = what THE CHARACTER wants (not the player's task); stance = their current attitude toward the player; each <= 40 words;
+  give at least one of goal/stance, and only the one that changed (partial update; the other is kept).
+- Only update NPCs who really revealed something new this turn, at most 2 per turn; if nothing changed, output none.
+- name must be a character who has already appeared (in the relationship table / present list); never invent a new name.
 """
 
 _SYSTEM_ANCHORS = """\
-【任务 ANCHORS — 世界线锚点判定 · 极度保守，宁漏勿误】
-读本回合 GM 叙事，完成：
-(A) 判断其中是否明确叙述到了某些「待发生的原著锚点事件」；
-(B) 判断本回合剧情最接近原著第几章（进度估计）。
+[TASK ANCHORS - worldline anchor judgment - be extremely conservative; a miss is better than a false hit]
+Read this turn's GM narration and do the following:
+(A) judge whether it explicitly narrates any of the "pending source-story anchor events";
+(B) judge which chapter of the source story this turn's plot is closest to (progress estimate).
 
-任务 A 铁律：
-1. 只有当本回合正文【明确、确凿地叙述了】某锚点事件实际发生时，才列出来。
-   仅仅提到、暗示、铺垫、计划、做梦、回忆、假设 —— 都不算，绝不列出。
-2. 拿不准就不列；漏标远小于误标。
-3. 只能从给定 pending 锚点列表里选，绝不发明新锚点、绝不改 anchor_key。
-drift_score（偏离度 0.0–1.0）：0.0=完全按原著；0.3=核心保留但过程不同；0.7+=方式大改。拿不准给 0.2。
+Task A hard rules:
+1. List an anchor only when this turn's text [explicitly and unambiguously narrates] that the anchor event actually happened.
+   Merely mentioning, hinting, foreshadowing, planning, dreaming, remembering or hypothesizing does not count -- never list those.
+2. If unsure, do not list it; a missed anchor costs far less than a false one.
+3. Choose only from the given pending anchor list; never invent anchors, never alter an anchor_key.
+drift_score (deviation 0.0-1.0): 0.0 = exactly as in the source; 0.3 = core kept but the process differs; 0.7+ = drastically changed. If unsure, give 0.2.
 
-任务 B 铁律：
-1. 只能返回章节地图里列出的章号；无法定位 → 返回 null。
-2. 拿不准 / 正文太抽象 → 返回 null（漏估远小于误估推快）。
-3. 两任务独立：章号推理绝不反过来改变锚点取舍。
+Task B hard rules:
+1. Return only a chapter number listed in the chapter map; if it cannot be located -> return null.
+2. Unsure / the text is too abstract -> return null (underestimating is far better than wrongly pushing progress forward).
+3. The two tasks are independent: chapter reasoning must never change which anchors you pick.
 """
 
 _SYSTEM_ACCEPTANCE = """\
-【任务 ACCEPTANCE — 验收条款判定】
-读 GM 本轮叙事 + 验收条款，判断每条是否被满足。把 unmet 条款原文放入 unmet 数组。
+[TASK ACCEPTANCE - acceptance clause judgment]
+Read the GM's narration for this turn plus the acceptance clauses, and judge whether each clause is met. Put the original text of every unmet clause into the unmet array.
 
-判定原则：
-- 肯定条款（"应当 X"/"必须 X"/"包含 Y"）：GM 叙事里真的发生了对应行为才算 met；
-  只出现关键词没展开 → unmet。
-- 否定条款（"不要 X"/"禁止 X"）：叙事里没有违反才算 met；出现禁止行为 → unmet。
-- 重点判断 GM 是否真的展开叙事推进/回应了事情，而不是把名词复读一遍。
-- 全部通过 → unmet 为 []。
-- unmet 每项必须与输入条款完全一致（用于回填 audit_log）。
+Principles:
+- Positive clauses ("should X" / "must X" / "includes Y"): met only if the corresponding action really happens in the GM narration;
+  the keyword merely appearing without being developed -> unmet.
+- Negative clauses ("do not X" / "never X"): met only if the narration does not violate it; a forbidden action appears -> unmet.
+- The key question is whether the GM actually advanced the narrative / responded to what happened, not whether it repeated the nouns.
+- Everything passes -> unmet is [].
+- Each unmet item must be exactly identical to the input clause (it is used to backfill the audit_log).
 """
 
 _SYSTEM_OUTPUT_HEADER = """\
-你是史官（Recorder），在一次调用中完成以下所有启用任务。
-**不要写小说**，只输出要求的 JSON 对象。
+You are the Recorder. In a single call, complete all of the enabled tasks below.
+**Do not write fiction**; output only the requested JSON object.
 """
 
 _SYSTEM_OUTPUT_FORMAT = """\
-【输出格式（严格 JSON，不要 markdown 围栏，不要解释）】
-仅输出一个 JSON 对象，以 `{` 开头，以 `}` 结尾：
+[Output format (strict JSON, no markdown fences, no explanation)]
+Output exactly one JSON object, starting with `{` and ending with `}`:
 """
 
 
@@ -171,16 +171,16 @@ def _build_system_prompt(tasks: frozenset[str], consequence_enabled: bool = Fals
         _extra = ',"due_turns":4' if consequence_enabled else ""
         schema_fields.append('"ops": [{"op":"%s","path":"player.xxx","value":"..."%s}]' % (_kinds, _extra))
     if "anchors" in tasks:
-        schema_fields.append('"reached": [{"anchor_key":"<来自列表>","drift_score":0.0}]')
-        schema_fields.append('"current_chapter": <章号整数 或 null>')
+        schema_fields.append('"reached": [{"anchor_key":"<from the list>","drift_score":0.0}]')
+        schema_fields.append('"current_chapter": <chapter number integer or null>')
         schema_fields.append('"progress_motion": <0|1|2>')
     if "acceptance" in tasks:
-        schema_fields.append('"unmet": ["条款原文 1", ...]')
+        schema_fields.append('"unmet": ["original clause text 1", ...]')
 
     schema_example = "{\n  " + ",\n  ".join(schema_fields) + "\n}"
     parts.append(_SYSTEM_OUTPUT_FORMAT.strip())
     parts.append(schema_example)
-    parts.append("所有未启用任务的字段可省略。")
+    parts.append("Fields for tasks that are not enabled may be omitted.")
     return "\n\n".join(parts)
 
 
@@ -209,7 +209,8 @@ def _build_user_prompt(
         except Exception:
             _pending_cq = []
         if _pending_cq:
-            lines.append("## 后果账本·已登记未到期（严禁重复登记,包括换措辞描述同一件事）")
+            lines.append("## Consequence ledger - registered, not yet due (NEVER register these again, "
+                         "including the same thing described in different words)")
             lines.extend(f"- {t}" for t in _pending_cq)
             lines.append("")
 
@@ -218,13 +219,14 @@ def _build_user_prompt(
         try:
             _ag = state_data.get("npc_agendas") or {}
             _ag_lines = [
-                f"- {n}: 目标={v.get('goal','')} / 态度={v.get('stance','')}"
+                f"- {n}: goal={v.get('goal','')} / stance={v.get('stance','')}"
                 for n, v in list(_ag.items())[:12] if isinstance(v, dict)
             ]
         except Exception:
             _ag_lines = []
         if _ag_lines:
-            lines.append("## NPC 议程·当前值(只在本回合透露新信息时才输出 agenda op,不要复读)")
+            lines.append("## NPC agendas - current values (output an agenda op only when this turn "
+                         "reveals new information; do not repeat these)")
             lines.extend(_ag_lines)
             lines.append("")
 
@@ -233,13 +235,13 @@ def _build_user_prompt(
     w = (state_data.get("world") or {})
     m = (state_data.get("memory") or {})
     rels = (state_data.get("relationships") or {})
-    lines.append("## 当前状态快照（叙事之前的值）")
-    lines.append(f"- player.name = {p.get('name', '') or '(空)'}")
-    lines.append(f"- player.role = {p.get('role', '') or '(空)'}")
-    lines.append(f"- player.current_location = {p.get('current_location', '') or '(空)'}")
-    lines.append(f"- world.time = {w.get('time', '') or '(空)'}")
-    lines.append(f"- world.weather = {w.get('weather', '') or '(空)'}")
-    lines.append(f"- memory.main_quest = {m.get('main_quest', '') or '(空)'}")
+    lines.append("## Current state snapshot (values before this narration)")
+    lines.append(f"- player.name = {p.get('name', '') or '(empty)'}")
+    lines.append(f"- player.role = {p.get('role', '') or '(empty)'}")
+    lines.append(f"- player.current_location = {p.get('current_location', '') or '(empty)'}")
+    lines.append(f"- world.time = {w.get('time', '') or '(empty)'}")
+    lines.append(f"- world.weather = {w.get('weather', '') or '(empty)'}")
+    lines.append(f"- memory.main_quest = {m.get('main_quest', '') or '(empty)'}")
     # 主线陈旧提醒(群反馈:主线五十多回合没变过,只有当前目标在变)。当前目标每轮都在
     # 议程上,主线是长程字段、写完就没人再管 —— 实测能冻上百个回合零更新,期间
     # set_current_objective 反复被调、set_main_quest 一次没有,且没有任何东西在拒绝写入。
@@ -253,17 +255,17 @@ def _build_user_prompt(
         )
         if main_quest_is_stale(state_data):
             _age = main_quest_age(state_data)
-            _how_long = f"已 {_age} 回合" if _age is not None else "长期"
+            _how_long = f"for {_age} turns" if _age is not None else "for a long time"
             lines.append(
-                f"  ⚠ 上面这条主线{_how_long}没有更新过(阈值 {MAIN_QUEST_STALE_TURNS} 回合)。"
-                "请对照最近剧情判断,二选一,本轮必须做其中一件:"
-                '(a) 它已完成/已被剧情甩在身后 → {"op":"set","path":"memory.main_quest",'
-                '"value":"新的长程目标"};'
-                "(b) 它仍然准确 → **原样重写同一条值**以确认(内容不变,只是重置计时器)。"
-                "别为了交差编一条同义废话。")
+                f"  ⚠ The main quest above has not been updated {_how_long} (threshold {MAIN_QUEST_STALE_TURNS} turns). "
+                "Check it against the recent plot and pick one; you MUST do one of these this turn: "
+                '(a) it is done / the plot has left it behind -> {"op":"set","path":"memory.main_quest",'
+                '"value":"the new long-range goal"}; '
+                "(b) it is still accurate -> **rewrite the exact same value** to confirm it (content unchanged, this only resets the timer). "
+                "Do not make up a synonymous filler line just to tick the box.")
     except Exception:  # noqa: BLE001  提醒失败绝不影响史官正常工作
         pass
-    lines.append(f"- memory.current_objective = {m.get('current_objective', '') or '(空)'}")
+    lines.append(f"- memory.current_objective = {m.get('current_objective', '') or '(empty)'}")
     # 快照窗口取尾:resources 尾部 append、relationships 新键落 dict 尾;取头会让
     # 史官看不到新近获得的物品/新建立的关系(误判「未知实体」/重复发放)。
     lines.append(f"- memory.resources = {(m.get('resources') or [])[-5:]}")
@@ -272,49 +274,54 @@ def _build_user_prompt(
     # 锚点材料（仅 anchors 任务）
     if "anchors" in tasks:
         lines.append("")
-        lines.append("## 待发生原著锚点（任务 ANCHORS-A，只能从这里选）")
+        lines.append("## Pending source-story anchors (task ANCHORS-A; choose only from these)")
         if pending_anchors:
             for a in pending_anchors:
                 key = a.get("anchor_key") or ""
                 summ = (a.get("summary") or "").strip().replace("\n", " ")
                 if len(summ) > 240:
                     summ = summ[:240]
-                fatal = "[死神来了·必发生]" if a.get("is_fatal") else ""
-                lines.append(f"- anchor_key={key} {fatal} 概要:{summ}")
+                fatal = "[FATAL - must happen]" if a.get("is_fatal") else ""
+                lines.append(f"- anchor_key={key} {fatal} summary: {summ}")
         else:
-            lines.append("（本窗口暂无待发生锚点）")
+            lines.append("(no pending anchors in this window)")
 
         if chapter_map:
             lines.append("")
-            lines.append("## 原著章节地图（任务 ANCHORS-B，current_chapter 只能从这些章号里选或 null）")
+            lines.append("## Source chapter map (task ANCHORS-B; current_chapter must be one of these "
+                         "chapter numbers, or null)")
             for c in chapter_map:
                 ch = c.get("chapter")
                 label = (c.get("story_time_label") or c.get("label") or "").strip().replace("\n", " ")
                 summ = (c.get("summary") or "").strip().replace("\n", " ")
                 if len(summ) > 160:
                     summ = summ[:160]
-                head = f"第{ch}章" + (f"「{label}」" if label else "")
-                lines.append(f"- chapter={ch} {head}:{summ}")
+                head = f"Chapter {ch}" + (f" \"{label}\"" if label else "")
+                lines.append(f"- chapter={ch} {head}: {summ}")
 
         # 叙事推进度(ANCHORS-B 续):无论能否对上原著章节都要答 —— 发散/无限流副本里剧情
         # 已离开原著轨道时 current_chapter 往往只能给 null/低章,但故事仍在前进。progress_motion
         # 独立于「对不对得上原著」,只看本回合相对上一回合有没有实质推进:
         lines.append("")
-        lines.append("## 本回合叙事推进度(任务 ANCHORS-B,必答整数 progress_motion)")
-        lines.append("- 0 = 原地踏步:仍在同一场景/对话,未发生实质推进(如纯对话试探、环境描写、反复纠结)")
-        lines.append("- 1 = 正常推进:场景、目标、冲突或关系向前走了一步")
-        lines.append("- 2 = 重大跨越:时间跳转、进入新副本/新地点、达成或失败关键目标、重大转折")
-        lines.append("只按本回合 GM 正文判断,与能否对上原著章节无关。")
+        lines.append("## Narrative progress this turn (task ANCHORS-B; the integer progress_motion is required)")
+        lines.append("- 0 = treading water: still the same scene / conversation, no real progress "
+                     "(e.g. pure probing dialogue, scenery description, going back and forth)")
+        lines.append("- 1 = normal progress: the scene, goal, conflict or a relationship moved one step forward")
+        lines.append("- 2 = major leap: a time skip, entering a new instance / new location, achieving or "
+                     "failing a key goal, a major turning point")
+        lines.append("Judge only from this turn's GM text; it has nothing to do with whether it matches a source chapter.")
 
     # GM 正文
     lines.append("")
-    lines.append("## GM 本轮叙事")
-    lines.append((gm_prose or "").strip()[:_PROSE_CAP])
+    lines.append("## GM narration this turn")
+    from core.token_estimate import cjk_chars_to_budget
+    _prose = (gm_prose or "").strip()
+    lines.append(_prose[:cjk_chars_to_budget(_prose, _PROSE_CAP)])
 
     # 验收条款（仅 acceptance 任务）
     if "acceptance" in tasks and acceptance_clauses:
         lines.append("")
-        lines.append("## 待判定 acceptance 条款（任务 ACCEPTANCE）")
+        lines.append("## Acceptance clauses to judge (task ACCEPTANCE)")
         for i, cond in enumerate(acceptance_clauses, start=1):
             lines.append(f"{i}. {str(cond).strip()}")
 
@@ -324,15 +331,19 @@ def _build_user_prompt(
     # 用语义理解判「在围着原著主角转 vs 干原著之外的事」,别因人物名对不上就一律 null(自插入卡章根因)。
     if "anchors" in tasks and chapter_map:
         lines.append("")
-        lines.append("## 判 current_chapter 前必读(玩家为核心)")
-        lines.append("玩家往往是【自插入主角】——用自己的名字/视角,但可能正跟着原著某主角的剧情线走"
-                     "(原著主角的处境,玩家换个名字在演)。用你最擅长的语义理解:")
-        lines.append("· 本回合玩家的处境/事件,若对应原著某主角正经历的剧情(哪怕人物名、细节不同)"
-                     "→ current_chapter=那一章号;**人物名不同绝不是答 null 的理由**。")
-        lines.append("· 若玩家确实脱离原著、在干原著里没有的自己的事 → current_chapter=null。")
-        lines.append("· **纯私人/日常/感情场景**(洗漱起居、闲聊约会、亲密互动等,与原著情节梁"
-                     "无对应)→ 一律 current_chapter=null,不得因'角色出自原著'就比对到某章;"
-                     "这类回合也不构成剧情推进。")
+        lines.append("## Read before judging current_chapter (the player is the center)")
+        lines.append("The player is often a [self-insert protagonist] -- using their own name / point of view, but possibly "
+                     "following the plotline of one of the source's protagonists (living that protagonist's situation "
+                     "under a different name). Use your best semantic understanding:")
+        lines.append("- If the player's situation / events this turn correspond to what a source protagonist goes through "
+                     "(even with different names and details) -> current_chapter = that chapter number; "
+                     "**different character names are never a reason to answer null**.")
+        lines.append("- If the player has genuinely left the source and is doing their own thing that the source "
+                     "does not contain -> current_chapter=null.")
+        lines.append("- **Purely private / everyday / romantic scenes** (washing up and daily routine, chatting and "
+                     "dates, intimate moments, etc., with no counterpart in the source's plot backbone) -> always "
+                     "current_chapter=null; do not match them to a chapter just because 'the characters come from the "
+                     "source'; such turns also do not count as plot progress.")
 
     return "\n".join(lines)
 
@@ -359,42 +370,42 @@ def _build_tool_schema(tasks: frozenset[str], acceptance_clauses: list[str] | No
                 "type": "string",
                 "enum": _op_enum,
             },
-            "path": {"type": "string", "description": "state 路径；op=question/hypothesis/* 时可省"},
-            "value": {"description": "要写入的值"},
-            "question": {"type": "string", "description": "op=question 时用"},
-            "options": {"type": "array", "items": {"type": "string"}, "description": "op=question 时用"},
-            "text": {"type": "string", "description": "op=hypothesis/consequence 时用"},
-            "id": {"type": "string", "description": "op=confirm_hypothesis/reject_hypothesis 时用"},
-            "characters": {"type": "array", "items": {"type": "string"}, "description": "op=hypothesis 时用"},
-            "time_label": {"type": "string", "description": "op=hypothesis 时可选"},
+            "path": {"type": "string", "description": "state path; may be omitted for op=question/hypothesis/*"},
+            "value": {"description": "value to write"},
+            "question": {"type": "string", "description": "used with op=question"},
+            "options": {"type": "array", "items": {"type": "string"}, "description": "used with op=question"},
+            "text": {"type": "string", "description": "used with op=hypothesis/consequence"},
+            "id": {"type": "string", "description": "used with op=confirm_hypothesis/reject_hypothesis"},
+            "characters": {"type": "array", "items": {"type": "string"}, "description": "used with op=hypothesis"},
+            "time_label": {"type": "string", "description": "optional with op=hypothesis"},
         }
         if consequence_enabled:
             _op_enum.append("consequence")
             _op_item_props["due_turns"] = {
                 "type": "integer",
-                "description": "op=consequence:N 回合后到期(建议 2-8,重大伏笔 10-15)",
+                "description": "op=consequence: comes due after N turns (2-8 recommended, 10-15 for major foreshadowing)",
             }
             _op_item_props["due_location"] = {
                 "type": "string",
-                "description": "op=consequence:玩家到达含该关键词的地点时到期",
+                "description": "op=consequence: comes due when the player reaches a place whose name contains this keyword",
             }
         if agenda_enabled:
             _op_enum.append("agenda")
             _op_item_props["name"] = {
                 "type": "string",
-                "description": "op=agenda:NPC 名(必须是已出场角色)",
+                "description": "op=agenda: NPC name (must be a character who has already appeared)",
             }
             _op_item_props["goal"] = {
                 "type": "string",
-                "description": "op=agenda:该角色当下想要什么(≤60字,可省)",
+                "description": "op=agenda: what this character currently wants (<= 40 words, optional)",
             }
             _op_item_props["stance"] = {
                 "type": "string",
-                "description": "op=agenda:对玩家的当下态度(≤60字,可省)",
+                "description": "op=agenda: current attitude toward the player (<= 40 words, optional)",
             }
         properties["ops"] = {
             "type": "array",
-            "description": "状态变化 op 列表。没有变化时传 []。",
+            "description": "List of state-change ops. Pass [] when nothing changed.",
             "items": {
                 "type": "object",
                 "properties": _op_item_props,
@@ -406,7 +417,7 @@ def _build_tool_schema(tasks: frozenset[str], acceptance_clauses: list[str] | No
     if "anchors" in tasks:
         properties["reached"] = {
             "type": "array",
-            "description": "本回合明确到达的锚点（极度保守，宁漏勿误）",
+            "description": "Anchors explicitly reached this turn (extremely conservative; a miss is better than a false hit)",
             "items": {
                 "type": "object",
                 "properties": {
@@ -418,7 +429,7 @@ def _build_tool_schema(tasks: frozenset[str], acceptance_clauses: list[str] | No
         }
         properties["current_chapter"] = {
             "type": ["integer", "null"],
-            "description": "本回合最接近原著第几章（无法定位或不确定 → null）",
+            "description": "Which source chapter this turn is closest to (cannot locate or unsure -> null)",
         }
         # fork 收编:progress_motion 之前只声明在 system prompt 文本里(_build_system_prompt:139),
         # 没进 tool schema → Anthropic 原生 tool-use / Vertex function-call 下 LLM 不吐它 →
@@ -426,7 +437,7 @@ def _build_tool_schema(tasks: frozenset[str], acceptance_clauses: list[str] | No
         # provider 上永不触发(发散局进度冻死的真根因)。tool-schema 与 prompt 必须同源。
         properties["progress_motion"] = {
             "type": ["integer", "null"],
-            "description": "本回合叙事推进度(必答):0=原地/回忆无推进,1=正常推进一拍,2=重大跨越。发散局脱离原著也要答,与 current_chapter 无关。",
+            "description": "Narrative progress this turn (required): 0 = no progress (in place / recollection), 1 = one normal step forward, 2 = major leap. Answer it even when a divergent run has left the source; it is independent of current_chapter.",
         }
         required.extend(["reached", "current_chapter", "progress_motion"])
 
@@ -438,7 +449,7 @@ def _build_tool_schema(tasks: frozenset[str], acceptance_clauses: list[str] | No
             items_schema["enum"] = enum_vals
         properties["unmet"] = {
             "type": "array",
-            "description": "未满足的 acceptance 条款原文（必须与输入条款完全一致）",
+            "description": "Original text of the unmet acceptance clauses (must be exactly identical to the input clauses)",
             "items": items_schema,
         }
         required.append("unmet")
@@ -446,8 +457,8 @@ def _build_tool_schema(tasks: frozenset[str], acceptance_clauses: list[str] | No
     return {
         "name": "emit_record",
         "description": (
-            "史官（Recorder）一次性输出：状态 ops + 锚点到达 + 验收判定。"
-            "未启用任务的字段可省略或传空。"
+            "Recorder's single-shot output: state ops + anchors reached + acceptance judgment. "
+            "Fields for tasks that are not enabled may be omitted or left empty."
         ),
         "input_schema": {
             "type": "object",

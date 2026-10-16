@@ -17,6 +17,7 @@ import { Icon } from '../icons.jsx';
 import { fmtDate, normSave, normScript } from '../saves/helpers.js';
 import { SaveDetail } from '../saves/SaveDetail.jsx';
 import { BranchesPage } from '../saves/BranchesPage.jsx';
+import { uiLocale } from '../../i18n/index.js';
 
 /* ── 排序选项 ─────────────────────────────────────────────── */
 const getSortOpts = (t) => [
@@ -107,7 +108,7 @@ export function MobileSaves({ nav }) {
     });
     const ts = v => (v ? new Date(v).getTime() || 0 : 0);
     const sorted = [...xs];
-    if (sortBy === 'name') sorted.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'zh'));
+    if (sortBy === 'name') sorted.sort((a, b) => (a.title || '').localeCompare(b.title || '', uiLocale()));
     else if (sortBy === 'created') sorted.sort((a, b) => ts(b.created_ts) - ts(a.created_ts));
     else sorted.sort((a, b) => ts(b.last_played_ts) - ts(a.last_played_ts));
     return sorted;

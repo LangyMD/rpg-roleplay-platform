@@ -12,19 +12,32 @@ import re
 from collections.abc import Callable
 
 from core.vecmath import cosine as _cosine
+from ingest.adaptive_split import EN_NUM
 
 # ─── §4.b 作者非正文 ─────────────────────────────────────────────────────────
 # 标题强信号:卷末通知/感言/请假/上架/完本 等
 AUTHOR_NOTE_TITLE_PATTERNS = re.compile(
     r"卷末|卷首|小结|感言|后记|请假|通知|上架|月票|加更|爆肝|作者的话|作者有话|有话(?:要)?说|"
     r"完本|完结撒花|新书|求票|求订阅|求月票|断更|停更|恢复更新|说明|公告|致谢|"
-    r"^\s*[（(]?\s*完\s*[）)]?\s*$|本卷完|第[零一二三四五六七八九十百千万〇两\d０-９]+卷\s*完"
+    r"^\s*[（(]?\s*完\s*[）)]?\s*$|本卷完|第[零一二三四五六七八九十百千万〇两\d０-９]+卷\s*完|"
+    # English equivalents (web-serial / ebook author notes)
+    # 英文只收不会撞剧情标题的短语:单词 announcement/hiatus 仅整题命中("The Announcement" 可能是正文)
+    r"(?i:\bauthor'?s?\s+notes?\b|^\s*a/n\b|^\s*(?:announcement|hiatus(?:\s+notice)?|notice)\s*[:!.]?\s*$|"
+    r"\bnot\s+a\s+chapter\b|\bupdate\s+(?:schedule|notice)\b|\bthank\s+you\s+for\s+reading\b|"
+    r"\bpatreon\b|\bdiscord\b|\bend\s+of\s+volume\b)"
 )
 # 元叙述关键词 (第一人称 + 更新/读者语境)
 _META_FIRST = re.compile(r"我|笔者|作者|本人|咱")
 _META_CONTEXT = re.compile(r"明天|今天|这章|这一?[章卷节]|下[一]?[章卷]|更新|码字|存稿|大家|读者|票|订阅|抱歉|不好意思|请假|加更|继续努力|谢谢")
+# English equivalents: first person + update/reader context (both required, like the Chinese pair)
+_META_FIRST_EN = re.compile(r"(?<![A-Za-z])(?:I|I'm|I've|I'll|my|me|the author)(?![A-Za-z])")
+_META_CONTEXT_EN = re.compile(
+    r"(?i)\b(?:next\s+(?:chapter|update)|this\s+chapter|(?:chapter|release)\s+updates?|update\s+schedule|"
+    r"dear\s+readers|patreon|discord|sorry\s+for\s+the\s+(?:delay|late\s+(?:chapter|update))|"
+    r"thanks\s+for\s+reading|thank\s+you\s+for\s+(?:reading|your\s+support)|stay\s+tuned|on\s+hiatus)\b"
+)
 # 对白标记
-_DIALOGUE = re.compile(r"[「」『』“”‘’]|说道|问道|答道|喊道|笑道|冷笑|低声")
+_DIALOGUE = re.compile(r"[「」『』“”‘’\"]|说道|问道|答道|喊道|笑道|冷笑|低声|\b(?:said|asked|replied|shouted|whispered)\b")
 _SENT_SPLIT = re.compile(r"[。！？!?\n]")
 
 
@@ -47,9 +60,10 @@ def _structure_authorish(title: str, body: str) -> float:
     if _dialogue_ratio(b) < 0.05:
         score += 0.2
     # 元叙述密度:第一人称 + 更新语境邻近出现
-    if _META_FIRST.search(b) and _META_CONTEXT.search(b):
+    if (_META_FIRST.search(b) and _META_CONTEXT.search(b)) or (
+            _META_FIRST_EN.search(b) and _META_CONTEXT_EN.search(b)):
         score += 0.35
-    elif _META_CONTEXT.search(b) and len(b) < 400:
+    elif (_META_CONTEXT.search(b) or _META_CONTEXT_EN.search(b)) and len(b) < 400:
         score += 0.2
     return min(1.0, score)
 
@@ -72,7 +86,7 @@ def filter_non_content(chapters: list[dict]) -> list[dict]:
         title_strong = bool(AUTHOR_NOTE_TITLE_PATTERNS.search(title))
         struct = _structure_authorish(title, body)
         # 标题弱命中:含"卷"/"话"等但非剧情(粗略),这里用 title 是否含元词
-        title_weak = title_strong or bool(_META_CONTEXT.search(title))
+        title_weak = title_strong or bool(_META_CONTEXT.search(title) or _META_CONTEXT_EN.search(title))
         is_note = (
             title_strong
             or struct >= 0.8
@@ -90,13 +104,18 @@ def filter_non_content(chapters: list[dict]) -> list[dict]:
 # ─── §4.c 怪标题 ─────────────────────────────────────────────────────────────
 # 玩梗/口语标题模式
 _MEME_WORDS = re.compile(
-    r"说好的|推迟|鸽|咕|爆发|爆肝|卡文|存稿|码字|sorry|抱歉|emmm+|2333+|orz|"
+    r"说好的|推迟|鸽|咕|爆发|爆肝|卡文|存稿|码字|抱歉|2333+|"
     r"终于|憋不住|憋大招|来了来了|这就是|没想到|居然|竟然|真香|破防|裂开|摆烂|"
-    r"日常|吐槽|内心|os|OS|彩蛋|番外篇?之?|嗯哼|哈哈|呜呜|啊这"
+    r"日常|吐槽|内心|彩蛋|番外篇?之?|嗯哼|哈哈|呜呜|啊这|"
+    # 拉丁词必须整词命中(以前裸 os 会命中英文标题里的 Lost / Rose / Ghost)
+    r"(?<![A-Za-z])(?:sorry|emmm+|orz|os|OS|lol|lmao|omg|rant|filler)(?![A-Za-z])"
 )
 # 名词/实体感弱的纯口语连接词密度
 _COLLOQUIAL = re.compile(r"的|了|吗|呢|啊|吧|嘛|哦|呀|咯|嘞|哈")
-_ORDINAL_PREFIX = re.compile(r"^\s*(?:第[零一二三四五六七八九十百千万〇两\d０-９]+[章节回卷集部篇话]|[0-9０-９]+[.、]|[（(]\s*[零一二三四五六七八九十百千万〇两\d０-９]+\s*[)）]|【[^】]*】)\s*")
+_ORDINAL_PREFIX = re.compile(
+    r"^\s*(?:第[零一二三四五六七八九十百千万〇两\d０-９]+[章节回卷集部篇话]|[0-9０-９]+[.、]|[（(]\s*[零一二三四五六七八九十百千万〇两\d０-９]+\s*[)）]|【[^】]*】"
+    rf"|(?i:(?:chapter|chap\.?|ch\.|part|book|volume)\s*{EN_NUM}\b\s*[:.\-\u2013\u2014]?))\s*"
+)
 
 
 def _content_descriptor(body: str, max_len: int = 15) -> str:
@@ -105,6 +124,10 @@ def _content_descriptor(body: str, max_len: int = 15) -> str:
     if not b:
         return ""
     first = next((s.strip() for s in _SENT_SPLIT.split(b) if s.strip()), "")
+    if not re.search(r"[\u4e00-\u9fff]", first):
+        # 英文:按词截(前 ~8 词),不按字符截半个单词
+        first = re.split(r"(?<=[.;:])\s", first)[0]
+        return " ".join(first.split()[:8])
     return first[:max_len]
 
 

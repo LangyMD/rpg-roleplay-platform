@@ -45,7 +45,7 @@ async function markScriptReviewed(scriptId) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok === false) {
-    throw new Error((data && (data.error || data.detail)) || `mark-reviewed 失败 (HTTP ${res.status})`);
+    throw new Error((data && (data.error || data.detail)) || `mark-reviewed failed (HTTP ${res.status})`);
   }
   return data;
 }
@@ -57,7 +57,7 @@ function isReviewGateError(err) {
   if (!err) return false;
   if (err.payload && err.payload.needs_review) return true;
   const msg = String((err && err.message) || '');
-  return /KB 复核|review_status|尚未复核|尚未通过/.test(msg);
+  return /KB 复核|KB review|review_status|尚未复核|尚未通过/i.test(msg);
 }
 
 /**

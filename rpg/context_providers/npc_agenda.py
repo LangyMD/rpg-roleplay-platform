@@ -16,6 +16,8 @@ priority 76：紧贴 novel.py 里 npc_cards layer（78）之下——议程是�
 """
 from __future__ import annotations
 
+from core.token_estimate import estimate_tokens
+
 from .base import ContextContribution, ContextProvider
 from .registry import register_provider
 
@@ -49,7 +51,7 @@ class NpcAgendaProvider(ContextProvider):
         text = _render(entries)
         layer = self.make_layer(
             "npc_agenda",
-            "NPC 议程",
+            "NPC Agendas",
             text,
             sticky=False,
             priority=PRIORITY,
@@ -60,18 +62,18 @@ class NpcAgendaProvider(ContextProvider):
             priority=PRIORITY,
             layers=[layer],
             facts=[
-                f"NPC 议程（{e.get('name', '')}，第{e.get('updated_turn')}回合更新）："
-                f"想要「{e.get('goal', '')}」；对玩家「{e.get('stance', '')}」"
+                f"NPC agenda ({e.get('name', '')}, updated on turn {e.get('updated_turn')}): "
+                f"wants \"{e.get('goal', '')}\"; toward the player: \"{e.get('stance', '')}\""
                 for e in entries
             ],
-            tokens_estimate=len(text) // 2,
+            tokens_estimate=estimate_tokens(text),
             debug={"agenda_count": len(entries)},
         )
 
 
 def _render(entries: list[dict]) -> str:
     lines = [
-        "【NPC 议程（当下活状态，优先于人物卡的静态设定）】",
+        "[NPC agendas (current live state; takes precedence over the static character card)]",
     ]
     for e in entries:
         name = e.get("name", "")
@@ -79,11 +81,11 @@ def _render(entries: list[dict]) -> str:
         stance = e.get("stance", "")
         parts = []
         if goal:
-            parts.append(f"想要「{goal}」")
+            parts.append(f"wants \"{goal}\"")
         if stance:
-            parts.append(f"对玩家「{stance}」")
-        detail = "；".join(parts)
-        lines.append(f"- {name}：{detail}（第{e.get('updated_turn')}回合更新）")
+            parts.append(f"toward the player: \"{stance}\"")
+        detail = "; ".join(parts)
+        lines.append(f"- {name}: {detail} (updated on turn {e.get('updated_turn')})")
     return "\n".join(lines)
 
 

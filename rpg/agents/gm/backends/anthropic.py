@@ -83,8 +83,8 @@ class _AnthropicBackend:
             key = os.environ.get("EMBED_API_KEY")
         if not key:
             raise ValueError(
-                "Anthropic API key 未配置。请在「设置 → API 设置」添加你自己的 Anthropic API Key。"
-                "(测试服 LLM 调用必须 BYOK,平台不提供共享 key)"
+                "Anthropic API key is not configured. Add your own Anthropic API key under Settings -> API settings. "
+                "(LLM calls on this server are bring-your-own-key; the platform provides no shared key)"
             )
         # 读超时:单一来源 config.llm_timeout_seconds(用户 settings.request_timeout > env RPG_GM_TIMEOUT
         # > 部署默认:本地/桌面 1800s 给慢的本地大模型,服务器 300s)。
@@ -191,7 +191,7 @@ class _AnthropicBackend:
             model=self.model_name,
             max_tokens=max_tokens,
             temperature=0.1,
-            system=_system_blocks(system, "\n\n你必须只返回合法 JSON，不能包含 Markdown 代码围栏或解释文字。"),
+            system=_system_blocks(system, "\n\nYou must return only valid JSON, with no Markdown code fences or explanatory text."),
             messages=messages,
         )
         # 同 call()/stream():把本次 usage 写入 self.last_usage,供 record_usage 取
@@ -538,7 +538,7 @@ class _AnthropicBackend:
                 try:
                     result = mcp_call(use["server_id"], use["tool_name"], use["arguments"])
                 except Exception as exc:
-                    result = {"ok": False, "error": f"call_tool 异常: {exc}"}
+                    result = {"ok": False, "error": f"call_tool error: {exc}"}
                 yield {
                     "type": "tool_result", "ok": bool(result.get("ok")),
                     "result": result.get("result"), "error": result.get("error"),
@@ -549,4 +549,4 @@ class _AnthropicBackend:
                     "content": truncated, "is_error": not bool(result.get("ok")),
                 })
             messages.append({"role": "user", "content": tool_result_blocks})
-        yield {"type": "text", "text": "\n\n【已达本轮工具调用上限 (限制为本次回复内的调用次数,下一条消息自动重置),本轮终止】"}
+        yield {"type": "text", "text": "\n\n[Tool-call limit reached for this reply (the limit counts calls within this one reply and resets with your next message); this turn has ended]"}

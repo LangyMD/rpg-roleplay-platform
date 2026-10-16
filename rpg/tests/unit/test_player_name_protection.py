@@ -30,13 +30,13 @@ class PlayerNameProtection(unittest.TestCase):
     def test_gm_cannot_rename_player(self):
         s = _state("我的自定义主角")
         res = s.apply_state_write_typed("player.name", "郑吒", source="gm")
-        self.assertIn("拒绝", res)
+        self.assertIn("rejected", res)
         self.assertEqual(s.data["player"]["name"], "我的自定义主角", "GM 不应改写玩家姓名")
 
     def test_recorder_json_origin_also_blocked(self):
         s = _state("林有德")
         res = s.apply_state_write_typed("player.name", "郑吒", source="gm:json")
-        self.assertIn("拒绝", res)
+        self.assertIn("rejected", res)
         self.assertEqual(s.data["player"]["name"], "林有德")
 
     def test_empty_name_gm_fill_blocked(self):
@@ -44,7 +44,7 @@ class PlayerNameProtection(unittest.TestCase):
         玩家角色没设名,史官从正文抓『郑吒』填进去)。玩家本人才能设。"""
         s = _state("")
         res = s.apply_state_write_typed("player.name", "郑吒", source="gm")
-        self.assertIn("拒绝", res)
+        self.assertIn("rejected", res)
         self.assertEqual(s.data["player"]["name"], "")
         # 玩家本人给空姓名设值 → 允许
         s.apply_state_write_typed("player.name", "我自己的名字", source="player_set")
@@ -54,7 +54,7 @@ class PlayerNameProtection(unittest.TestCase):
         """GM 写回相同姓名(no-op)不算改写,不报拒绝。"""
         s = _state("郑吒")
         res = s.apply_state_write_typed("player.name", "郑吒", source="gm")
-        self.assertNotIn("拒绝", res)
+        self.assertNotIn("rejected", res)
         self.assertEqual(s.data["player"]["name"], "郑吒")
 
     def test_player_set_can_change_own_name(self):

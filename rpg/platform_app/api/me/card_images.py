@@ -46,7 +46,7 @@ async def api_generate_persona_image(request: Request, card_id: int, user=Depend
             (card_id, user["id"]),
         ).fetchone()
     if not card_row:
-        raise _HTTPException(status_code=404, detail="角色卡不存在或无权访问")
+        raise _HTTPException(status_code=404, detail="Character card not found or not accessible")
 
     body = await request.json()
     prompt = (body.get("prompt") or "").strip()
@@ -65,9 +65,9 @@ async def api_generate_persona_image(request: Request, card_id: int, user=Depend
     if isinstance(result, dict):
         err = result.get("error", "")
         if err == "quota_exceeded":
-            return json_response({"ok": False, "error": "quota_exceeded", "detail": "已达每日生图配额上限"}, status_code=429)
+            return json_response({"ok": False, "error": "quota_exceeded", "detail": "Daily image generation quota reached"}, status_code=429)
         if err == "credentials_required":
-            return json_response({"ok": False, "error": "credentials_required", "detail": "请先在设置中配置生图服务的 API Key"}, status_code=402)
+            return json_response({"ok": False, "error": "credentials_required", "detail": "Configure an API key for the image generation service in Settings first"}, status_code=402)
     return json_response(result)
 
 
@@ -102,7 +102,7 @@ async def api_set_card_avatar_url(request: Request, card_id: int, user=Depends(r
     raw_url = str(body.get("url") or "").strip()
     safe_url = _safe_avatar_path(raw_url)
     if not safe_url:
-        return json_response({"ok": False, "error": "不合法的图片 URL（仅允许站内资产路径）"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid image URL (only on-site asset paths are allowed)"}, status_code=400)
 
     with connect() as db:
         owned = db.execute(
@@ -110,7 +110,7 @@ async def api_set_card_avatar_url(request: Request, card_id: int, user=Depends(r
             (card_id, user_id),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "角色卡不存在或无权访问"}, status_code=403)
+        return json_response({"ok": False, "error": "Character card not found or not accessible"}, status_code=403)
 
     with connect() as db:
         db.execute(
@@ -135,7 +135,7 @@ async def api_set_persona_image_url(request: Request, card_id: int, user=Depends
     raw_url = str(body.get("url") or "").strip()
     safe_url = _safe_avatar_path(raw_url)
     if not safe_url:
-        return json_response({"ok": False, "error": "不合法的图片 URL（仅允许站内资产路径）"}, status_code=400)
+        return json_response({"ok": False, "error": "Invalid image URL (only on-site asset paths are allowed)"}, status_code=400)
 
     with connect() as db:
         # 人设图家族统一谓词:card_type 显式限定 pc/persona(不再靠 NPC 卡 user_id=NULL 巧合挡门)
@@ -145,7 +145,7 @@ async def api_set_persona_image_url(request: Request, card_id: int, user=Depends
             (card_id, user_id),
         ).fetchone()
         if not owned:
-            return json_response({"ok": False, "error": "角色卡不存在或无权访问"}, status_code=403)
+            return json_response({"ok": False, "error": "Character card not found or not accessible"}, status_code=403)
         db.execute(
             "update card_persona_images set is_current = false where card_id = %s",
             (card_id,),
@@ -181,12 +181,12 @@ async def api_upload_card_avatar(card_id: int, file: UploadFile = File(...), use
             (card_id, user_id),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "角色卡不存在或无权访问"}, status_code=403)
+        return json_response({"ok": False, "error": "Character card not found or not accessible"}, status_code=403)
 
     # 2. 读取文件
     data = await file.read()
     if len(data) > _MAX_IMAGE_BYTES:
-        return json_response({"ok": False, "error": f"文件过大（上限 {_MAX_IMAGE_BYTES // 1024 // 1024} MB）"}, status_code=400)
+        return json_response({"ok": False, "error": f"File too large (limit {_MAX_IMAGE_BYTES // 1024 // 1024} MB)"}, status_code=400)
 
     # 3. MIME 魔数校验
     try:
@@ -241,12 +241,12 @@ async def api_upload_persona_image(card_id: int, file: UploadFile = File(...), u
             (card_id, user_id),
         ).fetchone()
     if not owned:
-        return json_response({"ok": False, "error": "角色卡不存在或无权访问"}, status_code=403)
+        return json_response({"ok": False, "error": "Character card not found or not accessible"}, status_code=403)
 
     # 2. 读取文件
     data = await file.read()
     if len(data) > _MAX_IMAGE_BYTES:
-        return json_response({"ok": False, "error": f"文件过大（上限 {_MAX_IMAGE_BYTES // 1024 // 1024} MB）"}, status_code=400)
+        return json_response({"ok": False, "error": f"File too large (limit {_MAX_IMAGE_BYTES // 1024 // 1024} MB)"}, status_code=400)
 
     # 3. MIME 魔数校验
     try:

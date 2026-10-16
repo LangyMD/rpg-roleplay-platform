@@ -42,7 +42,8 @@ def synthesize_seed_from_db(db, script_id: int) -> ScriptSeed:
     else:
         row = db.execute(
             "select summary from kb_canon_entities where script_id=%s and "
-            "(name='纪元' or name like '%%纪元%%') order by importance desc limit 1",
+            "(name='纪元' or name like '%%纪元%%' or lower(name) in ('era', 'the era')) "
+            "order by importance desc limit 1",
             (script_id,),
         ).fetchone()
         if row and row.get("summary"):
@@ -64,10 +65,11 @@ def synthesize_seed_from_db(db, script_id: int) -> ScriptSeed:
         "order by importance desc nulls last limit 60",
         (script_id,),
     ).fetchall()
-    POWER_HINTS = ("力量", "体系", "法术", "魔法", "异能", "修炼", "功法", "灵能")
+    POWER_HINTS = ("力量", "体系", "法术", "魔法", "异能", "修炼", "功法", "灵能",
+                   "power", "system", "magic", "cultivation", "spell", "sorcery", "ability")
     seed.power_system = [
         r["name"] for r in rows
-        if r.get("name") and any(h in (r.get("entity_subtype") or "") for h in POWER_HINTS)
+        if r.get("name") and any(h in (r.get("entity_subtype") or "").lower() for h in POWER_HINTS)
     ][:30]
     # 没匹配上但有 concept 数据 → 退化用 importance top 30 当 power_system
     if not seed.power_system and rows:
@@ -95,7 +97,7 @@ def rebuild_worldbook_from_db(db, script_id: int) -> dict:
         (script_id,),
     ).fetchone()
     if not row:
-        return {"ok": False, "error": "books 行不存在,请先完整跑一次提取"}
+        return {"ok": False, "error": "No books row exists; run a full extraction first"}
     book_id = int(row["id"])
 
     n_canon = db.execute(
@@ -103,7 +105,7 @@ def rebuild_worldbook_from_db(db, script_id: int) -> dict:
         (script_id,),
     ).fetchone()
     if not n_canon or int(n_canon["c"]) == 0:
-        return {"ok": False, "error": "kb_canon_entities 为空,无法重建 worldbook"}
+        return {"ok": False, "error": "kb_canon_entities is empty; cannot rebuild the worldbook"}
 
     # phase_backend: before/after_count + partial_failures
     before_row = db.execute(
@@ -158,7 +160,7 @@ def rebuild_canon_resolve_from_facts(db, script_id: int) -> dict:
         return {
             "ok": False, "source": "chapter_facts",
             "before_count": before_count, "after_count": before_count,
-            "error": "chapter_facts 为空,无法重 cluster",
+            "error": "chapter_facts is empty; cannot re-cluster",
             "partial_failures": partial_failures,
         }
     # 把 facts 转成 resolve._cluster 输入格式(per-type counter)
@@ -294,7 +296,7 @@ def rebuild_timeline_from_db(db, script_id: int) -> dict:
         return {
             "ok": False, "source": "chapter_facts",
             "before_count": before_count, "after_count": before_count,
-            "error": "chapter_facts 没有章节数据,无法重建时间线",
+            "error": "chapter_facts has no chapter data; cannot rebuild the timeline",
             "partial_failures": partial_failures,
         }
 
@@ -309,7 +311,7 @@ def rebuild_timeline_from_db(db, script_id: int) -> dict:
         label = _clean_timeline_label(r.get("story_time_label") or "")
         phase = (r.get("story_phase") or "").strip()
         if not label:
-            label = last_label or "序章"
+            label = last_label or "Prologue"
             phase = phase or last_phase
         last_label, last_phase = label, phase
         summary = (r.get("summary") or "").strip()
@@ -342,7 +344,7 @@ def rebuild_timeline_from_db(db, script_id: int) -> dict:
                     picks.append(sums[len(sums) // 2])
                 if len(sums) >= 2:
                     picks.append(sums[-1])
-                sample_summary = " / ".join(f"第{ch}章:{s}" for ch, s in picks)[:1900]
+                sample_summary = " / ".join(f"Ch.{ch}: {s}" for ch, s in picks)[:1900]
             else:
                 sample_summary = ""
             try:

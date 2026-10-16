@@ -7,12 +7,12 @@
  */
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isZhUi } from '../i18n/index.js';
 
 const LEGAL_BASE = 'https://play.stellatrix.icu/legal/adult-content-disclaimer';
 
 function getLang() {
-  const lang = (navigator.language || 'zh-CN').toLowerCase();
-  return lang.startsWith('zh') ? 'zh-CN' : 'en';
+  return isZhUi() ? 'zh-CN' : 'en';
 }
 
 export default function AdultSplash({ splashVersion, onAcked }) {

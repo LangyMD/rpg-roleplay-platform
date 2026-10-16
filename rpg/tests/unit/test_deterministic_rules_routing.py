@@ -299,7 +299,7 @@ class SocialIntentDeterministicRouting(unittest.TestCase):
         self.assertIn("DC", text)
         # 应该明确给出 verdict
         self.assertTrue(
-            ("成功" in text) or ("失败" in text),
+            ("success" in text) or ("failure" in text),
             f"_rule_results_prompt 应明示 verdict,实际: {text}",
         )
 

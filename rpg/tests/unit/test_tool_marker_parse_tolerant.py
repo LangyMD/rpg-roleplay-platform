@@ -36,7 +36,7 @@ def test_common_shapes_resolve_to_same_call(payload):
 def test_missing_name_says_what_is_missing():
     with pytest.raises(ValueError) as ei:
         parse_tool_marker('{"arguments": {"query": "灵气世界总纲"}}', _TOOLS)
-    assert "工具名" in str(ei.value) and '"tool"' in str(ei.value)
+    assert "tool name" in str(ei.value) and '"tool"' in str(ei.value)
 
 
 def test_non_object_rejected():
@@ -76,7 +76,7 @@ def test_text_marker_loop_missing_name_feeds_back_actionable_hint():
     list(_openai_text_marker_loop(_B(), "sys", [{"role": "user", "content": "查"}], _TOOLS, 3, 256,
                                   lambda *a: {"ok": True}))
     hint = sent[1][-1]["content"]
-    assert "工具名" in hint and "<<TOOL_CALL>>" in hint
+    assert "tool name" in hint and "<<TOOL_CALL>>" in hint
 
 
 def test_native_loop_does_not_route_empty_name():
@@ -109,4 +109,4 @@ def test_native_loop_does_not_route_empty_name():
     ))
     assert routed == []
     err = [e for e in events if e["type"] == "tool_result"][0]["error"]
-    assert "没有工具名" in err
+    assert "no tool name" in err

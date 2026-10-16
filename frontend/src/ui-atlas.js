@@ -532,7 +532,7 @@
     // 找到 form
     const form = (snapshot.forms || []).find((f) => f.form_id === formId);
     if (!form) {
-      return { ok: false, error: "form_not_found", message: "找不到 form_id: " + formId };
+      return { ok: false, error: "form_not_found", message: "form_id not found:  " + formId };
     }
     // 找到字段
     const fkLower = String(fieldKey).toLowerCase();
@@ -542,7 +542,7 @@
         String(f.label).toLowerCase() === fkLower
     );
     if (!field) {
-      return { ok: false, error: "field_not_found", message: "找不到字段: " + fieldKey };
+      return { ok: false, error: "field_not_found", message: "field not found:  " + fieldKey };
     }
     // 定位元素
     let el = null;
@@ -550,7 +550,7 @@
       el = document.querySelector(field.selector);
     } catch (_) {}
     if (!el) {
-      return { ok: false, error: "element_not_found", message: "selector 无法定位: " + field.selector };
+      return { ok: false, error: "element_not_found", message: "selector did not match:  " + field.selector };
     }
 
     try {
@@ -567,7 +567,7 @@
         const opts = Array.from(el.options).map((o) => ({ value: o.value, label: o.text }));
         const match = fuzzyMatchOption(opts, value);
         if (!match) {
-          return { ok: false, error: "option_not_found", message: "找不到 option: " + value };
+          return { ok: false, error: "option_not_found", message: "option not found:  " + value };
         }
         setReactInputValue(el, match.value);
       } else if (field.type === "contenteditable") {
@@ -597,7 +597,7 @@
     });
 
     if (candidates.length === 0) {
-      return { ok: false, error: "action_not_found", message: "找不到 action: " + actionLabel };
+      return { ok: false, error: "action_not_found", message: "action not found:  " + actionLabel };
     }
 
     // 优先精确匹配
@@ -607,7 +607,7 @@
     const target = exact || candidates[0];
 
     if (target.disabled) {
-      return { ok: false, error: "button_disabled", message: "按钮已禁用: " + target.label };
+      return { ok: false, error: "button_disabled", message: "button is disabled:  " + target.label };
     }
 
     let el = null;
@@ -615,7 +615,7 @@
       el = document.querySelector(target.selector);
     } catch (_) {}
     if (!el) {
-      return { ok: false, error: "element_not_found", message: "selector 无法定位: " + target.selector };
+      return { ok: false, error: "element_not_found", message: "selector did not match:  " + target.selector };
     }
     try {
       el.click();

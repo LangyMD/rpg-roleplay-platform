@@ -111,6 +111,12 @@ def call_agent_json(
         timeout_sec = max(int(timeout_sec or 0), int(_llm_to(user_id)))
     except Exception:
         pass
+    # Output language: deterministic, appended to every structured micro-task (core/language.py).
+    try:
+        from core.language import agent_language_directive
+        system_prompt = (system_prompt or "") + agent_language_directive(user_id)
+    except Exception:
+        pass
     if api_id == "anthropic":
         if tool_schema:
             text, usage = _anthropic_tool_use(
@@ -205,7 +211,7 @@ def call_agent_json_guarded(
         try:
             text2, usage2 = call_agent_json(
                 api_id=api_id, model=model,
-                system_prompt=system_prompt + "\n\n只输出一个 JSON 对象。不要解释,不要思考过程,不要 markdown 围栏。",
+                system_prompt=system_prompt + "\n\nOutput only one JSON object. No explanation, no reasoning, no markdown fences.",
                 user_prompt=user_prompt, user_id=user_id, **kw_json)
         except Exception as exc:
             log.warning("[%s] uid=%s 不可解析重试调用失败(%s: %s),按原文返回",
@@ -292,7 +298,7 @@ def _anthropic_tool_use(
     result = resolve_api_key(user_id, "anthropic", env_fallback="ANTHROPIC_API_KEY")
     key = result.get("key")
     if not key:
-        raise RuntimeError("找不到 Anthropic API Key for agent harness")
+        raise RuntimeError("No Anthropic API key found for agent harness")
     _base_url = result.get("base_url_override") or None
     _client_kwargs: dict = {"api_key": key,
                             "http_client": safe_httpx_client(proxy=credential_proxy(result))}
@@ -335,7 +341,7 @@ def _anthropic_json_text(
     result = resolve_api_key(user_id, "anthropic", env_fallback="ANTHROPIC_API_KEY")
     key = result.get("key")
     if not key:
-        raise RuntimeError("找不到 Anthropic API Key for agent harness")
+        raise RuntimeError("No Anthropic API key found for agent harness")
     _base_url = result.get("base_url_override") or None
     _client_kwargs: dict = {"api_key": key,
                             "http_client": safe_httpx_client(proxy=credential_proxy(result))}
@@ -346,7 +352,7 @@ def _anthropic_json_text(
         model=model,
         max_tokens=max_tokens,
         system=_anthropic_cached_system(
-            system_prompt + "\n\n严格只输出 JSON,不要 markdown 围栏,不要解释。"
+            system_prompt + "\n\nOutput strictly JSON only, with no markdown fences and no explanation."
         ),
         messages=[{"role": "user", "content": user_prompt}],
     )
@@ -417,7 +423,7 @@ def _vertex_structured(
     if backend.client is None:
         raise RuntimeError(
             getattr(backend, "_unavailable_message", "")
-            or "Vertex AI 不可用:未配置 Service Account(在「设置 → Agent Platform」上传 SA JSON)"
+            or "Vertex AI is unavailable: no Service Account is configured (upload the SA JSON under Settings → Agent Platform)"
         )
     text = backend.call_structured(
         system=system_prompt,
@@ -452,7 +458,7 @@ def _vertex_function_call(
     if backend.client is None:
         raise RuntimeError(
             getattr(backend, "_unavailable_message", "")
-            or "Vertex AI 不可用:未配置 Service Account(在「设置 → Agent Platform」上传 SA JSON)"
+            or "Vertex AI is unavailable: no Service Account is configured (upload the SA JSON under Settings → Agent Platform)"
         )
     from google.genai import types
 
@@ -522,7 +528,7 @@ def _openai_compat_json_mode(
     )
     cred = resolve_api_key(user_id, api_id)
     if not resolved_is_usable(cred):
-        raise RuntimeError(f"无 {api_id} 凭证可用于 agent harness")
+        raise RuntimeError(f"No usable {api_id} credential for agent harness")
     # 免鉴权(本地/自托管)端点无 key:归一成占位 token,下游 Authorization 头照常拼。
     cred = {**cred, "key": resolved_auth_token(cred)}
     import urllib.error
@@ -533,12 +539,12 @@ def _openai_compat_json_mode(
     _px = proxy_kwargs(credential_proxy(cred))
     base_url = cred.get("base_url_override") or _api_base_url(api_id)
     if not base_url:
-        raise RuntimeError(f"未知 base_url for {api_id}")
+        raise RuntimeError(f"Unknown base_url for {api_id}")
     body_dict = {
         "model": model,
         "messages": [
             {"role": "system",
-             "content": system_prompt + "\n\n严格只输出 JSON 对象,不要 markdown,不要解释。"},
+             "content": system_prompt + "\n\nOutput strictly a JSON object only, with no markdown and no explanation."},
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0,
@@ -563,7 +569,7 @@ def _openai_compat_json_mode(
         choice = (payload.get("choices") or [{}])[0]
         text = choice.get("message", {}).get("content") or ""
         if not text and not payload.get("choices"):
-            raise RuntimeError(f"provider 响应结构异常: {str(payload)[:200]}")
+            raise RuntimeError(f"Unexpected provider response shape: {str(payload)[:200]}")
         usage = _openai_usage(payload.get("usage") or {})
         return text or "", usage
     except urllib.error.HTTPError as exc:
@@ -592,7 +598,7 @@ def _openai_compat_json_mode(
         choice = (payload.get("choices") or [{}])[0]
         text = choice.get("message", {}).get("content") or ""
         if not text and not payload.get("choices"):
-            raise RuntimeError(f"provider 响应结构异常: {str(payload)[:200]}")
+            raise RuntimeError(f"Unexpected provider response shape: {str(payload)[:200]}")
         usage = _openai_usage(payload.get("usage") or {})
         return text or "", usage
 
@@ -628,7 +634,7 @@ def _openai_function_call(
     )
     cred = resolve_api_key(user_id, api_id)
     if not resolved_is_usable(cred):
-        raise RuntimeError(f"无 {api_id} 凭证可用于 agent harness")
+        raise RuntimeError(f"No usable {api_id} credential for agent harness")
     # 免鉴权(本地/自托管)端点无 key:归一成占位 token,下游 Authorization 头照常拼。
     cred = {**cred, "key": resolved_auth_token(cred)}
     import urllib.error
@@ -639,7 +645,7 @@ def _openai_function_call(
     _px = proxy_kwargs(credential_proxy(cred))
     base_url = cred.get("base_url_override") or _api_base_url(api_id)
     if not base_url:
-        raise RuntimeError(f"未知 base_url for {api_id}")
+        raise RuntimeError(f"Unknown base_url for {api_id}")
     tool_name = tool_schema.get("name", "emit_payload")
     body_dict = {
         "model": model,
@@ -676,7 +682,7 @@ def _openai_function_call(
             payload = json.loads(resp.read().decode("utf-8"))
         usage = _openai_usage(payload.get("usage") or {})
         if not payload.get("choices"):
-            raise RuntimeError(f"provider 响应结构异常: {str(payload)[:200]}")
+            raise RuntimeError(f"Unexpected provider response shape: {str(payload)[:200]}")
         msg = (payload.get("choices") or [{}])[0].get("message", {})
         tool_calls = msg.get("tool_calls") or []
         for tc in tool_calls:
@@ -830,7 +836,7 @@ def call_agent_tool_loop(
 
     if api_id != "anthropic":
         raise NotImplementedError(
-            f"call_agent_tool_loop 仅支持 anthropic provider,当前: {api_id}"
+            f"call_agent_tool_loop only supports the anthropic provider; got: {api_id}"
         )
 
     from anthropic import Anthropic
@@ -841,7 +847,7 @@ def call_agent_tool_loop(
     result = resolve_api_key(user_id, "anthropic", env_fallback="ANTHROPIC_API_KEY")
     key = result.get("key")
     if not key:
-        raise RuntimeError("找不到 Anthropic API Key for agent tool_loop")
+        raise RuntimeError("No Anthropic API key found for agent tool_loop")
 
     _base_url = result.get("base_url_override") or None
     _client_kwargs: dict = {"api_key": key,

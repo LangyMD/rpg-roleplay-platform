@@ -15,6 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { lsGetJSON, lsSetJSON } from '../lib/storage.js';
+import { isZhUi } from '../i18n/index.js';
 
 const LANDING_BASE = 'https://play.stellatrix.icu/legal';
 const STORAGE_KEY = 'policy_notice_dismissed';
@@ -39,12 +40,11 @@ const POLICY_NAMES = {
 };
 
 function getLang() {
-  const lang = (navigator.language || 'zh-CN').toLowerCase();
-  return lang.startsWith('zh') ? 'zh-CN' : 'en';
+  return isZhUi() ? 'zh-CN' : 'en';
 }
 
 function policyName(slug, lang) {
-  return (POLICY_NAMES[lang] || POLICY_NAMES['zh-CN'])[slug] || slug;
+  return (POLICY_NAMES[lang] || POLICY_NAMES.en)[slug] || slug;
 }
 
 function getDismissed() {
