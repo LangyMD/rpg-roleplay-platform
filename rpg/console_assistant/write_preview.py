@@ -63,7 +63,7 @@ def _preview_chapter(args: dict[str, Any], script_id: int | None) -> dict[str, A
     before, b_trunc = _clip(cur_content)
     after, a_trunc = _clip(str(new_content))
     new_title = str(args.get("title") or "").strip()
-    label = f"第{ci}章 {new_title or cur_title}".strip()
+    label = f"Chapter {ci} {new_title or cur_title}".strip()
     return {
         "kind": "chapter",
         "label": label,

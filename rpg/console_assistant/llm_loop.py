@@ -221,7 +221,7 @@ def _run_llm_loop(
 
     extra_pending_note: list[dict[str, Any]] = []
     if conv.get("pending_confirmations"):
-        pending_summary = "(等待用户对以下调用做出 approve/reject 决定:\n" + json.dumps(
+        pending_summary = "(Waiting for the user to approve/reject the following calls:\n" + json.dumps(
             list(conv["pending_confirmations"].values())[:3], ensure_ascii=False, indent=2,
         ) + "\n)"
         extra_pending_note.append({"role": "user", "content": pending_summary})
@@ -237,7 +237,7 @@ def _run_llm_loop(
     def _router(server_id: str, tool_name: str, arguments: dict) -> dict[str, Any]:
         spec = get_tool_spec(tool_name)
         if spec is None:
-            return {"ok": False, "error": f"未知工具 {tool_name}"}
+            return {"ok": False, "error": f"unknown tool {tool_name}"}
         call_id = _new_call_id()
         # 健壮性(确定性):弱模型(如 deepseek-v4-flash)调 update_script_chapter 常漏必填的
         # chapter_index → 整个新剧本写作流「完全失效」(group 反馈)。当前正在编辑的就是某一章时,
@@ -258,8 +258,8 @@ def _run_llm_loop(
             if _editor_write_mode == "read_only":
                 return {
                     "ok": False, "error": "EDITOR_READ_ONLY",
-                    "result": ("当前为「只读模式」,本回合不写库。请把要改的内容写在回复里供用户手动应用,"
-                               "或让用户在编辑器把写入权限改为「审查后写」或「直接写」。"),
+                    "result": ("Read-only mode is on, so nothing is written to the library this turn. Put the changes in your reply for the user to apply by hand, "
+                               "or ask the user to switch the editor's write permission to \"Write after review\" or \"Write directly\"."),
                 }
             needs_confirm = spec.destructive or (_editor_write_mode != "full_access")
         else:
@@ -406,7 +406,7 @@ def _run_llm_loop(
                     except Exception:
                         payload = {"question": payload_str, "options": []}  # type: ignore[assignment]
                     if not assistant_text_acc.strip():
-                        intro = "好的,先确认一下:"
+                        intro = "OK, let me confirm first:"
                         assistant_text_acc += intro
                         yield _sse_event("token", {"text": intro})
                     yield _sse_event("user_choice_required", {
@@ -427,11 +427,11 @@ def _run_llm_loop(
                         "value": _raw.get("value"),
                         "action_label": _raw.get("action_label"),
                     })
-                    _mark_tool(True, _raw.get("ack") or "ui action 已转发前端", None)
+                    _mark_tool(True, _raw.get("ack") or "UI action forwarded to the frontend", None)
                     yield _sse_event("tool_result", {
                         "call_id": ev.get("_call_id") or _new_call_id(),
                         "ok": True,
-                        "result": _raw.get("ack") or "ui action 已转发前端",
+                        "result": _raw.get("ack") or "UI action forwarded to the frontend",
                     })
                     continue
                 _mark_tool(bool(ev.get("ok")), ev.get("result"), ev.get("error"))
@@ -442,7 +442,7 @@ def _run_llm_loop(
                     "error": ev.get("error"),
                 })
             elif etype == "tool_error":
-                yield _sse_event("error", {"message": ev.get("error") or "tool 调用错误"})
+                yield _sse_event("error", {"message": ev.get("error") or "Tool call error"})
         if assistant_text_acc:
             conv["messages"].append({"role": "assistant", "content": assistant_text_acc})
             _trim_messages(conv)
@@ -521,6 +521,6 @@ def _run_llm_loop(
             })
         else:
             yield _sse_event("error", {
-                "message": "助手内部错误，请稍后重试",
+                "message": "Internal assistant error. Please try again later.",
                 "code": "E_LLM_LOOP",
             })
