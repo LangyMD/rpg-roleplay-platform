@@ -140,7 +140,7 @@ def test_fallback_report_for_unmarked_long_text() -> None:
     assert report["problem_category"] == "no_heading_match"
     assert report["auto_selection"]["used_best_below_threshold"] is True
     assert report["auto_selection"]["threshold"] == 0.8
-    assert "已选择当前最高置信度结果" in " ".join(report["reasons"])
+    assert "the highest-confidence result was chosen" in " ".join(report["reasons"])
 
 
 def test_report_v2_fields_present() -> None:
