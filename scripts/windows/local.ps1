@@ -146,6 +146,10 @@ function Invoke-Start {
     $envVars = Read-DotEnv (Join-Path $RpgDir '.env')
     foreach ($k in $envVars.Keys) { Set-Item -Path "Env:$k" -Value $envVars[$k] }
     if (-not $env:DATABASE_URL) { throw "DATABASE_URL is not set in rpg\.env." }
+    # Output goes to log files, where Python would otherwise fall back to the ANSI code
+    # page (cp1252) and crash on the Chinese text in migrate / backend log lines.
+    $env:PYTHONUTF8 = '1'
+    $env:PYTHONIOENCODING = 'utf-8'
 
     Say 'Database: applying migrations'
     Push-Location $RpgDir
