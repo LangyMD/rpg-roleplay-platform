@@ -37,7 +37,7 @@ async def admin_logs(
             log.warning("admin_logs read error: %s", exc)
 
     return json_response({
-        "lines": ["（日志文件路径未配置）"],
+        "lines": ["(log file path not configured)"],
         "total_lines": 1,
         "source": "none",
     })

@@ -31,13 +31,13 @@ async def api_upload_avatar(request: Request):
     form = await request.form()
     f = form.get("file")
     if not f or not getattr(f, "filename", ""):
-        return _bad("请选择文件")
+        return _bad("Please choose a file")
     ext = os.path.splitext(f.filename or "")[-1].lower()
     if ext not in {".png", ".jpg", ".jpeg", ".webp"}:
-        return _bad("仅支持 PNG / JPG / WEBP")
+        return _bad("Only PNG / JPG / WEBP are supported")
     data = await f.read()
     if len(data) > 2 * 1024 * 1024:
-        return _bad("文件超过 2 MB")
+        return _bad("File exceeds 2 MB")
     # 魔数校验:不信客户端文件名扩展名,以真实图片字节为准(与角色卡/人设图/卡导入
     # 三处上传一致,见 api/me.py:_detect_image_mime)。伪造扩展名的非图片 → 400,
     # 落盘扩展名取检测结果(防止任意字节伪装成 .png 进头像图床并以 image/* 回发)。
@@ -146,7 +146,7 @@ async def api_profile_visibility(request: Request):
     user = require_user(request)
     body = await request.json() or {}
     if not isinstance(body, dict):
-        return _bad("请求内容必须是 JSON 对象")
+        return _bad("Request body must be a JSON object")
     from psycopg.types.json import Jsonb
     with connect() as db:
         db.execute(

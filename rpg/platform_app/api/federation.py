@@ -19,7 +19,7 @@ from ._deps import _client_ip, json_response, require_user, value_error_response
 router = APIRouter()
 
 
-def _rate_limit(key: str, max_calls: int, window_s: float, detail: str = "请求过于频繁,请稍后再试"):
+def _rate_limit(key: str, max_calls: int, window_s: float, detail: str = "Too many requests; please try again later"):
     if not federation.rate_ok(key, max_calls, window_s):
         raise HTTPException(status_code=429, detail=detail)
 
@@ -27,7 +27,7 @@ def _rate_limit(key: str, max_calls: int, window_s: float, detail: str = "请求
 def _require_provider() -> None:
     """provider 角色闸:本地客户端实例不暴露签发/批准/外部库端点(防无鉴权令牌签发面)。"""
     if not federation.provider_enabled():
-        raise HTTPException(status_code=404, detail="本实例不是在线剧本库提供方")
+        raise HTTPException(status_code=404, detail="This instance is not an online script library provider")
 
 
 @router.get("/api/ext/provider-info")
@@ -50,7 +50,7 @@ def _same_origin_or_403(request: Request) -> None:
     from urllib.parse import urlparse
     oh = (urlparse(origin).hostname or "").lower()
     if oh and host and oh != host:
-        raise HTTPException(status_code=403, detail="跨源请求被拒绝")
+        raise HTTPException(status_code=403, detail="Cross-origin request rejected")
 
 
 # ── Bearer PAT 依赖 ───────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ async def api_ext_publish(request: Request, pat=Depends(require_pat_publish)):
         raise HTTPException(status_code=400, detail="Missing file field")
     raw = await file.read()
     if raw[:4] != b"PK\x03\x04":
-        raise HTTPException(status_code=400, detail="不是合法的剧本包 zip")
+        raise HTTPException(status_code=400, detail="Not a valid script package zip")
     try:
         return json_response(federation.ext_publish_pack(pat["user"]["id"], raw))
     except ValueError as exc:
@@ -232,7 +232,7 @@ async def api_connector_import(request: Request, user=Depends(require_user)):
     body = await request.json()
     rid = body.get("remote_script_id")
     if not rid:
-        return json_response({"ok": False, "error": "缺 remote_script_id"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing remote_script_id"}, status_code=400)
     try:
         return json_response(await asyncio.to_thread(federation.connector_import, user["id"], int(rid)))
     except ValueError as exc:
@@ -244,7 +244,7 @@ async def api_connector_publish(request: Request, user=Depends(require_user)):
     body = await request.json()
     sid = body.get("script_id")
     if not sid:
-        return json_response({"ok": False, "error": "缺 script_id"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing script_id"}, status_code=400)
     try:
         return json_response(await asyncio.to_thread(federation.connector_publish, user["id"], int(sid)))
     except (ValueError, PermissionError) as exc:

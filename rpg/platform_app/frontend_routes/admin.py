@@ -30,7 +30,7 @@ async def api_admin_smtp_test(request: Request):
         return json_response({"ok": False, "error": "Administrator privileges required"}, status_code=403)
     return json_response({
         "ok": False,
-        "error": "SMTP 尚未在 user_preferences 中规范化存储 · 请先在「部署 → 邮件 SMTP」配置并保存",
+        "error": "SMTP is not stored in user_preferences yet; configure and save it under Deployment -> Email SMTP first",
         "configured": False,
     }, status_code=503)
 
@@ -70,7 +70,7 @@ async def api_admin_deployment_config_set(request: Request):
         return json_response({"ok": False, "error": "Administrator privileges required"}, status_code=403)
     body = await request.json() or {}
     if not isinstance(body, dict):
-        return _bad("请求体必须是对象")
+        return _bad("Request body must be an object")
     init_db()
     with connect() as db:
         row = db.execute(
@@ -87,4 +87,4 @@ async def api_admin_deployment_config_set(request: Request):
             (_DEPLOY_CFG_KEY, Jsonb(merged)),
         )
     return json_response({"ok": True, "config": merged,
-                          "note": "listen_address / cors_origins 等网络配置需重启服务才能生效"})
+                          "note": "Network settings such as listen_address / cors_origins take effect only after a service restart"})

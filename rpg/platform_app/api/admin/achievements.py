@@ -27,17 +27,17 @@ def _achv_validate_payload(body: dict, *, require_id: bool) -> tuple[dict, str |
     icon = (body.get("icon") or None)
     rule = body.get("rule")
     if not name:
-        return {}, "name 必填"
+        return {}, "name is required"
     if not description:
-        return {}, "description 必填"
+        return {}, "description is required"
     if not category:
-        return {}, "category 必填"
+        return {}, "category is required"
     if tier not in _ACHV_TIERS:
-        return {}, "tier 必须是 bronze/silver/gold 或留空"
+        return {}, "tier must be bronze/silver/gold or empty"
     try:
         validate_rule(rule)
     except ValueError as exc:
-        return {}, f"规则非法:{exc}"
+        return {}, f"Invalid rule: {exc}"
     clean = {
         "name": name,
         "description": description,
@@ -52,7 +52,7 @@ def _achv_validate_payload(body: dict, *, require_id: bool) -> tuple[dict, str |
     if require_id:
         aid = (body.get("id") or "").strip()
         if not _ACHV_SLUG.match(aid):
-            return {}, "id 必须是小写字母/数字/下划线的 slug(3-50 字符)"
+            return {}, "id must be a slug of lowercase letters/digits/underscores (3-50 characters)"
         clean["id"] = aid
     return clean, None
 
@@ -78,7 +78,7 @@ async def admin_achv_create(request: Request, admin=Depends(_require_admin)):
             "select 1 from achievement_defs where id = %s", (clean["id"],)
         ).fetchone()
         if exists:
-            return json_response({"ok": False, "error": "id 已存在"}, status_code=409)
+            return json_response({"ok": False, "error": "id already exists"}, status_code=409)
         row = db.execute(
             "insert into achievement_defs "
             "(id, name, description, icon, category, tier, rule, hidden, sort_order, enabled) "

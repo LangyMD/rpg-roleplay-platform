@@ -31,9 +31,9 @@ def _local_mode() -> bool:
 def _require_local(request: Request, *, loopback: bool = False) -> None:
     """本地模式 gate。loopback=True 时还要求请求来自本机(写操作)。"""
     if not _local_mode():
-        raise HTTPException(status_code=404, detail="本接口仅本地部署可用")
+        raise HTTPException(status_code=404, detail="This endpoint is only available in local deployments")
     if loopback and not _is_loopback(request):
-        raise HTTPException(status_code=403, detail="账户设置只能在本机控制台修改")
+        raise HTTPException(status_code=403, detail="Account settings can only be changed from the local console")
 
 
 def _account_view(acct: dict | None) -> dict:
@@ -81,7 +81,7 @@ async def set_local_password(request: Request):
     body = await request.json()
     pw = (body.get("password") or "")
     if pw and len(pw) > 1024:
-        return json_response({"ok": False, "error": "密码过长"}, status_code=400)
+        return json_response({"ok": False, "error": "Password is too long"}, status_code=400)
     acct = _auth.bootstrap_local_account()
     _auth.set_account_password(int(acct["id"]), pw)
     return json_response({"ok": True, "has_password": bool(pw)})

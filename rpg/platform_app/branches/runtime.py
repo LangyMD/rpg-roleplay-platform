@@ -49,7 +49,7 @@ def record_runtime_turn(
     if user_id and int(meta.get("user_id") or 0) not in {0, int(user_id)}:
         meta = bootstrap_runtime_binding(user_id=user_id)
     if not meta:
-        return {"ok": False, "reason": "未激活存档分支 runtime"}
+        return {"ok": False, "reason": "Save branch runtime is not activated"}
     save_id = int(meta.get("save_id") or 0)
     parent_id = int(meta.get("active_commit_id") or meta.get("active_branch_node_id") or 0)
     ref_id = int(meta.get("active_ref_id") or 0) or None
@@ -89,7 +89,7 @@ def record_runtime_turn(
             fresh_save = db.execute("select active_commit_id, active_branch_node_id from game_saves where id = %s", (save_id,)).fetchone()
             fresh_active = int((fresh_save or {}).get("active_commit_id") or (fresh_save or {}).get("active_branch_node_id") or 0)
             if fresh_active and fresh_active != parent_id:
-                return {"ok": False, "conflict": True, "reason": "存档已在别处推进,请刷新后重试"}
+                return {"ok": False, "conflict": True, "reason": "The save was advanced elsewhere; please refresh and try again"}
             if not ref_id:
                 ref = _find_or_create_ref_for_commit(db, int(save["user_id"]), parent)
                 ref_id = ref["id"]
@@ -99,7 +99,7 @@ def record_runtime_turn(
                 parent_id=parent_id,
                 turn_index=turn,
                 kind="round",
-                title=f"第 {turn} 回合",
+                title=f"Turn {turn}",
                 message=summary,
                 summary=summary,
                 content_preview=preview,
@@ -131,11 +131,11 @@ def record_runtime_turn(
                     _lg.getLogger("kb_state").warning("[kb_state] persist import/maintain skip: %s", _kbe)
     if missing_parent:
         if _depth >= 2:
-            return {"ok": False, "reason": "runtime 指向的父节点不存在(重绑后仍缺失)"}
+            return {"ok": False, "reason": "The parent node that runtime points to does not exist (still missing after rebinding)"}
         rebound = bootstrap_runtime_binding(user_id=user_id)
         if rebound and rebound.get("active_commit_id") != parent_id:
             return record_runtime_turn(player_input, gm_response, runtime_state_path, user_id=user_id, _depth=_depth + 1)
-        return {"ok": False, "reason": "runtime 指向的父节点不存在"}
+        return {"ok": False, "reason": "The parent node that runtime points to does not exist"}
     effective_user_id = user_id or int(save.get("user_id") or 0)
     runtime_info = _runtime_module.update_active_node(
         row["id"], snapshot_path, ref_id=ref_id, user_id=effective_user_id,
@@ -165,7 +165,7 @@ def persist_runtime_state(
     if user_id and int(meta.get("user_id") or 0) not in {0, int(user_id)}:
         meta = bootstrap_runtime_binding(user_id=user_id)
     if not meta:
-        return {"ok": False, "reason": "未激活存档 runtime"}
+        return {"ok": False, "reason": "Save runtime is not activated"}
 
     save_id = int(meta.get("save_id") or 0)
     commit_id = int(meta.get("active_commit_id") or meta.get("active_branch_node_id") or 0)

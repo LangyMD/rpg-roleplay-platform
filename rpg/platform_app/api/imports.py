@@ -35,7 +35,7 @@ async def api_script_knowledge_sync(script_id: int, user=Depends(require_user)):
     return json_response({
         "ok": False,
         "code": "endpoint_gone",
-        "error": "/knowledge/sync 已弃用,请使用 /api/scripts/{id}/rebuild/full-pipeline",
+        "error": "/knowledge/sync is deprecated; use /api/scripts/{id}/rebuild/full-pipeline",
         "replacement": f"/api/scripts/{script_id}/rebuild/full-pipeline",
     }, status_code=410)
 
@@ -177,7 +177,7 @@ async def api_script_llm_extract_estimate(request: Request, script_id: int, user
                     (script_id,),
                 ).fetchone()
                 n = int(row["n"]) if row else 0
-                note = f"仅重嵌入 {n} 个规范实体(平台承担 embedding 成本,对你 $0)。"
+                note = f"Re-embedding only {n} canon entities (the platform covers the embedding cost; $0 to you)."
             elif scope == "worldbook_only":
                 row = db.execute(
                     "select count(*) as n from kb_canon_entities where script_id = %s",
@@ -186,8 +186,8 @@ async def api_script_llm_extract_estimate(request: Request, script_id: int, user
                 n = int(row["n"]) if row else 0
                 if n == 0:
                     return json_response({"ok": False, "scope": scope,
-                        "error": "kb_canon_entities 为空,先跑一次「全量 LLM 重提取」再来重建世界书"})
-                note = f"从已有 {n} 个 canon 实体重建世界书条目(无 LLM,$0)。"
+                        "error": "kb_canon_entities is empty; run a full LLM re-extraction first, then rebuild the worldbook"})
+                note = f"Rebuilding worldbook entries from {n} existing canon entities (no LLM, $0)."
             else:  # anchors_only
                 row = db.execute(
                     "select count(*) as n from chapter_facts where script_id = %s and coalesce(story_time_label,'') <> ''",
@@ -196,8 +196,8 @@ async def api_script_llm_extract_estimate(request: Request, script_id: int, user
                 n = int(row["n"]) if row else 0
                 if n == 0:
                     return json_response({"ok": False, "scope": scope,
-                        "error": "chapter_facts 没有 story_time_label,无法重建时间线"})
-                note = f"从 {n} 个有故事时间标签的章节重建时间线锚点(无 LLM,$0)。"
+                        "error": "chapter_facts has no story_time_label; cannot rebuild the timeline"})
+                note = f"Rebuilding timeline anchors from {n} chapters with story time labels (no LLM, $0)."
         return json_response({
             "ok": True,
             "scope": scope,
@@ -359,7 +359,7 @@ async def api_script_import_pipeline(request: Request, script_id: int, user=Depe
             "select 1 from scripts where id = %s and owner_id = %s", (script_id, user["id"])
         ).fetchone()
     if not _owns:
-        return json_response({"ok": False, "error": "无权操作该剧本或剧本不存在"}, status_code=403)
+        return json_response({"ok": False, "error": "No access to this script, or it does not exist"}, status_code=403)
     from .. import import_pipeline
     try:
         return json_response(import_pipeline.schedule_full_import(

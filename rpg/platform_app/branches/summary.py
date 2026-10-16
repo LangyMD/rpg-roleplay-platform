@@ -11,12 +11,13 @@ _SUMMARY_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="branch-sum
 _SUMMARY_GM = None
 _SUMMARY_GM_LOCK = threading.Lock()
 _LLM_SUMMARY_SYSTEM = (
-    "你是剧情摘要助手。读完一回合的玩家输入和 GM 响应后，用 15-22 字概括这一回合发生了什么。\n"
-    "要求：\n"
-    "- 只输出摘要本身，不要前缀\n"
-    "- 用动词为主，避免主语\n"
-    "- 不带句号、引号、标签\n"
-    "- 失败/拒绝/打断也要客观描述"
+    "You are a story summary assistant. After reading one turn's player input and GM response, "
+    "summarize what happened in that turn in 6-12 words.\n"
+    "Requirements:\n"
+    "- Output only the summary itself, with no prefix\n"
+    "- Lead with verbs and avoid a subject\n"
+    "- No trailing period, quotes or labels\n"
+    "- Describe failures, refusals and interruptions objectively too"
 )
 
 
@@ -40,7 +41,7 @@ def _run_llm_summary(commit_id: int, player_text: str, gm_text: str) -> None:
         gm = _get_summary_gm()
         if not gm:
             return
-        prompt = f"玩家输入：\n{player_text[:600]}\n\nGM 响应：\n{gm_text[:1200]}"
+        prompt = f"Player input:\n{player_text[:600]}\n\nGM response:\n{gm_text[:1200]}"
         summary = gm._backend.call(
             system=_LLM_SUMMARY_SYSTEM,
             messages=[{"role": "user", "content": prompt}],

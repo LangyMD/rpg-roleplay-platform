@@ -76,9 +76,9 @@ def is_continue(text: str) -> bool:
 def round_preview(player_text: str, gm_text: str, limit: int = 260) -> str:
     parts = []
     if clean_text(player_text):
-        parts.append(f"玩家：{compact(clean_text(player_text), 90)}")
+        parts.append(f"Player: {compact(clean_text(player_text), 90)}")
     if clean_text(gm_text):
-        parts.append(f"GM：{compact(clean_text(gm_text), 170)}")
+        parts.append(f"GM: {compact(clean_text(gm_text), 170)}")
     return compact(" / ".join(parts) or "Empty turn", limit)
 
 
@@ -87,7 +87,7 @@ def rough_summary(player_text: str, gm_text: str = "", limit: int = 22) -> str:
     gm = clean_text(gm_text)
     source = player
     if is_continue(player):
-        source = gm or "继续当前剧情"
+        source = gm or "Continue the current story"
     elif len(source) <= 2:
         source = gm or source
     if not source:
@@ -244,7 +244,7 @@ def display_nodes(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     {
                         "kind": "round",
                         "role": "round",
-                        "title": f"第 {row['turn_index']} 回合",
+                        "title": f"Turn {row['turn_index']}",
                         "summary": rough_summary(row.get("content_preview", ""), gm.get("content_preview", "")),
                         "content_preview": round_preview(row.get("content_preview", ""), gm.get("content_preview", "")),
                         "source_node_ids": [row["id"], gm["id"]],
@@ -261,7 +261,7 @@ def display_nodes(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 {
                     "kind": "round",
                     "role": "round",
-                    "title": f"第 {row['turn_index']} 回合",
+                    "title": f"Turn {row['turn_index']}",
                     "summary": rough_summary(row.get("content_preview", ""), ""),
                     "content_preview": round_preview(row.get("content_preview", ""), ""),
                     "source_node_ids": [row["id"]],
@@ -274,7 +274,7 @@ def display_nodes(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 {
                     "kind": "round",
                     "role": "round",
-                    "title": f"第 {row['turn_index']} 回合",
+                    "title": f"Turn {row['turn_index']}",
                     "summary": rough_summary("", row.get("content_preview", "")),
                     "content_preview": round_preview("", row.get("content_preview", "")),
                     "source_node_ids": [row["id"]],

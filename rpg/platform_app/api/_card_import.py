@@ -49,7 +49,7 @@ async def parse_card_import_request(request: Request) -> tuple[dict[str, Any], b
             raise ValueError("multipart request is missing the file field")
         blob = await file_field.read()
         if len(blob) > MAX_IMPORT_PAYLOAD_BYTES:
-            raise ValueError(f"文件过大（上限 {MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
+            raise ValueError(f"File too large (limit {MAX_IMPORT_PAYLOAD_BYTES // (1024*1024)} MB）")
         fname = getattr(file_field, "filename", "") or ""
         if fname.lower().endswith(".png") or fname.lower().endswith(".webp"):
             v2 = tavern_cards.parse_png_card(blob)
@@ -59,7 +59,7 @@ async def parse_card_import_request(request: Request) -> tuple[dict[str, Any], b
             try:
                 v2 = tavern_cards.parse_card(blob.decode("utf-8", errors="replace"))
             except Exception as exc:
-                raise ValueError(f"JSON 解析失败：{exc}") from exc
+                raise ValueError(f"JSON parse failed: {exc}") from exc
         return v2, image_bytes, ai_split
 
     # ── JSON body ────────────────────────────────────────────────
@@ -69,11 +69,11 @@ async def parse_card_import_request(request: Request) -> tuple[dict[str, Any], b
         import base64 as _b64
         png_b64 = body["png_base64"]
         if not isinstance(png_b64, str) or len(png_b64) > MAX_IMPORT_PAYLOAD_BYTES:
-            raise ValueError(f"png_base64 过大或非字符串（上限 {MAX_IMPORT_PAYLOAD_BYTES} 字节）")
+            raise ValueError(f"png_base64 is too large or not a string (limit {MAX_IMPORT_PAYLOAD_BYTES} bytes)")
         try:
             blob = _b64.b64decode(png_b64, validate=True)
         except Exception as exc:
-            raise ValueError(f"png_base64 不合法：{exc}") from exc
+            raise ValueError(f"Invalid png_base64: {exc}") from exc
         if len(blob) > _MAX_PNG_DECODED_BYTES:
             raise ValueError("PNG file is too large (max 10MB after decoding)")
         v2 = tavern_cards.parse_png_card(blob)

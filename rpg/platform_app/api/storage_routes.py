@@ -45,7 +45,7 @@ async def serve_storage_file(kind: str, filename: str, request: Request) -> File
     require_user(request)
     # kind 白名单
     if kind not in _KIND_ALLOWLIST:
-        raise HTTPException(status_code=404, detail="未知 kind")
+        raise HTTPException(status_code=404, detail="Unknown kind")
 
     # 扩展名白名单（按 kind 选取）
     ext = os.path.splitext(filename)[-1].lower()
@@ -58,7 +58,7 @@ async def serve_storage_file(kind: str, filename: str, request: Request) -> File
     try:
         path = resolve_path(storage_key)
     except ValueError:
-        raise HTTPException(status_code=404, detail="路径非法")
+        raise HTTPException(status_code=404, detail="Invalid path")
 
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404)

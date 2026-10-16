@@ -173,7 +173,7 @@ async def api_account_request_delete(request: Request):
                 "scheduled_hard_delete_at": existing["scheduled_hard_delete_at"].isoformat()
                 if hasattr(existing["scheduled_hard_delete_at"], "isoformat")
                 else str(existing["scheduled_hard_delete_at"]),
-                "message": "删除请求已存在，30 天宽限期内可撤销",
+                "message": "A deletion request already exists; it can be cancelled within the 30-day grace period",
             })
 
         db.execute(
@@ -210,7 +210,7 @@ async def api_account_request_delete(request: Request):
     resp = json_response({
         "ok": True,
         "scheduled_hard_delete_at": sched_str,
-        "message": "删除申请已提交，30 天内可撤销。如需取消请调用 /api/account/cancel-delete。",
+        "message": "Deletion request submitted; it can be cancelled within 30 days. To cancel, call /api/account/cancel-delete.",
     })
     _delete_session_cookie(resp, request)
     return resp
@@ -228,14 +228,14 @@ async def api_account_cancel_delete(request: Request):
             (user["id"],),
         ).fetchone()
         if not queue_row:
-            return _bad("没有进行中的删除请求，或已超过宽限期", 404)
+            return _bad("No deletion request in progress, or the grace period has passed", 404)
         # 撤销：删队列行 + 清 deactivated_at
         db.execute("delete from account_delete_queue where user_id = %s", (user["id"],))
         db.execute(
             "update users set deactivated_at = null, updated_at = now() where id = %s",
             (user["id"],),
         )
-    return json_response({"ok": True, "message": "删除申请已撤销，账号已恢复正常。"})
+    return json_response({"ok": True, "message": "Deletion request cancelled; the account is back to normal."})
 
 
 # LC-01: 查询删除状态

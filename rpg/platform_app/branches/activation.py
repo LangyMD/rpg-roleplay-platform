@@ -155,7 +155,7 @@ def activate_save(user_id: int, save_id: int) -> dict[str, Any]:
                 (save_id,),
             ).fetchone()
         if not commit_row:
-            raise ValueError("save 没有任何 commit，无法激活")
+            raise ValueError("Save has no commits; cannot activate")
         ref = _find_or_create_ref_for_commit(db, user_id, commit_row)
         _set_save_active(db, save_id, commit_row["id"], ref["id"])
         _write_checkout(db, user_id, save_id, ref["id"], commit_row["id"])

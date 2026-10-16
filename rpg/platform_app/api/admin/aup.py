@@ -28,7 +28,7 @@ async def admin_suspend_user(
         try:
             duration_days = int(duration_days)
         except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="duration_days 须为整数")
+            raise HTTPException(status_code=400, detail="duration_days must be an integer")
 
     with connect() as db:
         if duration_days is not None:
@@ -100,7 +100,7 @@ async def admin_terminate_user(
 
     # 管理员不能终止自己
     if admin.get("id") == user_id:
-        raise HTTPException(status_code=400, detail="不允许终止自己的账户")
+        raise HTTPException(status_code=400, detail="You cannot terminate your own account")
 
     with connect() as db:
         queue_account_termination(db, user_id, reason)

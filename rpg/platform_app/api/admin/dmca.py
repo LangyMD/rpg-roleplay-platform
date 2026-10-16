@@ -48,7 +48,7 @@ async def admin_dmca_create(
     required = ("complainant_name", "complainant_email", "infringing_url")
     for f in required:
         if not body.get(f):
-            raise HTTPException(status_code=400, detail=f"缺少必填字段: {f}")
+            raise HTTPException(status_code=400, detail=f"Missing required fields: {f}")
 
     with connect() as db:
         row = db.execute(
@@ -87,7 +87,7 @@ async def admin_dmca_action(
     reason = body.get("reason", "")
 
     if action not in ("takedown", "restore", "reject"):
-        raise HTTPException(status_code=400, detail="action 须为 takedown|restore|reject")
+        raise HTTPException(status_code=400, detail="action must be takedown|restore|reject")
 
     status_map = {"takedown": "closed", "restore": "restored", "reject": "rejected"}
     new_status = status_map[action]
@@ -198,7 +198,7 @@ async def admin_dmca_strike_increment(
 
         if result["terminate"]:
             terminate_reason = (
-                f"DMCA 累犯 {result['strike_count']} 次，已达终止阈值。最近原因: {reason}"
+                f"Repeated DMCA infringement ({result['strike_count']} strikes); termination threshold reached. Latest reason: {reason}"
             )
             queue_account_termination(db, user_id, terminate_reason)
             _write_audit(db, admin, "dmca.auto_terminate",
