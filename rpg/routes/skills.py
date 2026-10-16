@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from platform_app.api._deps import json_response
-from routes._deps_fastapi import get_current_admin
+from routes._deps_fastapi import get_current_admin_strict
 from schemas._common import COMMON_ERROR_RESPONSES, ErrorResponse, GenericOkResponse
 from schemas.skills import SkillRunRequest, SkillsImportRequest
 
@@ -17,7 +17,7 @@ router = APIRouter()
 @router.post("/api/skills/import", response_model=GenericOkResponse, responses=COMMON_ERROR_RESPONSES)
 async def api_skills_import(
     body: SkillsImportRequest,
-    api_user: dict[str, Any] | None = Depends(get_current_admin),
+    api_user: dict[str, Any] | None = Depends(get_current_admin_strict),
 ) -> JSONResponse:
     from app import import_skill_bundle, tool_payload
     body_dict = body.model_dump(exclude_none=True)
@@ -32,14 +32,16 @@ async def api_skills_import(
 async def api_skill_run(
     body: SkillRunRequest,
     skill_id: str,
-    api_user: dict[str, Any] = Depends(get_current_admin),
+    api_user: dict[str, Any] = Depends(get_current_admin_strict),
 ) -> JSONResponse:
     """在沙箱里跑某个 imported skill。
 
     Body: {"cmd": ["bash", "script.sh", "arg1"], "stdin": "...", "timeout_sec": 30}
 
     安全：admin only。local 模式下也强制要求 admin —— 不再做匿名豁免，避免
-    "本地未鉴权 + cmd 可任意" 的 RCE 链。
+    "本地未鉴权 + cmd 可任意" 的 RCE 链。必须用 get_current_admin_strict:普通
+    get_current_admin 在 local 模式会短路放行(含 user=None),等于没有鉴权。
+    import 同理(导入 = 落盘可执行脚本)。与 routes/mcp.py 同一闸。
     """
     body_dict = body.model_dump(exclude_none=True)
     cmd = body_dict.get("cmd") or body_dict.get("command")
