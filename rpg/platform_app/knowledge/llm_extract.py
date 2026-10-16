@@ -15,6 +15,21 @@ from platform_app.db import connect
 from platform_app.knowledge._sync import _ensure_book
 
 
+def resolve_extraction_llm(user_id: int, api_id: str | None = None,
+                           model: str | None = None) -> tuple[str, str]:
+    """调用方没显式给 api_id/model 时,回落到用户的「提取模型」设置(extractor.*)。
+
+    以前各重建/提取入口各自硬编码 deepseek/deepseek-v4-flash 兜底 → 只配了本地模型
+    (LM Studio / Ollama)的用户一点「重建」就报「deepseek 未配置 key」。统一走拆书流水线
+    同一个解析器(_resolve_extractor_llm),缺哪个补哪个。返回 (api_id, model)。
+    """
+    if api_id and model:
+        return str(api_id), str(model)
+    from platform_app.import_pipeline.stages_llm import _resolve_extractor_llm
+    r_api, r_model = _resolve_extractor_llm(int(user_id))
+    return str(api_id or r_api), str(model or r_model)
+
+
 def run_llm_extraction(
     user_id: int,
     script_id: int,
@@ -23,8 +38,8 @@ def run_llm_extraction(
     author_era: str = "",
     author_power_system: list[str] | None = None,
     author_worldlines: list[dict] | None = None,
-    model: str = "deepseek-v4-flash",
-    api_id: str = "deepseek",
+    model: str | None = None,
+    api_id: str | None = None,
     target_arcs: int = 40,
     concurrency: int = 15,
     sample_chapters: int | None = None,
@@ -48,6 +63,8 @@ def run_llm_extraction(
     import datetime
 
     from extract.budget import estimate
+
+    api_id, model = resolve_extraction_llm(user_id, api_id, model)
 
     period = datetime.date.today().strftime("%Y-%m")
 

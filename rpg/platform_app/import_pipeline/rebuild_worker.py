@@ -168,8 +168,8 @@ def _rebuild_cards(ctl, user_id, script_id, body) -> dict:
                 pass
         result = rebuild_cards_with_llm(
             user_id, script_id, chapter_max=cmax,
-            model=str(body.get("model") or "deepseek-v4-flash"),
-            api_id=str(body.get("api_id") or "deepseek"),
+            model=body.get("model") or None,
+            api_id=body.get("api_id") or None,
             progress_cb=_cards_progress,
         )
     else:
@@ -211,8 +211,8 @@ def _rebuild_canon(ctl, user_id, script_id, body) -> dict:
         r = run_llm_extraction(
             user_id, script_id,
             algorithm=str(body.get("algorithm") or "arc"),
-            model=str(body.get("model") or "deepseek-v4-flash"),
-            api_id=str(body.get("api_id") or "deepseek"),
+            model=body.get("model") or None,
+            api_id=body.get("api_id") or None,
             confirmed=True,
             progress_cb=_canon_progress,
         )
