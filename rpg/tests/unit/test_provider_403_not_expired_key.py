@@ -33,14 +33,14 @@ class _Err(Exception):
 def test_403_does_not_claim_the_key_is_expired():
     cat, msg = classify_provider_error(_Err("x", status=403))
     assert cat == "auth"
-    assert "已过期" not in msg and "无效" not in msg.split("403")[0], msg
+    assert "expired" not in msg.split("403")[0] and "invalid" not in msg.split("403")[0], msg
     assert "403" in msg
 
 
 def test_401_still_claims_invalid_or_expired_key():
     cat, msg = classify_provider_error(_Err("x", status=401))
     assert cat == "auth"
-    assert "无效" in msg and "已过期" in msg
+    assert "invalid" in msg and "expired" in msg
 
 
 def test_403_surfaces_provider_own_message():
@@ -94,7 +94,7 @@ def test_classified_error_logs_provider_detail(caplog):
     joined = " ".join(r.getMessage() for r in caplog.records)
     assert "provider:" in joined, "已分类的提供商错误没把原话写进日志"
     assert "rejected by upstream policy" in joined
-    assert "错误码 E" in out
+    assert "error code E" in out
 
 
 def test_client_facing_text_never_leaks_a_key(caplog):

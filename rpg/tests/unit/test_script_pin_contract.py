@@ -34,7 +34,7 @@ def test_pin_to_self_is_rejected_before_db(monkeypatch):
     code, body = _call(5, {"mode": "floating-latest", "target_script_id": 5}, monkeypatch)
     assert code == 400
     assert body["ok"] is False
-    assert "自己" in body["error"]
+    assert "itself" in body["error"]
 
 
 def test_pin_self_as_string_is_rejected(monkeypatch):

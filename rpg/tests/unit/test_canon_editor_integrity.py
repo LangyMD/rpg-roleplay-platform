@@ -224,7 +224,7 @@ def test_create_same_name_and_type_is_rejected_with_pointer(env):
     r = c.post(f"/api/scripts/{sid}/canon-entities", json={"name": "云韵", "type": "character"})
     assert r.status_code == 409, r.text
     err = r.json()["error"]
-    assert "云韵" in err and "编辑" in err
+    assert "云韵" in err and "edit" in err
     # 显式给了不同的 key 也一样:同名同类型两条,GM 读到两份
     r = c.post(f"/api/scripts/{sid}/canon-entities",
                json={"name": "云韵", "type": "character", "logical_key": "yunyun"})
