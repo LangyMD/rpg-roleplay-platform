@@ -29,7 +29,7 @@ async def api_agent_doc_upload(request: Request, script_id: int, user=Depends(re
         return json_response({"ok": False, "error": "Request body must be valid JSON"}, status_code=400)
     filename = str(body.get("filename") or "").strip()
     if filename and not (filename.lower().endswith(".txt") or filename.lower().endswith(".md")):
-        return json_response({"ok": False, "error": "只支持 .txt / .md 文档"}, status_code=400)
+        return json_response({"ok": False, "error": "Only .txt / .md documents are supported"}, status_code=400)
     try:
         from platform_app.agent_docs import store_doc
         res = store_doc(

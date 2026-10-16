@@ -32,34 +32,34 @@ async def api_pin_script(request: Request, script_id: int, user=Depends(require_
     mode = str(body.get("mode") or "")
     if mode not in ("pinned-snapshot", "floating-latest"):
         return json_response(
-            {"ok": False, "error": "mode 必须是 'pinned-snapshot' 或 'floating-latest'"},
+            {"ok": False, "error": "mode must be 'pinned-snapshot' or 'floating-latest'"},
             status_code=400,
         )
     target_script_id = body.get("target_script_id")
     if not target_script_id:
-        return json_response({"ok": False, "error": "缺少 target_script_id"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing target_script_id"}, status_code=400)
     try:
         target_script_id = int(target_script_id)
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "target_script_id 必须是剧本编号"}, status_code=400)
+        return json_response({"ok": False, "error": "target_script_id must be a script id"}, status_code=400)
     # 引用自己没有任何效果(KB 读取重定向指回自己),以前却照样 200 并把模式写进去,
     # 用户以为设置生效了。明确拒绝。
     if target_script_id == int(script_id):
         return json_response(
-            {"ok": False, "error": "不能引用剧本自己:引用模式是让本剧本读取另一个剧本的设定"},
+            {"ok": False, "error": "A script cannot reference itself: reference mode lets this script read another script's lore"},
             status_code=400,
         )
 
     commit_id = body.get("commit_id")
     if mode == "pinned-snapshot" and not commit_id:
         return json_response(
-            {"ok": False, "error": "pinned-snapshot 模式需要 commit_id"},
+            {"ok": False, "error": "pinned-snapshot mode requires commit_id"},
             status_code=400,
         )
     try:
         commit_id = int(commit_id) if commit_id else None
     except (TypeError, ValueError):
-        return json_response({"ok": False, "error": "commit_id 必须是版本编号"}, status_code=400)
+        return json_response({"ok": False, "error": "commit_id must be a version id"}, status_code=400)
 
     with connect() as db:
         _require_owner(db, script_id, user["id"])
@@ -79,7 +79,7 @@ async def api_pin_script(request: Request, script_id: int, user=Depends(require_
             (target_script_id, user["id"], user["id"]),
         ).fetchone()
         if not target:
-            return json_response({"ok": False, "error": "目标剧本不存在或无权引用"}, status_code=403)
+            return json_response({"ok": False, "error": "Target script not found or not allowed to be referenced"}, status_code=403)
 
         # 若 pinned-snapshot，校验 commit 归属于 target_script_id
         if commit_id:
@@ -89,7 +89,7 @@ async def api_pin_script(request: Request, script_id: int, user=Depends(require_
             ).fetchone()
             if not c:
                 return json_response(
-                    {"ok": False, "error": "commit_id 不属于目标剧本"},
+                    {"ok": False, "error": "commit_id does not belong to the target script"},
                     status_code=400,
                 )
 

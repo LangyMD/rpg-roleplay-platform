@@ -39,7 +39,7 @@ def _require_owner(db, script_id: int, user_id: int):
     exists = db.execute("SELECT owner_id FROM scripts WHERE id = %s", (script_id,)).fetchone()
     if not exists:
         raise ValueError("Script not found")
-    raise ValueError("必须 fork 后才能编辑（当前用户不是该剧本 owner）")
+    raise ValueError("You must fork this script before editing it (the current user is not its owner)")
 
 
 def _write_commit(

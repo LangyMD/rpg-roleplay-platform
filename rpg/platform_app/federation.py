@@ -124,7 +124,7 @@ def create_pat(user_id: int, name: str, scopes: list[str], ttl_days: int = PAT_D
             (user_id,),
         ).fetchone()
         if int((dict(active) or {}).get("n", 0)) >= MAX_PATS_PER_USER:
-            raise ValueError(f"活跃令牌已达上限({MAX_PATS_PER_USER}),请先吊销不用的令牌")
+            raise ValueError(f"Active token limit reached ({MAX_PATS_PER_USER}); revoke tokens you no longer use first")
         row = db.execute(
             "insert into personal_access_tokens(user_id, token_hash, name, scopes, expires_at, source) "
             "values (%s, %s, %s, %s, %s, %s) returning id, name, scopes, created_at, expires_at, source",
@@ -261,9 +261,9 @@ def device_approve(user_id: int, user_code: str, deny: bool = False) -> dict[str
             raise ValueError("Authorization code not found or no longer valid")
         d = dict(row)
         if d.get("expires_at") and d["expires_at"] < _now():
-            raise ValueError("授权码已过期")
+            raise ValueError("Authorization code has expired")
         if d.get("status") != "pending":
-            raise ValueError("该授权码已处理")
+            raise ValueError("This authorization code has already been processed")
         db.execute(
             "update device_authorizations set status = %s, user_id = %s, approved_at = now() "
             "where id = %s",
@@ -377,9 +377,9 @@ def ext_publish_pack(user_id: int, zip_bytes: bytes) -> dict[str, Any]:
             )
         else:
             if chapter_count == 0:
-                warnings.append("空剧本(0 章)未公开;导入为私有草稿。")
+                warnings.append("Empty script (0 chapters) was not made public; imported as a private draft.")
             else:
-                warnings.append("剧本未通过 KB 复核,未公开;已导入为私有草稿,请在在线服务复核后再公开。")
+                warnings.append("Script has not passed KB review and was not made public; imported as a private draft. Review it on the online service before publishing.")
     return {"ok": True, "script_id": new_sid, "is_public": eligible, "warnings": warnings}
 
 
@@ -419,7 +419,7 @@ def _connector_auth(user_id: int) -> tuple[str, str]:
     """
     cred = user_credentials.get_credential(user_id, CONNECTOR_API_ID)
     if not cred or not cred.get("key"):
-        raise ValueError("尚未连接在线剧本库,请先在「设置 → 在线剧本库」连接")
+        raise ValueError("Not connected to the online script library yet; connect under Settings -> Online script library first")
     base = _normalize_base(cred.get("base_url_override"))
     user_credentials._validate_base_url(base)
     return base, cred["key"]
@@ -447,8 +447,8 @@ def connector_test(user_id: int) -> dict[str, Any]:
     if r.status_code == 200:
         return {"ok": True, "base_url": base}
     if r.status_code in (401, 403):
-        return {"ok": False, "error": "令牌无效或已过期,请重新连接"}
-    return {"ok": False, "error": f"连接失败 HTTP {r.status_code}"}
+        return {"ok": False, "error": "Token is invalid or expired; please reconnect"}
+    return {"ok": False, "error": f"Connection failed: HTTP {r.status_code}"}
 
 
 def connector_list(user_id: int, q: str | None, limit: int = 30, offset: int = 0) -> dict[str, Any]:
@@ -459,7 +459,7 @@ def connector_list(user_id: int, q: str | None, limit: int = 30, offset: int = 0
     with _client(base, token) as c:
         r = c.get("/api/ext/library/scripts", params=params)
     if r.status_code != 200:
-        raise ValueError(f"在线库返回 HTTP {r.status_code}")
+        raise ValueError(f"Online library returned HTTP {r.status_code}")
     return r.json()
 
 
@@ -471,10 +471,10 @@ def connector_import(user_id: int, remote_script_id: int) -> dict[str, Any]:
     if r.status_code == 403:
         raise ValueError("This script is not public and cannot be imported")
     if r.status_code != 200:
-        raise ValueError(f"下载失败 HTTP {r.status_code}")
+        raise ValueError(f"Download failed: HTTP {r.status_code}")
     zip_bytes = r.content
     if zip_bytes[:4] != b"PK\x03\x04":
-        raise ValueError("在线库返回的不是合法剧本包")
+        raise ValueError("The online library did not return a valid script package")
     res = script_pack.import_script_pack(zip_bytes, user_id)
     return {"ok": True, "script_id": res.get("script_id"), "warnings": res.get("warnings") or []}
 
@@ -488,9 +488,9 @@ def connector_publish(user_id: int, local_script_id: int) -> dict[str, Any]:
         r = c.post("/api/ext/library/scripts/publish",
                    files={"file": ("pack.zip", zip_bytes, "application/zip")})
     if r.status_code == 403:
-        raise ValueError("令牌缺少发布权限(library:publish),请重新连接并勾选发布")
+        raise ValueError("The token lacks publish permission (library:publish); reconnect and enable publishing")
     if r.status_code != 200:
-        raise ValueError(f"发布失败 HTTP {r.status_code}")
+        raise ValueError(f"Publish failed: HTTP {r.status_code}")
     return r.json()
 
 
@@ -500,9 +500,9 @@ def connector_device_start(user_id: int, base_url: str, scopes: list[str]) -> di
     user_credentials._validate_base_url(base)
     with _client(base) as c:
         r = c.post("/api/ext/device/code",
-                   json={"client_name": "本地部署", "scopes": _clean_scopes(scopes)})
+                   json={"client_name": "Local deployment", "scopes": _clean_scopes(scopes)})
     if r.status_code != 200:
-        raise ValueError(f"在线服务不支持设备码流或返回 HTTP {r.status_code}")
+        raise ValueError(f"The online service does not support the device code flow, or returned HTTP {r.status_code}")
     data = r.json()
     data["base_url"] = base
     return data

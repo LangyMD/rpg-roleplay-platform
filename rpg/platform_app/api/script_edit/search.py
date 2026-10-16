@@ -28,7 +28,7 @@ async def api_script_search(script_id: int, q: str = "", regex: bool = False,
     try:
         pat = _re.compile(query if regex else _re.escape(query), _re.I)
     except _re.error as exc:
-        return json_response({"ok": False, "error": f"正则无效: {exc}"}, status_code=400)
+        return json_response({"ok": False, "error": f"Invalid regex: {exc}"}, status_code=400)
     lim = limit_value(limit, default=80, maximum=300)
     CAP = 3000
     where = "script_id=%s"

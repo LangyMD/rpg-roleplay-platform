@@ -14,7 +14,7 @@ from ._shared import _require_owner, _write_commit, router
 # ─── anchors CRUD ─────────────────────────────────────────────────────────────
 
 def _duplicate_label_error(label) -> str:
-    return f"同一阶段里已经有叫「{label}」的时间点了,换个名字再试"
+    return f"This phase already has a time point named \"{label}\"; try a different name"
 
 
 def _anchor_update_sets(body: dict) -> tuple[list[str], list]:
@@ -88,7 +88,7 @@ async def api_anchor_update(
 
         if not sets:
             return json_response(
-                {"ok": False, "error": "无可更新字段（可更新: summary, story_phase, story_time_label, chapter_min, chapter_max, keywords, confidence, sample_title）"},
+                {"ok": False, "error": "No fields to update (updatable: summary, story_phase, story_time_label, chapter_min, chapter_max, keywords, confidence, sample_title)"},
                 status_code=400,
             )
 
@@ -117,7 +117,7 @@ async def api_anchor_update(
             script_id=script_id,
             user_id=user["id"],
             kind="anchor_edit",
-            message=f"编辑 anchor: {before.get('story_time_label', anchor_id)}",
+            message=f"Edit anchor: {before.get('story_time_label', anchor_id)}",
             payload={"table": "script_timeline_anchors", "op": "edit", "before": before, "after": after, "ids": {"anchor_id": anchor_id}},
         )
         db.commit()
@@ -141,7 +141,7 @@ async def api_anchor_add(
     story_time_label = str(body.get("story_time_label") or "").strip()
     story_phase = str(body.get("story_phase") or "").strip()
     if not story_time_label:
-        return json_response({"ok": False, "error": "缺少 story_time_label"}, status_code=400)
+        return json_response({"ok": False, "error": "Missing story_time_label"}, status_code=400)
     chapter_min = int(body.get("chapter_min") or 0)
     chapter_max = int(body.get("chapter_max") or chapter_min)
 
@@ -181,7 +181,7 @@ async def api_anchor_add(
             script_id=script_id,
             user_id=user["id"],
             kind="anchor_add",
-            message=f"新增 anchor: {story_time_label}",
+            message=f"Add anchor: {story_time_label}",
             payload={"table": "script_timeline_anchors", "op": "add", "after": after, "ids": {"anchor_id": int(after["id"])}},
         )
         db.commit()
@@ -218,7 +218,7 @@ async def api_anchor_delete(
             script_id=script_id,
             user_id=user["id"],
             kind="anchor_delete",
-            message=f"删除 anchor: {before.get('story_time_label', anchor_id)}",
+            message=f"Delete anchor: {before.get('story_time_label', anchor_id)}",
             payload={"table": "script_timeline_anchors", "op": "delete", "before": before, "ids": {"anchor_id": anchor_id}},
         )
         db.commit()
